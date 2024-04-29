@@ -1,0 +1,26 @@
+kind: pipeline
+name: default
+type: docker
+
+steps:
+  - name: build
+    image: python:3.11
+    commands:
+      - pip install -r requirements.txt
+      - pip install pyinstaller
+      - python -m unittest discover
+      - pyinstaller --onefile caution_bot.py
+    when:
+      event: tag
+  - name: publish
+    image: plugins/github-release
+    settings:
+      api_key: ${GITHUB_TOKEN}
+      files: dist/*
+      title: ${DRONE_TAG}
+    when:
+      event: tag
+
+trigger:
+    event:
+      - tag
