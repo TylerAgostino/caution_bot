@@ -23,7 +23,7 @@ class Bot:
     def __init__(self,
                  caution_window_start=5,
                  caution_window_end=-10,
-                 caution_liklihood=0.75,
+                 caution_likelihood=0.75,
                  caution_frequency=2,
                  minimum_cautions=0,
                  allowed_session_types=None,
@@ -43,7 +43,7 @@ class Bot:
         else:
             self.caution_window_end = caution_window_end
         logging.debug(f'Caution window end: {self.caution_window_end}')
-        self.caution_liklihood = caution_liklihood
+        self.caution_likelihood = caution_likelihood
         self.caution_frequency = caution_frequency
 
         self.caution_window = (int(self.caution_window_start), int(self.caution_window_end))
@@ -52,7 +52,7 @@ class Bot:
         self.allowed_session_types = allowed_session_types
 
         for i in range(self.caution_frequency):
-            if random.random() < self.caution_liklihood:
+            if random.random() < self.caution_likelihood:
                 caution_time = random.randint(*self.caution_window)
                 caution = Caution(caution_time, self.sdk, **kwargs)
                 self.cautions.append(caution)
@@ -193,7 +193,7 @@ def ui():
     caution_window_end.insert(0, "-10")
     caution_window_end.grid(row=1, column=1)
 
-    Label(master, text="Caution Liklihood (%)").grid(row=2, sticky=E)
+    Label(master, text="Caution likelihood (%)").grid(row=2, sticky=E)
     caution_likelihood = Entry(master)
     Hovertip(caution_likelihood, "The chance of each caution being thrown.")
     caution_likelihood.insert(0, "75")
@@ -244,16 +244,29 @@ def ui():
 
 async def start_bot(caution_window_start, caution_window_end, caution_likelihood, caution_frequency, minimum_cautions,
                     pit_close_advance_warning, pit_close_maximum_duration, max_laps_behind_leader):
-    bot = Bot(
-        caution_window_start=int(float(caution_window_start) * 60),
-        caution_window_end=int(float(caution_window_end) * 60),
-        caution_liklihood=float(caution_likelihood) / 100,
-        caution_frequency=int(caution_frequency),
-        minimum_cautions=int(minimum_cautions),
-        pit_close_advance_warning=int(pit_close_advance_warning),
-        pit_close_maximum_duration=int(pit_close_maximum_duration),
-        max_laps_behind_leader=int(max_laps_behind_leader)
-    )
+    try:
+        bot = Bot(
+            caution_window_start=int(float(caution_window_start) * 60),
+            caution_window_end=int(float(caution_window_end) * 60),
+            caution_likelihood=float(caution_likelihood) / 100,
+            caution_frequency=int(caution_frequency),
+            minimum_cautions=int(minimum_cautions),
+            pit_close_advance_warning=int(pit_close_advance_warning),
+            pit_close_maximum_duration=int(pit_close_maximum_duration),
+            max_laps_behind_leader=int(max_laps_behind_leader)
+        )
+    except Exception as e:
+        logging.error(f'Error initializing bot: {e}')
+        logging.debug(f'Caution window start: {caution_window_start}')
+        logging.debug(f'Caution window end: {caution_window_end}')
+        logging.debug(f'Caution likelihood: {caution_likelihood}')
+        logging.debug(f'Caution frequency: {caution_frequency}')
+        logging.debug(f'Minimum cautions: {minimum_cautions}')
+        logging.debug(f'Pit close advance warning: {pit_close_advance_warning}')
+        logging.debug(f'Pit close maximum duration: {pit_close_maximum_duration}')
+        logging.debug(f'Max laps behind leader: {max_laps_behind_leader}')
+        return
+
     while not bot.is_in_valid_session():
         logging.info("Not in a valid session.")
         await asyncio.sleep(10)
