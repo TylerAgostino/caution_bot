@@ -1,0 +1,6 @@
+/logs/
+/dist/
+/build/
+/.idea/
+*.iml
+*.spec
