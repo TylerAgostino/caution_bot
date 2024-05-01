@@ -144,7 +144,7 @@ class Caution:
         if enter:
             keys.append('{ENTER}')
         self.pwa['iRacing.com Simulator'].type_keys(''.join(keys))
-        time.sleep(0.5)  # Wait a beat again
+        time.sleep(1)  # Wait a beat again
 
 
 def ui():
