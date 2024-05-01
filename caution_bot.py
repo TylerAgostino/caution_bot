@@ -15,6 +15,8 @@ from tkinter.scrolledtext import ScrolledText
 kill = False
 
 
+LOGLEVEL = 'INFO'
+
 os.makedirs('logs', exist_ok=True)
 LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
 
@@ -114,7 +116,7 @@ class Caution:
     def warn_pits_closing(self):
         message = f'Pits closing in {self.pit_close_advance_warning} seconds.'
         logging.info(message)
-        self._chat(message)
+        self._chat(message, race_control=True)
 
     def close_pits(self):
         logging.info('Closing pits.')
@@ -234,11 +236,20 @@ def ui():
     max_laps_behind_leader.insert(0, "3")
     max_laps_behind_leader.grid(row=7, column=1)
 
+
+
+
+
+    Label(master, text="Log Level").grid(row=9, sticky=E)
+    log_level = OptionMenu(master, StringVar(master, LOGLEVEL),'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL', command=set_log_level)
+    log_level.grid(row=9, column=1)
+
     start_button = Button(master, text='Start', command=start_bot_thread)
-    start_button.grid(row=8, columnspan=2)
+    start_button.grid(row=10, columnspan=2)
+
 
     frame = ttk.Frame(master)
-    frame.grid(row=9, columnspan=2)
+    frame.grid(row=11, columnspan=2)
     log = ScrolledText(frame, wrap=WORD, state=DISABLED, height=20)
     log.grid(row=0, column=0)
     log.configure(font='TkFixedFont')
@@ -246,6 +257,9 @@ def ui():
     log_thread.start()
     mainloop()
 
+def set_log_level(level):
+    logger.setLevel(level)
+    # maybe start a new log file here?
 
 async def start_bot(caution_window_start, caution_window_end, caution_likelihood, caution_frequency, minimum_cautions,
                     pit_close_advance_warning, pit_close_maximum_duration, max_laps_behind_leader):
@@ -283,10 +297,10 @@ async def start_bot(caution_window_start, caution_window_end, caution_likelihood
 
 if __name__ == '__main__':
     logger = logging.getLogger()
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(message)s')
+    logging.basicConfig(level=LOGLEVEL, format='%(levelname)s - %(message)s')
     filelogger = logging.FileHandler(LOGFILE, mode='w')
     filelogger.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
     logger.addHandler(filelogger)
-    logging.info("The bot is running.")
+    logging.info("Hello.")
     ui()
     logging.info("Exiting.")
