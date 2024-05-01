@@ -9,7 +9,7 @@ import random
 import asyncio
 import pywinauto
 import time
-
+import pyperclip
 from idlelib.tooltip import Hovertip
 from tkinter.scrolledtext import ScrolledText
 kill = False
@@ -125,14 +125,19 @@ class Caution:
         self._chat('!pitopen')
         self._chat('!y')
 
-    def _chat(self, message, enter=True):
-        message = message.replace(' ', '{SPACE}')
+    def _chat(self, message, enter=True, race_control=False):
+        if race_control:
+            message = f'/all {message}'
+        pyperclip.copy(message)
         logging.debug(f'Sending chat message: {message}')
-        self.sdk.chat_command(1)
-        self.pwa['iRacing.com Simulator'].type_keys(message)
+        self.sdk.chat_command(3)  # Close any chat in progress
+        time.sleep(0.1)  # Wait a beat
+        self.sdk.chat_command(1)  # Open a new chat
+        keys = ['^v']
         if enter:
-            logging.debug('Sending enter key.')
-            self.pwa['iRacing.com Simulator'].type_keys('{ENTER}')
+            keys.append('{ENTER}')
+        self.pwa['iRacing.com Simulator'].type_keys(''.join(keys))
+        time.sleep(0.5)  # Wait a beat again
 
 
 def ui():

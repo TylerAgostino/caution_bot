@@ -1,2 +1,3 @@
 pyirsdk
 pywinauto
+pyperclip
