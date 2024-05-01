@@ -88,8 +88,7 @@ class Caution:
         logging.debug(f'Caution time: {self.caution_time}')
         while not self.is_caution_time():
             await asyncio.sleep(1)
-        self.warn_pits_closing()
-        await asyncio.sleep(self.pit_close_advance_warning)
+        await self.warn_pits_closing(self.pit_close_advance_warning)
         self.close_pits()
         start_time = self.sdk['SessionTime']
         while self.pit_lane_has_cars():
@@ -113,10 +112,16 @@ class Caution:
     def is_caution_time(self):
         return self.sdk['SessionTime'] >= self.caution_time - self.pit_close_advance_warning
 
-    def warn_pits_closing(self):
+    async def warn_pits_closing(self, warning_time):
         message = f'Pits closing in {self.pit_close_advance_warning} seconds.'
         logging.info(message)
         self._chat(message, race_control=True)
+
+        for interval in [30, 20, 10, 5, 3, 2, 1]:
+            if warning_time > interval:
+                await asyncio.sleep(warning_time - interval)
+                warning_time = interval
+                self._chat(f'Pits closing in {interval} seconds.', race_control=True)
 
     def close_pits(self):
         logging.info('Closing pits.')
