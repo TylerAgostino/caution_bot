@@ -111,7 +111,9 @@ class Caution:
         return False
 
     def is_caution_time(self):
-        return self.sdk['SessionTime'] >= self.caution_time - self.pit_close_advance_warning
+        total_session_time = self.sdk['SessionTimeTotal']
+        time_remaining = self.sdk['SessionTimeRemain']
+        return total_session_time - time_remaining >= self.caution_time - self.pit_close_advance_warning
 
     async def warn_pits_closing(self, warning_time):
         message = f'Pits closing in {self.pit_close_advance_warning} seconds.'
