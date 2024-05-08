@@ -205,7 +205,7 @@ def ui():
     Label(master, text="Window End (minutes)").grid(row=1, sticky=E)
     caution_window_end = Entry(master)
     Hovertip(caution_window_end, "Caution-free period at the end of the session in minutes. Negative values are relative to the end of the session")
-    caution_window_end.insert(0, "-10")
+    caution_window_end.insert(0, "-15")
     caution_window_end.grid(row=1, column=1)
 
     Label(master, text="Caution likelihood (%)").grid(row=2, sticky=E)
