@@ -19,6 +19,7 @@ LOGLEVEL = 'INFO'
 
 os.makedirs('logs', exist_ok=True)
 LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
+DEBUG_LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_debug.log'
 
 
 class Bot:
@@ -263,7 +264,7 @@ def ui():
     mainloop()
 
 def set_log_level(level):
-    logger.setLevel(level)
+    logger.handlers[1].setLevel(level)
     # maybe start a new log file here?
 
 async def start_bot(caution_window_start, caution_window_end, caution_likelihood, caution_frequency, minimum_cautions,
@@ -306,6 +307,10 @@ if __name__ == '__main__':
     filelogger = logging.FileHandler(LOGFILE, mode='w')
     filelogger.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
     logger.addHandler(filelogger)
+    debuglogger = logging.FileHandler(DEBUG_LOGFILE, mode='w')
+    debuglogger.setLevel(logging.DEBUG)
+    debuglogger.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+    logger.addHandler(debuglogger)
     logging.info("Hello.")
     ui()
     logging.info("Exiting.")
