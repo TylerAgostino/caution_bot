@@ -99,6 +99,53 @@ class Caution:
                 break
         self.throw()
 
+        # Check for lap down cars
+        wave_around_cars = self.get_wave_around_cars()
+
+        # Wait to give wave arounds
+        pace_car = [driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1][0]['CarIdx']
+        # see what lap the pace car is starting out on
+        initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
+        # wait for the pace car to complete the lap
+        while self.sdk['CarIdxLapCompleted'][pace_car] - initial_lap < 1:
+            await asyncio.sleep(1)
+
+        while len(wave_around_cars) > 0:
+            # now wait for the waved car to pass the pit commit line.
+            # checking for this using the lap distance percentage.
+            # if this percentage is set too high, we might wave cars
+            # before they've actually caught the field and decided whether to pit
+            # if they're very far behind. if its set too low, the sdk might 'miss'
+            # the frame where the car crosses the line and not wave them around
+            while self.sdk['CarIdxLapDistPct'][wave_around_cars[0]] > 0.1:
+                await asyncio.sleep(1)
+
+            # if they pitted, then skip them for now
+            if self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]]:
+                # move to the back of the array
+                wave_around_cars.append(wave_around_cars.pop(0))
+            else:
+                # otherwise wave them around
+                self.wave_and_eol(wave_around_cars.pop(0))
+            await asyncio.sleep(1)
+
+
+
+    def get_wave_around_cars(self):
+        wave_around_cars = []
+        laps_completed = self.sdk['CarIdxLapCompleted']
+        partial_laps = self.sdk['CarIdxLapDistPct']
+        distance_covered = [laps_completed[i] + partial_laps[i] for i in range(len(laps_completed))]
+        max_distance_covered = max(distance_covered)
+        for driver in self.sdk['DriverInfo']['Drivers']:
+            if driver['CarIsPaceCar'] != 1 and \
+                    distance_covered[driver['CarIdx']] <= max_distance_covered - 1 and \
+                    self.sdk['CarIdxLapCompleted'][driver['CarIdx']] >= \
+                    max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader:
+                wave_around_cars.append(driver['CarIdx'])
+        wave_around_cars.sort(key=lambda x: self.sdk['CarIdxPosition'][x]) # probably a better way to sort this with caridxpaceline and caridxpacerow
+        return wave_around_cars
+
     def pit_lane_has_cars(self):
         for driver in self.sdk['DriverInfo']['Drivers']:
             if driver['CarIsPaceCar'] != 1 and \
@@ -148,6 +195,16 @@ class Caution:
             keys.append('{ENTER}')
         self.pwa['iRacing.com Simulator'].type_keys(''.join(keys))
         time.sleep(1)  # Wait a beat again
+
+    def wave_around(self, cars):
+        for car in cars:
+            self.wave_and_eol(car)
+
+    def wave_and_eol(self, car):
+        car_number = self.sdk['DriverInfo']['Drivers'][car]['CarNumber']
+        logging.info(f'Waving around car {car_number}')
+        self._chat(f'!w {car_number}')
+        self._chat(f'!eol {car_number}')
 
 
 def ui():
