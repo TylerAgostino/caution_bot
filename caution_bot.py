@@ -13,7 +13,7 @@ import pyperclip
 from idlelib.tooltip import Hovertip
 from tkinter.scrolledtext import ScrolledText
 kill = False
-
+active_caution = False
 
 LOGLEVEL = 'INFO'
 
@@ -85,10 +85,15 @@ class Caution:
         self.pwa.connect(best_match='iRacing.com Simulator')
 
     async def run(self):
+        global active_caution
         logging.info(f'Running caution')
         logging.debug(f'Caution time: {self.caution_time}')
         while not self.is_caution_time():
             await asyncio.sleep(1)
+        if active_caution:
+            self._chat('Additional caution skipped due to active caution.')
+            return
+        active_caution = True
         await self.warn_pits_closing(self.pit_close_advance_warning)
         self.close_pits()
         start_time = self.sdk['SessionTime']
@@ -128,6 +133,11 @@ class Caution:
                 # otherwise wave them around
                 self.wave_and_eol(wave_around_cars.pop(0))
             await asyncio.sleep(1)
+
+        # then wait for green flag
+        while self.sdk['SessionState'] != 4:
+            await asyncio.sleep(1)
+        active_caution = False
 
 
 
