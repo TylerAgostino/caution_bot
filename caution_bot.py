@@ -4,6 +4,7 @@ import threading
 import datetime
 import os
 import logging
+from logging.config import dictConfig
 import irsdk
 import random
 import asyncio
@@ -15,7 +16,7 @@ from tkinter.scrolledtext import ScrolledText
 kill = False
 active_caution = False
 
-LOGLEVEL = 'INFO'
+LOGLEVEL = 'ERROR'
 
 os.makedirs('logs', exist_ok=True)
 LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
@@ -106,14 +107,18 @@ class Caution:
 
         # Check for lap down cars
         wave_around_cars = self.get_wave_around_cars()
+        logging.debug(f'Wave around cars: {wave_around_cars}')
 
         # Wait to give wave arounds
         pace_car = [driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1][0]['CarIdx']
         # see what lap the pace car is starting out on
         initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
+        logging.debug(f'Pace car starting on lap {initial_lap}')
         # wait for the pace car to complete the lap
         while self.sdk['CarIdxLapCompleted'][pace_car] - initial_lap < 1:
             await asyncio.sleep(1)
+        logging.debug('Pace car has completed a lap.')
+        logging.debug('Beginning wave arounds.')
 
         while len(wave_around_cars) > 0:
             # now wait for the waved car to pass the pit commit line.
@@ -334,7 +339,7 @@ def ui():
     mainloop()
 
 def set_log_level(level):
-    logger.handlers[1].setLevel(level)
+    logger.handlers[0].setLevel(level)
     # maybe start a new log file here?
 
 async def start_bot(caution_window_start, caution_window_end, caution_likelihood, caution_frequency, minimum_cautions,
@@ -372,15 +377,39 @@ async def start_bot(caution_window_start, caution_window_end, caution_likelihood
 
 
 if __name__ == '__main__':
+
+    dictConfig({
+        'version': 1,
+        'formatters': {
+            'default': {
+                'format': '%(levelname)s - %(message)s'
+            }
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': LOGFILE,
+                'mode': 'w',
+                'formatter': 'default',
+                'level': LOGLEVEL
+            },
+            'debug': {
+                'class': 'logging.FileHandler',
+                'filename': DEBUG_LOGFILE,
+                'mode': 'w',
+                'formatter': 'default',
+                'level': 'DEBUG'
+            }
+        },
+        'loggers': {
+            '': {
+                'handlers': ['file', 'debug'],
+                'level': 'DEBUG'
+            }
+        }
+    })
+
     logger = logging.getLogger()
-    logging.basicConfig(level=LOGLEVEL, format='%(levelname)s - %(message)s')
-    filelogger = logging.FileHandler(LOGFILE, mode='w')
-    filelogger.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-    logger.addHandler(filelogger)
-    debuglogger = logging.FileHandler(DEBUG_LOGFILE, mode='w')
-    debuglogger.setLevel(logging.DEBUG)
-    debuglogger.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-    logger.addHandler(debuglogger)
     logging.info("Hello.")
     ui()
     logging.info("Exiting.")
