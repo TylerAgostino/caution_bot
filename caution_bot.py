@@ -127,7 +127,7 @@ class Caution:
             # before they've actually caught the field and decided whether to pit
             # if they're very far behind. if its set too low, the sdk might 'miss'
             # the frame where the car crosses the line and not wave them around
-            while self.sdk['CarIdxLapDistPct'][wave_around_cars[0]] > 0.1 and \
+            while self.sdk['CarIdxLapDistPct'][wave_around_cars[0]] > 0.4 and \
                     not self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]]:
                 await asyncio.sleep(1)
 
@@ -159,7 +159,7 @@ class Caution:
                     self.sdk['CarIdxLapCompleted'][driver['CarIdx']] >= \
                     max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader:
                 wave_around_cars.append(driver['CarIdx'])
-        wave_around_cars.sort(key=lambda x: laps_completed[x] + partial_laps[x])
+        wave_around_cars.sort(key=lambda x: laps_completed[x] + partial_laps[x], reverse=True)
         return wave_around_cars
 
     def pit_lane_has_cars(self):
