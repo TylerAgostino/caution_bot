@@ -141,7 +141,7 @@ class Caution:
             await asyncio.sleep(1)
 
         # then wait for green flag
-        while self.sdk['SessionState'] != 4:
+        while hex(self.sdk['SessionFlags'])[-4] in ['4', '8']:
             await asyncio.sleep(1)
         active_caution = False
 
