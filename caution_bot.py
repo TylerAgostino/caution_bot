@@ -114,8 +114,14 @@ class Caution:
         # see what lap the pace car is starting out on
         initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
         logging.debug(f'Pace car starting on lap {initial_lap}')
+
+        # first wait for the pace car to get around 40% of the track, so we know it's left the pit exit and
+        # our lap counter is _somewhat_ reliable.
+        while self.sdk['CarIdxLapDistPct'][pace_car] > 0.5 or self.sdk['CarIdxLapDistPct'][pace_car] < 0.4:
+            await asyncio.sleep(1)
+
         # wait for the pace car to complete the lap
-        while self.sdk['CarIdxLapCompleted'][pace_car] - initial_lap < 1:
+        while self.sdk['CarIdxLapCompleted'][pace_car] < 0:
             await asyncio.sleep(1)
         logging.debug('Pace car has completed a lap.')
         logging.debug('Beginning wave arounds.')
