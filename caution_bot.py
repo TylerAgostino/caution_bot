@@ -124,27 +124,27 @@ class Caution:
         while self.sdk['CarIdxLapCompleted'][pace_car] < 0:
             await asyncio.sleep(1)
         logging.debug('Pace car has completed a lap.')
-        logging.debug('Beginning wave arounds.')
-
-        while len(wave_around_cars) > 0:
-            # now wait for the waved car to pass the pit commit line.
-            # checking for this using the lap distance percentage.
-            # if this percentage is set too high, we might wave cars
-            # before they've actually caught the field and decided whether to pit
-            # if they're very far behind. if its set too low, the sdk might 'miss'
-            # the frame where the car crosses the line and not wave them around
-            while self.sdk['CarIdxLapDistPct'][wave_around_cars[0]] > 0.4 and \
-                    not self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]]:
-                await asyncio.sleep(1)
-
-            # if they pitted, or are not at the timing line yet, then skip them for now
-            if self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]] or self.sdk['CarIdxPaceLine'][wave_around_cars[0]] == -1:
-                # move to the back of the array
-                wave_around_cars.append(wave_around_cars.pop(0))
-            else:
-                # otherwise wave them around
-                self.wave_and_eol(wave_around_cars.pop(0))
-            await asyncio.sleep(0.5)
+        # logging.debug('Beginning wave arounds.')
+        #
+        # while len(wave_around_cars) > 0:
+        #     # now wait for the waved car to pass the pit commit line.
+        #     # checking for this using the lap distance percentage.
+        #     # if this percentage is set too high, we might wave cars
+        #     # before they've actually caught the field and decided whether to pit
+        #     # if they're very far behind. if its set too low, the sdk might 'miss'
+        #     # the frame where the car crosses the line and not wave them around
+        #     while self.sdk['CarIdxLapDistPct'][wave_around_cars[0]] > 0.4 and \
+        #             not self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]]:
+        #         await asyncio.sleep(1)
+        #
+        #     # if they pitted, or are not at the timing line yet, then skip them for now
+        #     if self.sdk['CarIdxOnPitRoad'][wave_around_cars[0]] or self.sdk['CarIdxPaceLine'][wave_around_cars[0]] == -1:
+        #         # move to the back of the array
+        #         wave_around_cars.append(wave_around_cars.pop(0))
+        #     else:
+        #         # otherwise wave them around
+        #         self.wave_and_eol(wave_around_cars.pop(0))
+        #     await asyncio.sleep(0.5)
 
         # then wait for green flag
         while hex(self.sdk['SessionFlags'])[-4] in ['4', '8']:
