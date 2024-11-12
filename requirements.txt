@@ -1,3 +1,5 @@
 pyirsdk
 pywinauto
 pyperclip
+streamlit
+streamlit-autorefresh
