@@ -56,7 +56,7 @@ def stop_sequence():
 
 def ui():
     if 'cautions' not in st.session_state:
-        st.session_state.cautions = [empty_caution()]
+        st.session_state.cautions = [empty_caution(), empty_caution()]
 
     if 'caution_instances' not in st.session_state:
         st.session_state.caution_instances = []
@@ -64,33 +64,36 @@ def ui():
     st.header("Global Settings")
     
     # global settings
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns((1, 1, 1, 1, 1, 1, 2))
     with col1:
-        st.session_state.caution_window_start = st.text_input("Window Start (minutes)", "5")
+        st.session_state.caution_window_start = st.text_input("Window Start (min)", "5")
     with col2:
-        st.session_state.caution_window_end = st.text_input("Window End (minutes)", "-15")
+        st.session_state.caution_window_end = st.text_input("Window End (min)", "-15")
     with col3:
-        st.session_state.pit_close_advance_warning = st.text_input("Pit Close Warning (Seconds)", "5")
+        st.session_state.pit_close_advance_warning = st.text_input("Pit Close Warning (sec)", "5")
     with col4:
-        st.session_state.pit_close_maximum_duration = st.text_input("Max Pit Close Time (Seconds)", "120")
+        st.session_state.pit_close_maximum_duration = st.text_input("Max Pit Close Time (sec)", "120")
     with col5:
         st.session_state.max_laps_behind_leader = st.text_input("Max Laps Behind Leader", "3")
     with col6:
         st.session_state.wave_arounds = st.checkbox("Wave Arounds")
+    with col7:
+        st.session_state.notify_skipped = st.checkbox("Notify on Skipped Caution")
+    st.write('---')
     
     # Individual caution settings
     for i, caution in enumerate(st.session_state.cautions):
-        st.subheader(f"Caution {i + 1}")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, blank = st.columns((1, 1, 1, 2))
         with col1:
-            caution['frequency'] = st.text_input("Maximum Cautions", caution['frequency'], key=f"frequency_{caution['id']}")
+            st.subheader(f"Caution {i + 1}")
         with col2:
-            caution['minimum'] = st.text_input("Minimum Cautions", caution['minimum'], key=f"minimum_{caution['id']}")
-        with col3:
             caution['likelihood'] = st.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
-        with col4:
+        with col3:
+            st.write(' ')
+            st.write(' ')
             st.button("Remove", on_click=lambda: st.session_state.cautions.pop(i), key=f"remove_{caution['id']}")
-    
+
+    st.write('---')
     st.button("Add Caution", on_click=lambda: st.session_state.cautions.append(empty_caution()))
     
     col1, col2 = st.columns(2)

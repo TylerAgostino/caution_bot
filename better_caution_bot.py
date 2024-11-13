@@ -52,6 +52,7 @@ if 'logger' not in st.session_state:
 
 if __name__ == '__main__':
     log_file = st.session_state.logfile
+    st.set_page_config(layout='wide')
     pages = st.navigation([random_caution_bot, random_vsc_bot])
     pages.run()
     log_box = st.text_area("Log", value='\n'.join(open(log_file).read().split('\n')[::-1]), height=500, key='log_box')

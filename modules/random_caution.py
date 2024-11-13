@@ -1,6 +1,4 @@
 from modules.random_timed_event import RandomTimedEvent
-import time
-import logging
 
 
 class RandomCaution(RandomTimedEvent):
@@ -20,9 +18,6 @@ class RandomCaution(RandomTimedEvent):
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
         super().__init__(*args, **kwargs)
-
-    def is_caution_active(self):
-        return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
 
     def wait_for_cars_to_clear_pit_lane(self):
         wait = True
