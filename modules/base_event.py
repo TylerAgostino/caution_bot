@@ -110,3 +110,27 @@ class BaseEvent:
                 wave_around_cars.append(driver['CarIdx'])
         wave_around_cars.sort(key=lambda x: laps_completed[x] + partial_laps[x], reverse=True)
         return wave_around_cars
+
+    def get_current_running_order(self, max_laps_behind_leader=99):
+        running_order = []
+        for car in self.sdk['DriverInfo']['Drivers']:
+            if car['CarIsPaceCar'] != 1:
+                pos = {
+                    'CarIdx': car['CarIdx'],
+                    'CarNumber': car['CarNumber'],
+                    'LapCompleted': self.sdk['CarIdxLapCompleted'][car['CarIdx']],
+                    'LapDistPct': self.sdk['CarIdxLapDistPct'][car['CarIdx']],
+                    'InPits': self.sdk['CarIdxOnPitRoad'][car['CarIdx']]
+                }
+                pos['total_completed'] = pos['LapCompleted'] + pos['LapDistPct']
+                running_order.append(pos)
+        running_order.sort(key=lambda x: x['total_completed'], reverse=True)
+        running_order = [runner for runner in running_order if
+                         runner['total_completed'] >= (running_order[0]['total_completed'] - max_laps_behind_leader)]
+        return running_order
+
+    def get_leader(self):
+        return self.get_current_running_order()[0]['CarIdx']
+
+    def is_caution_active(self):
+        return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
