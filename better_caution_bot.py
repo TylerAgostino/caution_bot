@@ -48,8 +48,6 @@ if 'logger' not in st.session_state:
     st.session_state.logger = logger
     st.session_state.logfile = LOGFILE
 
-
-
 if __name__ == '__main__':
     log_file = st.session_state.logfile
     st.set_page_config(layout='wide')
@@ -60,4 +58,3 @@ if __name__ == '__main__':
                              ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                              on_change=lambda: st.session_state.logger.handlers[0].setLevel(st.session_state.log_level),
                              key='log_level')
-
