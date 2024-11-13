@@ -1,3 +1,4 @@
+import random
 import streamlit as st
 import uuid
 from modules.random_caution import RandomCaution
@@ -5,6 +6,7 @@ from modules.subprocess_manager import SubprocessManager
 import logging
 import time
 from streamlit_autorefresh import st_autorefresh
+logger = logging.getLogger(__name__)
 
 if 'refresh' not in st.session_state:
     st.session_state.refresh = False
@@ -13,9 +15,7 @@ if 'refresh' not in st.session_state:
 def empty_caution():
     return {
         'id': uuid.uuid4(),
-        'frequency': 1,
         'likelihood': 75,
-        'minimum': 0,
         'instance': None
     }
 
@@ -23,17 +23,18 @@ def empty_caution():
 def start_sequence(*args, **kwargs):
     cautions = []
     for caution in st.session_state.cautions:
+        roll = random.randrange(0, 100)
+        if roll > int(caution['likelihood']):
+            logger.debug(f"Caution did not hit. {caution['likelihood']} > {roll}")
+            continue
         c = RandomCaution(
-            frequency=caution['frequency'],
-            likelihood=caution['likelihood'],
-            minimum=caution['minimum'],
             pit_close_advance_warning=st.session_state.pit_close_advance_warning,
             pit_close_max_duration=st.session_state.pit_close_maximum_duration,
             max_laps_behind_leader=st.session_state.max_laps_behind_leader,
             wave_arounds=st.session_state.wave_arounds,
             min_time=int(st.session_state.caution_window_start) * 60,
             max_time=int(st.session_state.caution_window_end) * 60,
-            notify_on_skipped_caution=False
+            notify_on_skipped_caution=st.session_state.notify_skipped
         )
         cautions.append(c)
 

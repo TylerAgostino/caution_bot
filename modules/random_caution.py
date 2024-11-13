@@ -8,9 +8,6 @@ class RandomCaution(RandomTimedEvent):
                  max_laps_behind_leader: int = 3,
                  wave_arounds: bool = True,
                  notify_on_skipped_caution: bool = False,
-                 frequency: int = 1,
-                 likelihood: int = 100,
-                 minimum: int = 0,
                  *args, **kwargs):
         self.pit_close_advance_warning = int(pit_close_advance_warning)
         self.pit_close_max_duration = int(pit_close_max_duration)
