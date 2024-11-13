@@ -44,11 +44,13 @@ class RandomCaution(RandomTimedEvent):
         return lap_down_cars
 
     def event_sequence(self):
-        if self.is_caution_active():
+        if self.is_caution_active() or self.busy_event.is_set():
             self.logger.debug('Additional caution skipped due to active caution.')
             if self.notify_on_skipped_caution:
                 self._chat('Additional caution skipped due to active caution.')
             return
+
+        self.busy_event.set()
 
         self.close_pits(self.pit_close_advance_warning)
 
@@ -102,6 +104,8 @@ class RandomCaution(RandomTimedEvent):
 
         while self.is_caution_active():
             self.sleep(1)
+
+        self.busy_event.clear()
 
 
 if __name__ == '__main__':

@@ -3,12 +3,16 @@ import pywinauto
 import pyperclip
 import logging
 import time
-from streamlit.runtime.scriptrunner import add_script_run_ctx
-import subprocess
+import threading
 
 
 class BaseEvent:
-    def __init__(self, sdk: irsdk.IRSDK = None, pwa: pywinauto.Application = None):
+    def __init__(self,
+                 sdk: irsdk.IRSDK = None,
+                 pwa: pywinauto.Application = None,
+                 cancel_event: threading.Event = None,
+                 busy_event: threading.Event = None
+                 ):
         if sdk is None:
             self.sdk = irsdk.IRSDK()
         else:
@@ -22,17 +26,21 @@ class BaseEvent:
         self.thread = None
         self.killed = False
         self.task = None
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
+        self.cancel_event = cancel_event
+        self.busy_event = busy_event
 
     def sleep(self, seconds):
         time.sleep(seconds)
-        if self.killed:
+        if self.cancel_event.is_set():
+            self.logger.info('Event cancelled.')
             raise KeyboardInterrupt
 
-    def kill(self):
-        self.killed = True
-
-    def run(self):
+    def run(self, cancel_event=None, busy_event=None):
+        if cancel_event is not None:
+            self.cancel_event = cancel_event
+        if busy_event is not None:
+            self.busy_event = busy_event
         self.event_sequence()
 
     def event_sequence(self):

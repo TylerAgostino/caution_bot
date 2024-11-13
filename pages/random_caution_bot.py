@@ -49,16 +49,12 @@ def start_sequence(*args, **kwargs):
 
 def stop_sequence():
     if 'caution_runner' in st.session_state:
-        for c in st.session_state.caution_runner:
-            c.killed = True
+        st.session_state.caution_runner.stop()
     st.session_state.refresh = False
     st_autorefresh(limit=1)
 
 
 def ui():
-    if 'kill' not in st.session_state:
-        st.session_state.kill = True
-
     if 'cautions' not in st.session_state:
         st.session_state.cautions = [empty_caution()]
 

@@ -14,13 +14,16 @@ class RandomTimedEvent(BaseEvent):
         total_session_time = self.sdk['SessionTimeTotal']
         time_remaining = self.sdk['SessionTimeRemain']
         is_time = (total_session_time - time_remaining >= self.start_time - adjustment)
-        print(f'{total_session_time}, {time_remaining}, {self.start_time}, {is_time}')
         return is_time and time_remaining > 1
 
     def wait_for_start(self):
         while not self.is_time_to_start():
             self.sleep(1)
 
-    def run(self):
+    def run(self, cancel_event=None, busy_event=None):
+        if cancel_event is not None:
+            self.cancel_event = cancel_event
+        if busy_event is not None:
+            self.busy_event = busy_event
         self.wait_for_start()
         self.event_sequence()
