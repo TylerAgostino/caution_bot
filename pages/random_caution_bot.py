@@ -6,7 +6,8 @@ from modules.subprocess_manager import SubprocessManager
 import logging
 import time
 from streamlit_autorefresh import st_autorefresh
-logger = logging.getLogger(__name__)
+
+logger = st.session_state.logger
 
 if 'refresh' not in st.session_state:
     st.session_state.refresh = False

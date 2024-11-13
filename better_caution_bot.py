@@ -1,6 +1,4 @@
 import streamlit as st
-from pages.random_caution_bot import random_caution_bot
-from pages.random_vsc_bot import random_vsc_bot
 import logging
 import datetime
 from logging.config import dictConfig
@@ -46,6 +44,10 @@ if 'logger' not in st.session_state:
     logger.info(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
     st.session_state.logger = logger
     st.session_state.logfile = LOGFILE
+
+
+from pages.random_caution_bot import random_caution_bot
+from pages.random_vsc_bot import random_vsc_bot
 
 if __name__ == '__main__':
     log_file = st.session_state.logfile

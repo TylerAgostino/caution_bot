@@ -1,8 +1,9 @@
 import irsdk
 import pywinauto
 import pyperclip
-import logging
+import streamlit as st
 import time
+import logging
 import threading
 
 
@@ -26,7 +27,10 @@ class BaseEvent:
         self.thread = None
         self.killed = False
         self.task = None
-        self.logger = logging.getLogger(__name__)
+        if 'logger' not in st.session_state:
+            self.logger = logging.getLogger(__name__)
+        else:
+            self.logger = st.session_state.logger
         self.cancel_event = cancel_event
         self.busy_event = busy_event
 

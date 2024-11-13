@@ -2,11 +2,10 @@ import streamlit as st
 import uuid
 from streamlit_autorefresh import st_autorefresh
 import random
-import logging
 from modules.random_vsc import RandomVSC
 from modules.subprocess_manager import SubprocessManager
 
-logger = logging.getLogger(__name__)
+logger = st.session_state.logger
 
 
 if 'refresh' not in st.session_state:
