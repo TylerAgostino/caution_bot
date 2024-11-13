@@ -5,7 +5,6 @@ import logging
 import datetime
 from logging.config import dictConfig
 import os
-from streamlit_autorefresh import st_autorefresh
 
 
 if 'logger' not in st.session_state:
