@@ -1,14 +1,28 @@
 from modules.random_timed_event import RandomTimedEvent
 
-
 class RandomCaution(RandomTimedEvent):
-    def __init__(self,
-                 pit_close_advance_warning: int = 5,
-                 pit_close_max_duration: int = 90,
-                 max_laps_behind_leader: int = 3,
-                 wave_arounds: bool = True,
-                 notify_on_skipped_caution: bool = False,
-                 *args, **kwargs):
+    """
+    A class to represent a random caution event in the iRacing simulator.
+
+    Attributes:
+        pit_close_advance_warning (int): Advance warning time before pits close.
+        pit_close_max_duration (int): Maximum duration for pits to be closed.
+        max_laps_behind_leader (int): Maximum laps a car can be behind the leader.
+        wave_arounds (bool): Flag to indicate if wave arounds are allowed.
+        notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
+    """
+
+    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, max_laps_behind_leader=3, wave_arounds=True, notify_on_skipped_caution=False, *args, **kwargs):
+        """
+        Initializes the RandomCaution class.
+
+        Args:
+            pit_close_advance_warning (int, optional): Advance warning time before pits close. Defaults to 5.
+            pit_close_max_duration (int, optional): Maximum duration for pits to be closed. Defaults to 90.
+            max_laps_behind_leader (int, optional): Maximum laps a car can be behind the leader. Defaults to 3.
+            wave_arounds (bool, optional): Flag to indicate if wave arounds are allowed. Defaults to True.
+            notify_on_skipped_caution (bool, optional): Flag to indicate if notifications should be sent when a caution is skipped. Defaults to False.
+        """
         self.pit_close_advance_warning = int(pit_close_advance_warning)
         self.pit_close_max_duration = int(pit_close_max_duration)
         self.max_laps_behind_leader = int(max_laps_behind_leader)
@@ -17,25 +31,29 @@ class RandomCaution(RandomTimedEvent):
         super().__init__(*args, **kwargs)
 
     def wait_for_cars_to_clear_pit_lane(self):
-        wait = True
+        """
+        Waits for cars to clear the pit lane.
+        """
         self.logger.debug('Waiting for cars to clear pit lane.')
-        while wait:
-            cars_on_pit_lane = self.get_cars_on_pit_lane()
-            awaiting_cars = [car for car in cars_on_pit_lane if self.sdk['CarIdxLapCompleted'][car['CarIdx']] >=
-                             max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader]
-            if not awaiting_cars:
-                wait = False
-            else:
-                self.sleep(1)
+        while any(self.sdk['CarIdxLapCompleted'][car['CarIdx']] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader for car in self.get_cars_on_pit_lane()):
+            self.sleep(1)
         self.logger.debug('Cars have cleared pit lane.')
 
     def get_wave_around_cars(self):
-        lap_down_cars = [car for car in self.get_lap_down_cars() if self.sdk['CarIdxLapCompleted'][car] >=
-                         max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader]
+        """
+        Gets the list of cars eligible for wave around.
+
+        Returns:
+            list: List of car indices eligible for wave around.
+        """
+        lap_down_cars = [car for car in self.get_lap_down_cars() if self.sdk['CarIdxLapCompleted'][car] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader]
         self.logger.debug(f'Lap down cars: {lap_down_cars}')
         return lap_down_cars
 
     def event_sequence(self):
+        """
+        Executes the event sequence for a random caution.
+        """
         if self.is_caution_active() or self.busy_event.is_set():
             self.logger.debug('Additional caution skipped due to active caution.')
             if self.notify_on_skipped_caution:
@@ -43,71 +61,36 @@ class RandomCaution(RandomTimedEvent):
             return
 
         self.busy_event.set()
-
         self.close_pits(self.pit_close_advance_warning)
-
         self.wait_for_cars_to_clear_pit_lane()
-
         self.throw_caution()
 
-        wave_around_cars = self.get_wave_around_cars()
         if self.wave_arounds:
-
-            # Wait to give wave arounds
-            pace_car = [driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1][0]['CarIdx']
-            # see what lap the pace car is starting out on
+            pace_car = next(driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1)['CarIdx']
             initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
             self.logger.debug(f'Pace car starting on lap {initial_lap}')
 
-            # first wait for the pace car to get around 40% of the track, so we know it's left the pit exit and
-            # our lap counter is _somewhat_ reliable.
-            while self.sdk['CarIdxLapDistPct'][pace_car] > 0.5 or self.sdk['CarIdxLapDistPct'][pace_car] < 0.4:
+            while not (0.4 <= self.sdk['CarIdxLapDistPct'][pace_car] <= 0.5):
                 self.sleep(1)
 
-            # wait for the pace car to complete the lap
-            while self.sdk['CarIdxLapCompleted'][pace_car] < 0:
+            while self.sdk['CarIdxLapCompleted'][pace_car] < initial_lap + 1:
                 self.sleep(1)
             self.logger.debug('Pace car has completed a lap.')
 
-            current_positions = {}
-            for car in wave_around_cars:
-                current_positions[car] = self.sdk['CarIdxLapDistPct'][car]
+            current_positions = {car: self.sdk['CarIdxLapDistPct'][car] for car in self.get_wave_around_cars()}
 
             while current_positions:
-                for car in wave_around_cars:
-                    # if they've already got a wave, remove them from the list
+                for car in list(current_positions):
                     if int(hex(self.sdk['CarIdxPaceFlags'][car])[-1]) >= 4:
-                        try:
-                            del current_positions[car]
-                        except KeyError:
-                            pass
-                        continue
-
-                    # if they're in pits, wait for them to come out
-                    if self.sdk['CarIdxOnPitRoad'][car] or self.sdk['CarIdxPaceLine'][car] == -1:
+                        current_positions.pop(car, None)
+                    elif self.sdk['CarIdxOnPitRoad'][car] or self.sdk['CarIdxPaceLine'][car] == -1:
                         current_positions[car] = 0.99
-                        continue
-
-                    # if they've completed a lap, wave them around
-                    if self.sdk['CarIdxLapDistPct'][car] < current_positions[car]:
+                    elif self.sdk['CarIdxLapDistPct'][car] < current_positions[car]:
                         self.wave_and_eol(car)
-
+                        current_positions.pop(car, None)
                 self.sleep(1)
 
         while self.is_caution_active():
             self.sleep(1)
 
         self.busy_event.clear()
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--pit_close_advance_warning', type=int, default=5)
-    parser.add_argument('--pit_close_max_duration', type=int, default=90)
-    parser.add_argument('--max_laps_behind_leader', type=int, default=3)
-    parser.add_argument('--wave_arounds', action='store_true')
-    parser.add_argument('--notify_on_skipped_caution', action='store_true')
-    args = parser.parse_args()
-    sc = RandomCaution(**vars(args))
-    sc.run()

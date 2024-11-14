@@ -4,7 +4,6 @@ import uuid
 from modules.random_caution import RandomCaution
 from modules.subprocess_manager import SubprocessManager
 import logging
-import time
 from streamlit_autorefresh import st_autorefresh
 
 logger = st.session_state.logger
@@ -12,23 +11,21 @@ logger = st.session_state.logger
 if 'refresh' not in st.session_state:
     st.session_state.refresh = False
 
-
 def empty_caution():
-    return {
-        'id': uuid.uuid4(),
-        'likelihood': 75,
-        'instance': None
-    }
+    """
+    Creates an empty caution dictionary with default values.
 
+    Returns:
+        dict: A dictionary representing an empty caution with a unique ID, default likelihood, and no instance.
+    """
+    return {'id': uuid.uuid4(), 'likelihood': 75, 'instance': None}
 
-def start_sequence(*args, **kwargs):
-    cautions = []
-    for caution in st.session_state.cautions:
-        roll = random.randrange(0, 100)
-        if roll > int(caution['likelihood']):
-            logger.debug(f"Caution did not hit. {caution['likelihood']} > {roll}")
-            continue
-        c = RandomCaution(
+def start_sequence():
+    """
+    Starts the caution sequence by initializing RandomCaution instances based on the session state settings.
+    """
+    cautions = [
+        RandomCaution(
             pit_close_advance_warning=st.session_state.pit_close_advance_warning,
             pit_close_max_duration=st.session_state.pit_close_maximum_duration,
             max_laps_behind_leader=st.session_state.max_laps_behind_leader,
@@ -37,79 +34,59 @@ def start_sequence(*args, **kwargs):
             max_time=int(st.session_state.caution_window_end) * 60,
             notify_on_skipped_caution=st.session_state.notify_skipped
         )
-        cautions.append(c)
+        for caution in st.session_state.cautions
+        if random.randrange(0, 100) <= int(caution['likelihood'])
+    ]
 
     st.session_state.caution_runner = cautions
-
-    processes = [c.run for c in cautions]
-    st.session_state.spm = SubprocessManager(processes)
+    st.session_state.spm = SubprocessManager([c.run for c in cautions])
     st.session_state.spm.start()
-    # while any([c.is_alive() for c in spm.threads]):
-    #     time.sleep(1)
     st.session_state.refresh = True
 
-
 def stop_sequence():
+    """
+    Stops the caution sequence and refreshes the Streamlit page.
+    """
     if 'caution_runner' in st.session_state:
         st.session_state.caution_runner.stop()
     st.session_state.refresh = False
     st_autorefresh(limit=1)
 
-
 def ui():
+    """
+    Renders the Streamlit UI for configuring and managing random cautions.
+    """
     if 'cautions' not in st.session_state:
         st.session_state.cautions = [empty_caution(), empty_caution()]
 
-    if 'caution_instances' not in st.session_state:
-        st.session_state.caution_instances = []
-
     st.header("Global Settings")
-    
-    # global settings
-    col1, col2, col3, col4, col5, col6, col7 = st.columns((1, 1, 1, 1, 1, 1, 2))
-    with col1:
-        st.session_state.caution_window_start = st.text_input("Window Start (min)", "5")
-    with col2:
-        st.session_state.caution_window_end = st.text_input("Window End (min)", "-15")
-    with col3:
-        st.session_state.pit_close_advance_warning = st.text_input("Pit Close Warning (sec)", "5")
-    with col4:
-        st.session_state.pit_close_maximum_duration = st.text_input("Max Pit Close Time (sec)", "120")
-    with col5:
-        st.session_state.max_laps_behind_leader = st.text_input("Max Laps Behind Leader", "3")
-    with col6:
-        st.session_state.wave_arounds = st.checkbox("Wave Arounds")
-    with col7:
-        st.session_state.notify_skipped = st.checkbox("Notify on Skipped Caution")
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    st.session_state.caution_window_start = col1.text_input("Window Start (min)", "5")
+    st.session_state.caution_window_end = col2.text_input("Window End (min)", "-15")
+    st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5")
+    st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120")
+    st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")
+    st.session_state.wave_arounds = col6.checkbox("Wave Arounds")
+    st.session_state.notify_skipped = col7.checkbox("Notify on Skipped Caution")
     st.write('---')
-    
-    # Individual caution settings
+
     for i, caution in enumerate(st.session_state.cautions):
-        col1, col2, col3, blank = st.columns((1, 1, 1, 2))
-        with col1:
-            st.subheader(f"Caution {i + 1}")
-        with col2:
-            caution['likelihood'] = st.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
-        with col3:
-            st.write(' ')
-            st.write(' ')
-            st.button("Remove", on_click=lambda: st.session_state.cautions.pop(i), key=f"remove_{caution['id']}")
+        col1, col2, col3, _ = st.columns((1, 1, 1, 2))
+        col1.subheader(f"Caution {i + 1}")
+        caution['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
+        col3.button("Remove", on_click=lambda i=i: st.session_state.cautions.pop(i), key=f"remove_{caution['id']}")
 
     st.write('---')
     st.button("Add Caution", on_click=lambda: st.session_state.cautions.append(empty_caution()))
-    
+
     col1, col2 = st.columns(2)
-    with col1:
-        st.button("Start", on_click=start_sequence)
-    with col2:
-        st.button("Stop", on_click=stop_sequence)
+    col1.button("Start", on_click=start_sequence)
+    col2.button("Stop", on_click=stop_sequence)
 
-    if 'refresh' in st.session_state and st.session_state.refresh:
+    if st.session_state.refresh:
         st_autorefresh()
-    if 'spm' in st.session_state:
-        if not any([c.is_alive() for c in  st.session_state.spm.threads]):
-            st.session_state.refresh = False
-            st_autorefresh(limit=1)
-
+    if 'spm' in st.session_state and not any(c.is_alive() for c in st.session_state.spm.threads):
+        st.session_state.refresh = False
+        st_autorefresh(limit=1)
 
 random_caution_bot = st.Page(ui, title='Random Caution Bot', url_path='random_caution_bot')

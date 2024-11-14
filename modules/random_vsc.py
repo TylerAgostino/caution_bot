@@ -1,14 +1,28 @@
 from modules.random_timed_event import RandomTimedEvent
 
-
 class RandomVSC(RandomTimedEvent):
-    def __init__(self,
-                 restart_proximity: int = None,
-                 max_vsc_duration: int = None,
-                 max_laps_behind_leader: int = 3,
-                 wave_arounds: bool = False,
-                 notify_on_skipped_caution: bool = False,
-                 *args, **kwargs):
+    """
+    A class to represent a random Virtual Safety Car (VSC) event in the iRacing simulator.
+
+    Attributes:
+        restart_proximity (int): Proximity threshold for restarting the race.
+        max_vsc_duration (int): Maximum duration for the VSC.
+        max_laps_behind_leader (int): Maximum laps a car can be behind the leader.
+        wave_arounds (bool): Flag to indicate if wave arounds are allowed.
+        notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
+    """
+
+    def __init__(self, restart_proximity=None, max_vsc_duration=None, max_laps_behind_leader=3, wave_arounds=False, notify_on_skipped_caution=False, *args, **kwargs):
+        """
+        Initializes the RandomVSC class.
+
+        Args:
+            restart_proximity (int, optional): Proximity threshold for restarting the race. Defaults to None.
+            max_vsc_duration (int, optional): Maximum duration for the VSC. Defaults to None.
+            max_laps_behind_leader (int, optional): Maximum laps a car can be behind the leader. Defaults to 3.
+            wave_arounds (bool, optional): Flag to indicate if wave arounds are allowed. Defaults to False.
+            notify_on_skipped_caution (bool, optional): Flag to indicate if notifications should be sent when a caution is skipped. Defaults to False.
+        """
         self.restart_proximity = int(restart_proximity)
         self.max_vsc_duration = int(max_vsc_duration)
         self.max_laps_behind_leader = int(max_laps_behind_leader)
@@ -17,19 +31,17 @@ class RandomVSC(RandomTimedEvent):
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
+        """
+        Executes the event sequence for a random VSC.
+        """
         if self.is_caution_active() or self.busy_event.is_set():
             if self.notify_on_skipped_caution:
                 self._chat('Additional caution skipped due to active caution.')
             return
 
         self.busy_event.set()
-
-        # notify that a VSC will start at the end of the current lap
-        self._chat('VSC will begin at the Start/Finish Line')
-        self._chat('VSC will begin at the Start/Finish Line')
         self._chat('VSC will begin at the Start/Finish Line')
 
-        # wait for each car to cross the timing line and note their position
         restart_order = []
         last_lap = self.get_current_running_order(self.max_laps_behind_leader)
         while not self.ready_to_restart():
@@ -43,11 +55,10 @@ class RandomVSC(RandomTimedEvent):
                     self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits).')
             last_lap = this_lap
 
-        # announce the end of the VSC
         self._chat('The field has formed up and the VSC will end soon.')
 
-        correct_order = [f'{car["CarNumber"]}' for car in restart_order]
-        actual_order = [f'{car["CarNumber"]}' for car in self.get_current_running_order(self.max_laps_behind_leader)]
+        correct_order = [car['CarNumber'] for car in restart_order]
+        actual_order = [car['CarNumber'] for car in self.get_current_running_order(self.max_laps_behind_leader)]
 
         for i in range(len(correct_order)):
             if correct_order[i] != actual_order[i]:
@@ -61,22 +72,43 @@ class RandomVSC(RandomTimedEvent):
         self.busy_event.clear()
 
     def ready_to_restart(self):
+        """
+        Checks if the field is ready to restart.
+
+        Returns:
+            bool: True if the field is ready to restart, False otherwise.
+        """
         runners = self.get_current_running_order(self.max_laps_behind_leader)
-        last_runner = runners[-1]
-        leader = runners[0]
-        if leader['LapDistPct'] - last_runner['LapDistPct'] < self.restart_proximity:
-            return True
+        return runners[0]['LapDistPct'] - runners[-1]['LapDistPct'] < self.restart_proximity
 
     def car_has_completed_lap(self, car, last_lap, this_lap):
-        last_lap_record = [record for record in last_lap if record['CarIdx'] == car['CarIdx']][0]
-        this_lap_record = [record for record in this_lap if record['CarIdx'] == car['CarIdx']][0]
-        if this_lap_record['LapCompleted'] > last_lap_record['LapCompleted']:
-            return True
-        else:
-            return False
+        """
+        Checks if a car has completed a lap.
+
+        Args:
+            car (dict): The car to check.
+            last_lap (list): The running order of the last lap.
+            this_lap (list): The running order of the current lap.
+
+        Returns:
+            bool: True if the car has completed a lap, False otherwise.
+        """
+        last_lap_record = next(record for record in last_lap if record['CarIdx'] == car['CarIdx'])
+        this_lap_record = next(record for record in this_lap if record['CarIdx'] == car['CarIdx'])
+        return this_lap_record['LapCompleted'] > last_lap_record['LapCompleted']
 
     def car_has_left_pits(self, car, last_lap, this_lap):
-        last_lap_record = [record for record in last_lap if record['CarIdx'] == car['CarIdx']][0]
-        this_lap_record = [record for record in this_lap if record['CarIdx'] == car['CarIdx']][0]
-        if this_lap_record['InPits'] == 0 and last_lap_record['InPits'] == 1:
-            return True
+        """
+        Checks if a car has left the pits.
+
+        Args:
+            car (dict): The car to check.
+            last_lap (list): The running order of the last lap.
+            this_lap (list): The running order of the current lap.
+
+        Returns:
+            bool: True if the car has left the pits, False otherwise.
+        """
+        last_lap_record = next(record for record in last_lap if record['CarIdx'] == car['CarIdx'])
+        this_lap_record = next(record for record in this_lap if record['CarIdx'] == car['CarIdx'])
+        return this_lap_record['InPits'] == 0 and last_lap_record['InPits'] == 1
