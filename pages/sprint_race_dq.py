@@ -6,7 +6,7 @@ from modules.events.random_timed_event import TimedEvent
 
 if 'dq_cars' not in st.session_state:
     st.session_state.dq_cars = [
-        {'id': uuid.uuid4(), 'car_number': 14},
+        {'id': uuid.uuid4(), 'car_number': 19},
         {'id': uuid.uuid4(), 'car_number': 99}
     ]
 
