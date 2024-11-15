@@ -1,5 +1,5 @@
 import random
-from modules.base_event import BaseEvent
+from modules.events.base_event import BaseEvent
 import time
 
 class RandomTimedEvent(BaseEvent):
@@ -19,7 +19,8 @@ class RandomTimedEvent(BaseEvent):
             max_time (int, optional): Maximum time for the event to start. Defaults to 1.
         """
         super().__init__(*args, **kwargs)
-        self.start_time = random.randrange(min_time, max_time if max_time >= 0 else int(self.sdk['SessionTimeTotal']) + max_time)
+        self.start_time = random.randrange(min_time if min_time >= 0 else int(self.sdk['SessionTimeTotal']) + min_time,
+                                           max_time if max_time >= 0 else int(self.sdk['SessionTimeTotal']) + max_time)
 
     def is_time_to_start(self, adjustment=0):
         """
@@ -54,3 +55,17 @@ class RandomTimedEvent(BaseEvent):
         self.busy_event = busy_event or self.busy_event
         self.wait_for_start()
         self.event_sequence()
+
+
+class TimedEvent(RandomTimedEvent):
+    """
+    A class to represent a timed event in the iRacing simulator.
+    """
+    def __init__(self, event_time, *args, **kwargs):
+        """
+        Initializes the TimedEvent class.
+
+        Args:
+            event_time (int): The time for the event
+        """
+        super().__init__(min_time=int(event_time), max_time=int(event_time)+1, *args, **kwargs)

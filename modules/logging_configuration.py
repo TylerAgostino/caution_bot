@@ -4,8 +4,10 @@ import streamlit as st
 import datetime
 import os
 
-if 'logger' not in st.session_state:
-    st.session_state.log_level = 'INFO'
+def init_logging(level='INFO'):
+    """
+    Initializes the logging configuration for the Streamlit application.
+    """
     os.makedirs('logs', exist_ok=True)
     LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
     DEBUG_LOGFILE = f'logs/debug_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
@@ -22,7 +24,7 @@ if 'logger' not in st.session_state:
                 'filename': LOGFILE,
                 'mode': 'a+',
                 'formatter': 'default',
-                'level': st.session_state.log_level
+                'level': level
             },
             'debug': {
                 'class': 'logging.FileHandler',
@@ -41,7 +43,6 @@ if 'logger' not in st.session_state:
     })
     logger = logging.getLogger()
     logger.info(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
-    st.session_state.logger = logger
-    st.session_state.logfile = LOGFILE
+    return logger, LOGFILE
 
 

@@ -2,19 +2,19 @@ import streamlit as st
 import uuid
 from streamlit_autorefresh import st_autorefresh
 import random
-from modules.random_vsc import RandomVSC
+from modules.events.random_vsc_event import RandomVSCEvent
 from modules.subprocess_manager import SubprocessManager
+
 
 logger = st.session_state.logger
 
-st.session_state.setdefault('refresh', False)
 
 def empty_vsc():
-    return {'id': uuid.uuid4(), 'likelihood': 75, 'instance': None}
+    return {'id': uuid.uuid4(), 'likelihood': 100, 'instance': None}
 
 def start_sequence():
     cautions = [
-        RandomVSC(
+        RandomVSCEvent(
             restart_proximity=st.session_state.vsc_restart_proximity,
             max_vsc_duration=st.session_state.vsc_maximum_duration,
             wave_arounds=st.session_state.wave_arounds,
@@ -38,9 +38,15 @@ def stop_sequence():
     st.session_state.refresh = False
     st_autorefresh(limit=1)
 
+def end_sequence():
+    if 'vsc_runner' in st.session_state:
+        for caution in st.session_state.vsc_runner:
+            caution.restart_ready.set()
+
 def ui():
-    st.session_state.setdefault('vsc', [empty_vsc(), empty_vsc()])
+    st.session_state.setdefault('vsc', [empty_vsc()])
     st.session_state.setdefault('vsc_instances', [])
+    st.session_state.setdefault('refresh', False)
 
     st.header("Global Settings")
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
@@ -56,15 +62,16 @@ def ui():
     for i, caution in enumerate(st.session_state.vsc):
         col1, col2, col3, _ = st.columns((1, 1, 1, 2))
         col1.subheader(f"VSC {i + 1}")
-        caution['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
-        col3.button("Remove", on_click=lambda i=i: st.session_state.vsc.pop(i), key=f"remove_{caution['id']}")
+        st.session_state.vsc[i]['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
+        col3.button("Remove", on_click=lambda: st.session_state.vsc.pop(i), key=f"remove_{caution['id']}")
 
     st.write('---')
     st.button("Add Caution", on_click=lambda: st.session_state.vsc.append(empty_vsc()))
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     col1.button("Start", on_click=start_sequence)
     col2.button("Stop", on_click=stop_sequence)
+    col3.button("End Active VSC", on_click=end_sequence)
 
     if st.session_state.refresh:
         st_autorefresh()

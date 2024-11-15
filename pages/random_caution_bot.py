@@ -1,15 +1,13 @@
 import random
 import streamlit as st
 import uuid
-from modules.random_caution import RandomCaution
+from modules.events.random_caution_event import RandomCautionEvent
 from modules.subprocess_manager import SubprocessManager
 import logging
 from streamlit_autorefresh import st_autorefresh
 
 logger = st.session_state.logger
 
-if 'refresh' not in st.session_state:
-    st.session_state.refresh = False
 
 def empty_caution():
     """
@@ -25,7 +23,7 @@ def start_sequence():
     Starts the caution sequence by initializing RandomCaution instances based on the session state settings.
     """
     cautions = [
-        RandomCaution(
+        RandomCautionEvent(
             pit_close_advance_warning=st.session_state.pit_close_advance_warning,
             pit_close_max_duration=st.session_state.pit_close_maximum_duration,
             max_laps_behind_leader=st.session_state.max_laps_behind_leader,
@@ -47,8 +45,8 @@ def stop_sequence():
     """
     Stops the caution sequence and refreshes the Streamlit page.
     """
-    if 'caution_runner' in st.session_state:
-        st.session_state.caution_runner.stop()
+    if 'spm' in st.session_state:
+        st.session_state.spm.stop()
     st.session_state.refresh = False
     st_autorefresh(limit=1)
 
@@ -56,6 +54,8 @@ def ui():
     """
     Renders the Streamlit UI for configuring and managing random cautions.
     """
+    if 'refresh' not in st.session_state:
+        st.session_state.refresh = False
     if 'cautions' not in st.session_state:
         st.session_state.cautions = [empty_caution(), empty_caution()]
 
@@ -73,8 +73,8 @@ def ui():
     for i, caution in enumerate(st.session_state.cautions):
         col1, col2, col3, _ = st.columns((1, 1, 1, 2))
         col1.subheader(f"Caution {i + 1}")
-        caution['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
-        col3.button("Remove", on_click=lambda i=i: st.session_state.cautions.pop(i), key=f"remove_{caution['id']}")
+        st.session_state.cautions[i]['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
+        col3.button("Remove", on_click=lambda: st.session_state.cautions.pop(i), key=f"remove_{caution['id']}")
 
     st.write('---')
     st.button("Add Caution", on_click=lambda: st.session_state.cautions.append(empty_caution()))

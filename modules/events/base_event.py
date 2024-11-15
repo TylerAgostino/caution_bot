@@ -19,9 +19,10 @@ class BaseEvent:
         logger (logging.Logger): Logger instance for logging events.
         cancel_event (threading.Event): Event to signal cancellation.
         busy_event (threading.Event): Event to signal busy state.
+        max_laps_behind_leader (int): Maximum Laps Down for cars to be considered in the field.
     """
 
-    def __init__(self, sdk=None, pwa=None, cancel_event=None, busy_event=None):
+    def __init__(self, sdk=None, pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(), max_laps_behind_leader=99):
         """
         Initializes the BaseEvent class.
 
@@ -30,6 +31,7 @@ class BaseEvent:
             pwa (pywinauto.Application, optional): Instance of the pywinauto Application. Defaults to None.
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
+            max_laps_behind_leader (int, optional): Maximum Laps Down for cars to be considered in the field. Defaults to 99.
         """
         self.sdk = sdk or irsdk.IRSDK()
         self.pwa = pwa or pywinauto.Application()
@@ -41,6 +43,7 @@ class BaseEvent:
         self.logger = st.session_state.get('logger', logging.getLogger(__name__))
         self.cancel_event = cancel_event
         self.busy_event = busy_event
+        self.max_laps_behind_leader = int(max_laps_behind_leader)
 
     def sleep(self, seconds):
         """
@@ -183,12 +186,9 @@ class BaseEvent:
              if driver['CarIsPaceCar'] != 1 and distance_covered[driver['CarIdx']] <= max_distance_covered - 1],
             key=lambda x: laps_completed[x] + partial_laps[x], reverse=True)
 
-    def get_current_running_order(self, max_laps_behind_leader=99):
+    def get_current_running_order(self):
         """
         Gets the current running order of cars.
-
-        Args:
-            max_laps_behind_leader (int, optional): Maximum laps behind the leader to include. Defaults to 99.
 
         Returns:
             list: List of dictionaries representing the running order.
@@ -202,7 +202,7 @@ class BaseEvent:
             'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']]
         } for car in self.sdk['DriverInfo']['Drivers'] if car['CarIsPaceCar'] != 1]
         running_order.sort(key=lambda x: x['total_completed'], reverse=True)
-        return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - max_laps_behind_leader)]
+        return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader)]
 
     def get_leader(self):
         """
@@ -212,6 +212,26 @@ class BaseEvent:
             int: Car index of the leader.
         """
         return self.get_current_running_order()[0]['CarIdx']
+
+    def wait_for_cars_to_clear_pit_lane(self):
+        """
+        Waits for cars to clear the pit lane.
+        """
+        self.logger.debug('Waiting for cars to clear pit lane.')
+        while any(self.sdk['CarIdxLapCompleted'][car['CarIdx']] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader for car in self.get_cars_on_pit_lane()):
+            self.sleep(1)
+        self.logger.debug('Cars have cleared pit lane.')
+
+    def get_wave_around_cars(self):
+        """
+        Gets the list of cars eligible for wave around.
+
+        Returns:
+            list: List of car indices eligible for wave around.
+        """
+        lap_down_cars = [car for car in self.get_lap_down_cars() if self.sdk['CarIdxLapCompleted'][car] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader]
+        self.logger.debug(f'Lap down cars: {lap_down_cars}')
+        return lap_down_cars
 
     def is_caution_active(self):
         """
