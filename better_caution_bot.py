@@ -1,6 +1,7 @@
 import streamlit as st
 from modules.logging_configuration import init_logging
 from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
+from modules.art import STARTUP_LOGO
 
 levels = {
     INFO: 'INFO',
@@ -12,7 +13,10 @@ levels = {
 
 if 'logger' not in st.session_state:
     st.session_state.logger, st.session_state.logfile = init_logging()
-    st.session_state.logger.info('Application started.')
+    for handler in st.session_state.logger.handlers:
+        handler.doRollover()
+    st.session_state.logger.info(STARTUP_LOGO)
+    st.session_state.logger.info('---')
 
 
 def main():
@@ -34,8 +38,8 @@ def main():
     with st.sidebar:
 
         # Read and reverse the log content for display
-        log_content = '\n'.join(open(st.session_state.logfile).read().split('\n')[::-1])
-        st.text_area("Log", value=log_content, height=500)  # Display the log content in a text area
+        log_content = '\n'.join(open(st.session_state.logfile).read().split('\n'))
+        st.code(log_content, language='log', wrap_lines=False)  # Display the log content in a text area
 
         # Provide a dropdown to select the log level and update the logger's level
         log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']

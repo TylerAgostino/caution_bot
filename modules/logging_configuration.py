@@ -9,8 +9,8 @@ def init_logging(level='INFO'):
     Initializes the logging configuration for the Streamlit application.
     """
     os.makedirs('logs', exist_ok=True)
-    LOGFILE = f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
-    DEBUG_LOGFILE = f'logs/debug_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
+    LOGFILE = f'logs/better_caution_bot.log'
+    DEBUG_LOGFILE = f'logs/better_caution_bot_debug.log'
     dictConfig({
         'version': 1,
         'formatters': {
@@ -20,18 +20,20 @@ def init_logging(level='INFO'):
         },
         'handlers': {
             'file': {
-                'class': 'logging.FileHandler',
+                'class': 'logging.handlers.RotatingFileHandler',
                 'filename': LOGFILE,
-                'mode': 'a+',
                 'formatter': 'default',
-                'level': level
+                'level': level,
+                # 'when': 'D',
+                'backupCount': 7,
             },
             'debug': {
-                'class': 'logging.FileHandler',
+                'class': 'logging.handlers.RotatingFileHandler',
                 'filename': DEBUG_LOGFILE,
-                'mode': 'a+',
                 'formatter': 'default',
-                'level': 'DEBUG'
+                'level': 'DEBUG',
+                # 'when': 'D',
+                'backupCount': 7,
             }
         },
         'loggers': {
