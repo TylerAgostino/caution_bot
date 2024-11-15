@@ -11,13 +11,14 @@ if 'dq_cars' not in st.session_state:
     ]
 
 class SprintRaceDQEvent(TimedEvent):
-    def __init__(self, cars, *args, **kwargs):
+    def __init__(self, cars, penalty, *args, **kwargs):
         self.cars = cars
+        self.penalty = penalty
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
         for car in self.cars:
-            self._chat(f'!bl {car["car_number"]} L2')
+            self._chat(f'!bl {car["car_number"]} {self.penalty}')
 
 def start_sequence():
     with st.status('DQ Bot Armed'):
@@ -49,8 +50,12 @@ def ui():
     with col1:
         st.write("Disqualification Time")
         st.write("")
+
+        st.write("Penalty")
+        st.write("")
     with col2:
         st.session_state.dq_time = st.text_input("Disqualification Time (sec)", "-60" , label_visibility='collapsed')
+        st.session_state.dq_penalty = st.text_input("Penalty", "L2", label_visibility='collapsed')
 
     st.write('---')
 

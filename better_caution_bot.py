@@ -31,16 +31,18 @@ def main():
     pages = st.navigation(PAGES)  # Initialize navigation with the list of pages
     pages.run()  # Run the selected page
 
-    # Read and reverse the log content for display
-    log_content = '\n'.join(open(st.session_state.logfile).read().split('\n')[::-1])
-    st.text_area("Log", value=log_content, height=500)  # Display the log content in a text area
+    with st.sidebar:
 
-    # Provide a dropdown to select the log level and update the logger's level
-    log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    st.session_state.log_level = st.selectbox("Log Level", log_levels,
-                                              index=log_levels.index(levels[st.session_state.logger.handlers[0].level]),
-                 )
-    st.session_state.logger.handlers[0].setLevel(st.session_state.log_level)  # Update the logger's level
+        # Read and reverse the log content for display
+        log_content = '\n'.join(open(st.session_state.logfile).read().split('\n')[::-1])
+        st.text_area("Log", value=log_content, height=500)  # Display the log content in a text area
+
+        # Provide a dropdown to select the log level and update the logger's level
+        log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        st.session_state.log_level = st.selectbox("Log Level", log_levels,
+                                                  index=log_levels.index(levels[st.session_state.logger.handlers[0].level]),
+                     )
+        st.session_state.logger.handlers[0].setLevel(st.session_state.log_level)  # Update the logger's level
 
 if __name__ == '__main__':
     main()  # Run the main function if the script is executed directly
