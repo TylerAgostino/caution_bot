@@ -27,9 +27,10 @@ def main():
     from pages.random_caution_bot import random_caution_bot
     from pages.random_vsc_bot import random_vsc_bot
     from pages.sprint_race_dq import sprint_race_dq
+    from pages.beer_goggles import beer_goggles
 
     # List of available pages for navigation
-    PAGES = [random_caution_bot, random_vsc_bot, sprint_race_dq]
+    PAGES = [random_caution_bot, random_vsc_bot, sprint_race_dq, beer_goggles]
 
     st.set_page_config(layout='wide')  # Set the page layout to wide
     pages = st.navigation(PAGES)  # Initialize navigation with the list of pages

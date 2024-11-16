@@ -57,6 +57,7 @@ class RandomVSCEvent(RandomTimedEvent):
         self._chat('Double Yellow Flags in Sector 1')
         self._chat('No Overtaking in Sector 1')
 
+        wrongmap = {}
 
         while not self.ready_to_restart():
             this_step = self.get_current_running_order()
@@ -64,17 +65,29 @@ class RandomVSCEvent(RandomTimedEvent):
                 if car['CarNumber'] not in [c['CarNumber'] for c in restart_order]:
                     if self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
                         restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (completed lap). {[car['CarNumber'] for car in restart_order]}')
+                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (completed lap).')
                     if self.car_has_left_pits(car, last_step, this_step):
                         restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits). {[car['CarNumber'] for car in restart_order]}')
+                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits).')
+                    if car['CarNumber'] in [c['CarNumber'] for c in restart_order]:
+                        # if we've just added them to the restart order, check if they're a lap down
+                        if car['LapCompleted'] < max([c['LapCompleted'] for c in restart_order]):
+                            self.logger.debug(f'{car["CarNumber"]} is a lap down.')
+                            self._chat(f'/{car["CarNumber"]} you may now safely pass the field to unlap yourself.')
+                        # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
+                        restart_order = sorted(restart_order, key=lambda x: int(2 if x['LapCompleted']==max([l['LapCompleted'] for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
+                        self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
+
+
             last_step = this_step
             correct_order = [car['CarNumber'] for car in restart_order]
-            actual_order = [car['CarNumber'] for car in self.get_current_running_order() if car['CarNumber'] in correct_order]
+
+            running_order_uncorrected = self.get_current_running_order()
+            running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['LapCompleted']==max([l['LapCompleted'] for l in running_order_uncorrected]) else 1) + x['LapDistPct'], reverse=True)
+            actual_order = [car['CarNumber'] for car in running_order_lap_down_corrected if car['CarNumber'] in correct_order]
 
 
-            wrongmap = {}
-            for car in actual_order: # todo: figure out what to do with lap down cars
+            for car in actual_order:
                 cars_that_should_be_ahead = correct_order[:correct_order.index(car)]
                 cars_that_are_behind = actual_order[actual_order.index(car) + 1:]
                 cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
@@ -90,6 +103,9 @@ class RandomVSCEvent(RandomTimedEvent):
             self.sleep(1)
 
         self._chat('The field has formed up and the VSC will end soon.')
+        for car, cars_incorrectly_behind in wrongmap.items():
+            if cars_incorrectly_behind:
+                self.logger.error(f'Car {car} restarted ahead of cars {cars_incorrectly_behind}.')
 
         self.busy_event.clear()
 
@@ -108,11 +124,11 @@ class RandomVSCEvent(RandomTimedEvent):
 
         Args:
             car (dict): The car to check.
-            last_step (list): The running order of the last lap.
-            this_step (list): The running order of the current lap.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
 
         Returns:
-            bool: True if the car has completed a lap, False otherwise.
+            bool: True if the car has completed their lap in the last step, False otherwise.
         """
         last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
         this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
@@ -124,11 +140,11 @@ class RandomVSCEvent(RandomTimedEvent):
 
         Args:
             car (dict): The car to check.
-            last_step (list): The running order of the last lap.
-            this_step (list): The running order of the current lap.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
 
         Returns:
-            bool: True if the car has left the pits, False otherwise.
+            bool: True if the car has left the pits in the last step, False otherwise.
         """
         last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
         this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]

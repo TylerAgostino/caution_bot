@@ -44,7 +44,7 @@ def init_logging(level='INFO'):
         }
     })
     logger = logging.getLogger()
-    logger.info(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
+    logger.debug(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
     return logger, LOGFILE
 
 
