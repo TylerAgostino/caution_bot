@@ -93,7 +93,7 @@ def ui():
                         else:
                             st.metric(field, value)
 
-        car_idx_obj = {header: st.session_state.goggle_event.sdk[header] for header in field_df_cols}
+        car_idx_obj = {str(header).replace('CarIdx',''): st.session_state.goggle_event.sdk[header] for header in field_df_cols}
         car_idx_df = pd.DataFrame(car_idx_obj)
 
         st.write('---')
