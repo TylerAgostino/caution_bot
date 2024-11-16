@@ -8,9 +8,15 @@ logger = st.session_state.logger
 def connect():
     st.session_state.goggle_event = BaseEvent()
 
+def disconnect():
+    if 'goggle_event' in st.session_state:
+        del st.session_state['goggle_event']
+
 def ui():
     st.header("Beer Goggles SDK Viewer")
-    st.button('Connect', on_click=connect)
+    col1, col2, _ = st.columns([1, 1, 3])
+    col1.button('Connect', on_click=connect)
+    col2.button('Disconnect', on_click=disconnect)
     if 'goggle_event' in st.session_state:
         global_field_sections = {
             'Session': ['SessionTime', 'SessionTick', 'SessionNum', 'SessionState', 'SessionUniqueID', 'SessionFlags',
