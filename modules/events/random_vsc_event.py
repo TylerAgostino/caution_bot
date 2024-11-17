@@ -71,11 +71,11 @@ class RandomVSCEvent(RandomTimedEvent):
                         self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits).')
                     if car['CarNumber'] in [c['CarNumber'] for c in restart_order]:
                         # if we've just added them to the restart order, check if they're a lap down
-                        if car['LapCompleted'] < max([c['LapCompleted'] for c in restart_order]):
+                        if car['total_completed']<max([l['total_completed']-1 for l in restart_order]):
                             self.logger.debug(f'{car["CarNumber"]} is a lap down.')
                             self._chat(f'/{car["CarNumber"]} you may now safely pass the field to unlap yourself.')
                         # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
-                        restart_order = sorted(restart_order, key=lambda x: int(2 if x['LapCompleted']==max([l['LapCompleted'] for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
+                        restart_order = sorted(restart_order, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
                         self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
 
 
@@ -83,7 +83,7 @@ class RandomVSCEvent(RandomTimedEvent):
             correct_order = [car['CarNumber'] for car in restart_order]
 
             running_order_uncorrected = self.get_current_running_order()
-            running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['LapCompleted']==max([l['LapCompleted'] for l in running_order_uncorrected]) else 1) + x['LapDistPct'], reverse=True)
+            running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in running_order_uncorrected]) else 1) + x['total_completed']/1000, reverse=True)
             actual_order = [car['CarNumber'] for car in running_order_lap_down_corrected if car['CarNumber'] in correct_order]
 
 
