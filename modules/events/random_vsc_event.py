@@ -11,6 +11,7 @@ class RandomVSCEvent(RandomTimedEvent):
         max_laps_behind_leader (int): Maximum laps a car can be behind the leader.
         wave_arounds (bool): Flag to indicate if wave arounds are allowed.
         notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
+        reason (str): The reason for the VSC.
     """
 
     def __init__(self, restart_proximity=None, max_vsc_duration=None, wave_arounds=False, notify_on_skipped_caution=False, *args, **kwargs):
@@ -31,6 +32,7 @@ class RandomVSCEvent(RandomTimedEvent):
         self.restart_ready = threading.Event()
         self.double_file = False
         super().__init__(*args, **kwargs)
+        self.reason = self.generate_random_caution_reason()
 
     def event_sequence(self):
         """
@@ -43,6 +45,7 @@ class RandomVSCEvent(RandomTimedEvent):
 
         self.busy_event.set()
         self.restart_ready.clear()
+        self._chat(self.reason)
         self._chat('VSC will begin at the Start/Finish Line')
 
         last_step = self.get_current_running_order()

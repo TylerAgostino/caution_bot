@@ -5,6 +5,7 @@ import streamlit as st
 import time
 import logging
 import threading
+from modules.llm import generate_caution_reason
 
 class BaseEvent:
     """
@@ -276,3 +277,13 @@ class BaseEvent:
         last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
         this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
         return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1
+
+    @staticmethod
+    def generate_random_caution_reason():
+        """
+        Generates a random caution reason.
+
+        Returns:
+            str: A random caution reason.
+        """
+        return generate_caution_reason()
