@@ -14,7 +14,8 @@ class RandomCode60Event(RandomTimedEvent):
         reason (str): The reason for the VSC.
     """
 
-    def __init__(self, restart_proximity=None, max_vsc_duration=None, wave_arounds=False, notify_on_skipped_caution=False, *args, **kwargs):
+    def __init__(self, restart_proximity=None, max_vsc_duration=None, wave_arounds=False,
+                 notify_on_skipped_caution=False, max_speed_km = 60, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -30,6 +31,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.restart_ready = threading.Event()
+        self.max_speed_km = int(max_speed_km)
         self.double_file = False
         super().__init__(*args, **kwargs)
         self.reason = self.generate_random_caution_reason()
@@ -62,8 +64,13 @@ class RandomCode60Event(RandomTimedEvent):
         self._chat('Slow and maintain your position unless instructed to overtake.', race_control=True)
 
         wrongmap = {}
+        leader = None
+        speed_km_per_hour = 0
 
         while not self.ready_to_restart():
+            leader = restart_order[0] if restart_order else None if not leader else leader
+            leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']] if leader else None
+            start_time = self.sdk['SessionTime']
             this_step = self.get_current_running_order()
             for car in this_step:
                 if car['CarNumber'] not in [c['CarNumber'] for c in restart_order]:
@@ -102,9 +109,25 @@ class RandomCode60Event(RandomTimedEvent):
                     if cars_incorrectly_behind:
                         session_time = self.sdk['SessionTimeRemain']
                         self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                        self._chat(f'/{car} let {", ".join(cars_incorrectly_behind)} by.')
+                        self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+
+                self.logger.debug(f'Leader speed: {speed_km_per_hour} km/h')
+                if speed_km_per_hour > self.max_speed_km:
+                    session_time = self.sdk['SessionTimeRemain']
+                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
 
             self.sleep(1)
+
+            if leader_start_pos is not None:
+                leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
+                end_time = self.sdk['SessionTime']
+
+                distance = leader_end_pos - leader_start_pos
+                distance = distance if distance > 0 else distance + 1
+                time = end_time - start_time
+                speed_pct_per_sec = distance / time
+                speed_km_per_sec = speed_pct_per_sec * float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
+                speed_km_per_hour = speed_km_per_sec * 3600
 
         if self.double_file:
             self.restart_ready.clear()
