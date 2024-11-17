@@ -2,7 +2,7 @@ import streamlit as st
 import uuid
 from streamlit_autorefresh import st_autorefresh
 import random
-from modules.events.random_vsc_event import RandomVSCEvent
+from modules.events.random_code_60_event import RandomCode60Event
 from modules.subprocess_manager import SubprocessManager
 
 
@@ -14,7 +14,7 @@ def empty_vsc():
 
 def start_sequence():
     cautions = [
-        RandomVSCEvent(
+        RandomCode60Event(
             restart_proximity=st.session_state.vsc_restart_proximity,
             max_vsc_duration=st.session_state.vsc_maximum_duration,
             wave_arounds=st.session_state.wave_arounds,
@@ -67,18 +67,18 @@ def ui():
 
     for i, caution in enumerate(st.session_state.vsc):
         col1, col2, col3, _ = st.columns((1, 1, 1, 2))
-        col1.subheader(f"VSC {i + 1}")
+        col1.subheader(f"Code 60 #{i + 1}")
         st.session_state.vsc[i]['likelihood'] = col2.text_input("Likelihood (%)", caution['likelihood'], key=f"likelihood_{caution['id']}")
         col3.button("Remove", on_click=lambda: st.session_state.vsc.pop(i), key=f"remove_{caution['id']}")
 
     st.write('---')
-    st.button("Add Caution", on_click=lambda: st.session_state.vsc.append(empty_vsc()))
+    st.button("Add", on_click=lambda: st.session_state.vsc.append(empty_vsc()))
 
     col1, col2, col3, col4, _ = st.columns(5)
     col1.button("Start", on_click=start_sequence)
-    col2.button("Stop", on_click=stop_sequence)
+    col2.button("Cancel", on_click=stop_sequence)
     col3.button("Line Up Double File", on_click=end_double_file)
-    col4.button("End Active VSC", on_click=end_sequence)
+    col4.button("End Active Code 60", on_click=end_sequence)
 
     if st.session_state.refresh:
         st_autorefresh()
@@ -86,4 +86,4 @@ def ui():
         st.session_state.refresh = False
         st_autorefresh(limit=1)
 
-random_vsc_bot = st.Page(ui, title='Random VSC Bot', url_path='random_vsc_bot')
+random_code_60_bot = st.Page(ui, title='Random Code 60 Bot', url_path='random_code_60_bot')

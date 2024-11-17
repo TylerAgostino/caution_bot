@@ -138,7 +138,7 @@ class BaseEvent:
         intervals.insert(0, seconds)
         for interval in intervals:
             self.sleep(seconds - interval)
-            self._chat(f'{message} {interval} seconds.')
+            self._chat(f'{message} {interval} seconds.', race_control=True)
             seconds = interval
 
     def throw_caution(self):

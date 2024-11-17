@@ -81,7 +81,7 @@ def ui():
 
     col1, col2 = st.columns(2)
     col1.button("Start", on_click=start_sequence)
-    col2.button("Stop", on_click=stop_sequence)
+    col2.button("Cancel", on_click=stop_sequence)
 
     if st.session_state.refresh:
         st_autorefresh()

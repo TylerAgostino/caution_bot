@@ -1,7 +1,7 @@
 from modules.events.random_timed_event import RandomTimedEvent
 import threading
 
-class RandomVSCEvent(RandomTimedEvent):
+class RandomCode60Event(RandomTimedEvent):
     """
     A class to represent a random Virtual Safety Car (VSC) event in the iRacing simulator.
 
@@ -36,17 +36,17 @@ class RandomVSCEvent(RandomTimedEvent):
 
     def event_sequence(self):
         """
-        Executes the event sequence for a random VSC.
+        Executes the event sequence for a random Code 60.
         """
         if self.is_caution_active() or self.busy_event.is_set():
             if self.notify_on_skipped_caution:
-                self._chat('Additional caution skipped due to active caution.')
+                self._chat('Additional caution skipped due to active caution.', race_control=True)
             return
 
         self.busy_event.set()
         self.restart_ready.clear()
-        self._chat(self.reason)
-        self._chat('VSC will begin at the Start/Finish Line')
+        self._chat(self.reason, race_control=True)
+        self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
 
         last_step = self.get_current_running_order()
         session_time = self.sdk['SessionTimeRemain']
@@ -58,8 +58,8 @@ class RandomVSCEvent(RandomTimedEvent):
             self.sleep(1)
         restart_order = []
 
-        self._chat('Double Yellow Flags in Sector 1')
-        self._chat('No Overtaking in Sector 1')
+        self._chat('Double Yellow Flags in Sector 1', race_control=True)
+        self._chat('Slow and maintain your position unless instructed to overtake.', race_control=True)
 
         wrongmap = {}
 
@@ -108,7 +108,7 @@ class RandomVSCEvent(RandomTimedEvent):
 
         if self.double_file:
             self.restart_ready.clear()
-            self._chat('Double File Restart')
+            self._chat('Double File Restart', race_control=True)
             left_line = []
             right_line = []
             for i, car in enumerate(restart_order):
@@ -156,7 +156,7 @@ class RandomVSCEvent(RandomTimedEvent):
 
 
 
-        self._chat('The field has formed up and the VSC will end soon.')
+        self._chat('The field has formed up and the Code 60 will end soon.', race_control=True)
         for car, cars_incorrectly_behind in wrongmap.items():
             if cars_incorrectly_behind:
                 self.logger.error(f'Car {car} restarted ahead of cars {cars_incorrectly_behind}.')
