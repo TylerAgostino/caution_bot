@@ -87,7 +87,7 @@ def ui():
                   'CarIdxQualTireCompoundLocked', 'CarIdxFastRepairsUsed', 'CarIdxSessionFlags','CarIdxPaceLine',
                   'CarIdxPaceRow', 'CarIdxPaceFlags', 'CarIdxSteer', 'CarIdxRPM', 'CarIdxGear', 'CarIdxP2P_Status', 'CarIdxP2P_Count']
 
-        with st.expander("Global Data"):
+        with st.expander("Live Telemetry"):
             tabs = st.tabs(global_field_sections.keys())
             for i, (section, fields) in enumerate(global_field_sections.items()):
                 with tabs[i]:
@@ -98,6 +98,27 @@ def ui():
                             st.write(f'{field}: {value}')
                         else:
                             st.metric(field, value)
+
+        session_info = {
+            'DriverInfo': {k: v for k,v in st.session_state.goggle_event.sdk['DriverInfo'].items() if k != 'Drivers'},
+            'Drivers': st.session_state.goggle_event.sdk['DriverInfo']['Drivers'],
+            'QualifyResultsInfo': st.session_state.goggle_event.sdk['QualifyResultsInfo']['Results'],
+            'SplitTimeInfo': st.session_state.goggle_event.sdk['SplitTimeInfo']['Sectors'],
+            'WeekendInfo': {k: v for k,v in st.session_state.goggle_event.sdk['WeekendInfo'].items() if k != 'WeekendOptions' and k != 'TelemetryOptions'},
+            'WeekendOptions': st.session_state.goggle_event.sdk['WeekendInfo']['WeekendOptions'],
+        }
+        with st.expander("Static Info"):
+            tabs = st.tabs(session_info.keys())
+            for i, (section, fields) in enumerate(session_info.items()):
+                with tabs[i]:
+                    if isinstance(fields, list):
+                        st.dataframe(fields)
+                    else:
+                        for field, value in fields.items():
+                            st.metric(field, value)
+            # for key, value in session_info.items():
+            #     st.subheader(key)
+            #     st.dataframe(value)
 
         car_idx_obj = {str(header).replace('CarIdx',''): st.session_state.goggle_event.sdk[header] for header in field_df_cols}
         car_idx_df = pd.DataFrame(car_idx_obj)
