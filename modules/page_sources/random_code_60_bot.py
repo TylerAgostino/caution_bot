@@ -86,4 +86,4 @@ def ui():
         st.session_state.refresh = False
         st_autorefresh(limit=1)
 
-random_code_60_bot = st.Page(ui, title='Random Code 60 Bot', url_path='random_code_60_bot')
+random_code_60_bot = st.Page(ui, title='Random Code 60 Bot', url_path='random_code_60_bot', icon='🐢')

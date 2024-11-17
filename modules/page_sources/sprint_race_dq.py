@@ -66,4 +66,4 @@ def ui():
     with col2:
         st.button("Stop", on_click=lambda: end_sequence())
 
-sprint_race_dq = st.Page(ui, title='Sprint Race DQ')
+sprint_race_dq = st.Page(ui, title='Sprint Race DQ', icon="🏴")

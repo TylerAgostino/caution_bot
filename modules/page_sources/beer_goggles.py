@@ -129,4 +129,4 @@ def ui():
         st_autorefresh()
 
 
-beer_goggles = st.Page(ui, title='Beer Goggles', url_path='beer_goggles')
+beer_goggles = st.Page(ui, title='Beer Goggles', url_path='beer_goggles', icon="🔍")

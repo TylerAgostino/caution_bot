@@ -89,4 +89,4 @@ def ui():
         st.session_state.refresh = False
         st_autorefresh(limit=1)
 
-random_caution_bot = st.Page(ui, title='Random Caution Bot', url_path='random_caution_bot')
+random_caution_bot = st.Page(ui, title='Random Caution Bot', url_path='random_caution_bot', icon='🚔')

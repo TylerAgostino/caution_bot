@@ -30,10 +30,12 @@ def main():
     page_list = [
         pages.random_caution_bot,
         pages.random_code_60_bot,
-        pages.beer_goggles
+        pages.beer_goggles,
+        pages.sprint_race_dq
     ]
 
     st.set_page_config(layout='wide')  # Set the page layout to wide
+    st.logo("https://osyu.sh/thonk.svg")
     pages = st.navigation(page_list)  # Initialize navigation with the list of pages
     pages.run()  # Run the selected page
 
