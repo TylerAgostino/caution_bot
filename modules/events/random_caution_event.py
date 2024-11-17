@@ -54,20 +54,29 @@ class RandomCautionEvent(RandomTimedEvent):
                 self.sleep(1)
             self.logger.debug('Pace car has completed a lap.')
 
-            current_positions = {car: self.sdk['CarIdxLapDistPct'][car] for car in self.get_wave_around_cars()}
+            current_positions = self.get_wave_around_cars()
+
+            last_step = self.get_current_running_order()
 
             while current_positions:
-                for car in list(current_positions):
+                this_step = self.get_current_running_order()
+                for car in current_positions:
+                    args = [{'CarIdx': car}, last_step, this_step]
                     if int(hex(self.sdk['CarIdxPaceFlags'][car])[-1]) >= 4:
-                        current_positions.pop(car, None)
-                    elif self.sdk['CarIdxOnPitRoad'][car] or self.sdk['CarIdxPaceLine'][car] == -1:
-                        current_positions[car] = 0.99
-                    elif self.sdk['CarIdxLapDistPct'][car] < current_positions[car]:
+                        current_positions.pop(current_positions.index(car))
+                    if self.car_has_completed_lap(*args) or self.car_has_left_pits(*args):
+                        if self.sdk['CarIdxOnPitRoad'][car]:
+                            self.logger.debug(f'{car} is on pit road.')
+                            continue
                         self.wave_and_eol(car)
-                        current_positions.pop(car, None)
+                last_step = this_step
                 self.sleep(1)
+
+            self.logger.info('Wave arounds complete.')
 
         while self.is_caution_active():
             self.sleep(1)
+
+        self.logger.debug('Caution has ended.')
 
         self.busy_event.clear()

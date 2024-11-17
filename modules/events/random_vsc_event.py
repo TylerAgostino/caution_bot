@@ -29,6 +29,7 @@ class RandomVSCEvent(RandomTimedEvent):
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.restart_ready = threading.Event()
+        self.double_file = False
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
@@ -102,6 +103,56 @@ class RandomVSCEvent(RandomTimedEvent):
 
             self.sleep(1)
 
+        if self.double_file:
+            self.restart_ready.clear()
+            self._chat('Double File Restart')
+            left_line = []
+            right_line = []
+            for i, car in enumerate(restart_order):
+                if i % 2 == 0:
+                    right_line.append(car)
+                    message = f'/{car["CarNumber"]} line up on the right '
+                    if len(right_line) > 1:
+                        message += f'behind car {right_line[-2]["CarNumber"]}'
+                    self._chat(message)
+                else:
+                    left_line.append(car)
+                    message = f'/{car["CarNumber"]} line up on the left '
+                    if len(left_line) > 1:
+                        message += f'behind car {left_line[-2]["CarNumber"]}'
+                    self._chat(message)
+            left_wrongmap = {}
+            right_wrongmap = {}
+            while not self.ready_to_restart():
+                running_order_uncorrected = self.get_current_running_order()
+                running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in running_order_uncorrected]) else 1) + x['total_completed']/1000, reverse=True)
+                actual_order = [car['CarNumber'] for car in running_order_lap_down_corrected if car['CarNumber'] in correct_order]
+                for car in left_line:
+                    cars_that_should_be_ahead = [c['CarNumber'] for c in left_line[:left_line.index(car)]]
+                    cars_that_are_behind = actual_order[actual_order.index(car['CarNumber']) + 1:]
+                    cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
+                    left_wrongmap[car['CarNumber']] = cars_incorrectly_behind
+                for car in right_line:
+                    cars_that_should_be_ahead = [c['CarNumber'] for c in right_line[:right_line.index(car)]]
+                    cars_that_are_behind = actual_order[actual_order.index(car['CarNumber']) + 1:]
+                    cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
+                    right_wrongmap[car['CarNumber']] = cars_incorrectly_behind
+                self.sleep(1)
+                if session_time - self.sdk['SessionTimeRemain'] > 10:
+                    for car, cars_incorrectly_behind in left_wrongmap.items():
+                        if cars_incorrectly_behind:
+                            session_time = self.sdk['SessionTimeRemain']
+                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
+                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the left.')
+                    for car, cars_incorrectly_behind in right_wrongmap.items():
+                        if cars_incorrectly_behind:
+                            session_time = self.sdk['SessionTimeRemain']
+                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
+                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the right.')
+
+
+
+
         self._chat('The field has formed up and the VSC will end soon.')
         for car, cars_incorrectly_behind in wrongmap.items():
             if cars_incorrectly_behind:
@@ -118,34 +169,3 @@ class RandomVSCEvent(RandomTimedEvent):
         """
         return self.restart_ready.is_set()
 
-    def car_has_completed_lap(self, car, last_step, this_step):
-        """
-        Checks if a car has completed a lap.
-
-        Args:
-            car (dict): The car to check.
-            last_step (list): The running order of the last step in time.
-            this_step (list): The running order of the current step in time.
-
-        Returns:
-            bool: True if the car has completed their lap in the last step, False otherwise.
-        """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['LapCompleted'] > last_step_record['LapCompleted']
-
-    def car_has_left_pits(self, car, last_step, this_step):
-        """
-        Checks if a car has left the pits.
-
-        Args:
-            car (dict): The car to check.
-            last_step (list): The running order of the last step in time.
-            this_step (list): The running order of the current step in time.
-
-        Returns:
-            bool: True if the car has left the pits in the last step, False otherwise.
-        """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1

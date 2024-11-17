@@ -66,7 +66,7 @@ def ui():
     st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5")
     st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120")
     st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")
-    st.session_state.wave_arounds = col6.checkbox("Wave Arounds")
+    st.session_state.wave_arounds = col6.checkbox("Wave Arounds", value=True)
     st.session_state.notify_skipped = col7.checkbox("Notify on Skipped Caution")
     st.write('---')
 

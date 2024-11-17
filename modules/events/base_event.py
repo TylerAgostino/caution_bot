@@ -183,7 +183,8 @@ class BaseEvent:
         max_distance_covered = max(distance_covered)
         return sorted(
             [driver['CarIdx'] for driver in self.sdk['DriverInfo']['Drivers']
-             if driver['CarIsPaceCar'] != 1 and distance_covered[driver['CarIdx']] <= max_distance_covered - 1],
+             if driver['CarIsPaceCar'] != 1 and max_distance_covered - 1 >= distance_covered[
+                 driver['CarIdx']] >= max_distance_covered - self.max_laps_behind_leader - 1],
             key=lambda x: laps_completed[x] + partial_laps[x], reverse=True)
 
     def get_current_running_order(self):
@@ -202,7 +203,7 @@ class BaseEvent:
             'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']]
         } for car in self.sdk['DriverInfo']['Drivers'] if car['CarIsPaceCar'] != 1]
         running_order.sort(key=lambda x: x['total_completed'], reverse=True)
-        return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader)]
+        return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader-1)]
 
     def get_leader(self):
         """
@@ -241,3 +242,37 @@ class BaseEvent:
             bool: True if a caution flag is active, False otherwise.
         """
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
+
+    @staticmethod
+    def car_has_completed_lap(car, last_step, this_step):
+        """
+        Checks if a car has completed a lap.
+
+        Args:
+            car (dict): The car to check.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
+
+        Returns:
+            bool: True if the car has completed their lap in the last step, False otherwise.
+        """
+        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+        return this_step_record['LapCompleted'] > last_step_record['LapCompleted']
+
+    @staticmethod
+    def car_has_left_pits(car, last_step, this_step):
+        """
+        Checks if a car has left the pits.
+
+        Args:
+            car (dict): The car to check.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
+
+        Returns:
+            bool: True if the car has left the pits in the last step, False otherwise.
+        """
+        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+        return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1

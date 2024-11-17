@@ -43,6 +43,12 @@ def end_sequence():
         for caution in st.session_state.vsc_runner:
             caution.restart_ready.set()
 
+def end_double_file():
+    if 'vsc_runner' in st.session_state:
+        for caution in st.session_state.vsc_runner:
+            caution.double_file = True
+            caution.restart_ready.set()
+
 def ui():
     st.session_state.setdefault('vsc', [empty_vsc()])
     st.session_state.setdefault('vsc_instances', [])
@@ -53,9 +59,9 @@ def ui():
     st.session_state.vsc_window_start = col1.text_input("Window Start (min)", "5")
     st.session_state.vsc_window_end = col2.text_input("Window End (min)", "-15")
     st.session_state.vsc_laps_behind = col3.text_input("Max Laps Behind Leader", "4")
-    st.session_state.vsc_maximum_duration = col4.text_input("Max VSC duration (sec)", "120")
-    st.session_state.vsc_restart_proximity = col5.text_input("Restart Proximity (Lap%)", "5")
-    st.session_state.wave_arounds = col6.checkbox("Wave Arounds")
+    st.session_state.vsc_maximum_duration = col4.text_input("Max VSC duration (sec)", "120", disabled=True)
+    st.session_state.vsc_restart_proximity = col5.text_input("Restart Proximity (Lap%)", "5", disabled=True)
+    st.session_state.wave_arounds = col6.checkbox("Wave Arounds", value=True)
     st.session_state.notify_skipped = col7.checkbox("Notify on Skipped Caution")
     st.write('---')
 
@@ -68,10 +74,11 @@ def ui():
     st.write('---')
     st.button("Add Caution", on_click=lambda: st.session_state.vsc.append(empty_vsc()))
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4, _ = st.columns(5)
     col1.button("Start", on_click=start_sequence)
     col2.button("Stop", on_click=stop_sequence)
-    col3.button("End Active VSC", on_click=end_sequence)
+    col3.button("Line Up Double File", on_click=end_double_file)
+    col4.button("End Active VSC", on_click=end_sequence)
 
     if st.session_state.refresh:
         st_autorefresh()

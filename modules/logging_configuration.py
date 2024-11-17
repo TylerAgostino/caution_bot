@@ -1,7 +1,5 @@
 import logging
 from logging.config import dictConfig
-import streamlit as st
-import datetime
 import os
 
 def init_logging(level='INFO'):
@@ -15,7 +13,7 @@ def init_logging(level='INFO'):
         'version': 1,
         'formatters': {
             'default': {
-                'format': '%(levelname)s - %(message)s'
+                'format': '%(asctime)s - %(levelname)s - %(message)s'
             }
         },
         'handlers': {
