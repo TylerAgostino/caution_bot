@@ -33,6 +33,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.restart_ready = threading.Event()
         self.max_speed_km = int(max_speed_km)
         self.double_file = False
+        self.reminder_frequency = 8
         super().__init__(*args, **kwargs)
         self.reason = self.generate_random_caution_reason()
 
@@ -104,12 +105,14 @@ class RandomCode60Event(RandomTimedEvent):
                 cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
                 wrongmap[car] = cars_incorrectly_behind
 
-            if session_time - self.sdk['SessionTimeRemain'] > 10:
+            if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
                 for car, cars_incorrectly_behind in wrongmap.items():
                     if cars_incorrectly_behind:
                         session_time = self.sdk['SessionTimeRemain']
                         self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
                         self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+                        for passed_car in cars_incorrectly_behind:
+                            self._chat(f'/{passed_car} pass the {car} car.')
 
                 self.logger.debug(f'Leader speed: {speed_km_per_hour} km/h')
                 if speed_km_per_hour > self.max_speed_km:
@@ -164,17 +167,21 @@ class RandomCode60Event(RandomTimedEvent):
                     cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
                     right_wrongmap[car['CarNumber']] = cars_incorrectly_behind
                 self.sleep(1)
-                if session_time - self.sdk['SessionTimeRemain'] > 10:
+                if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
                     for car, cars_incorrectly_behind in left_wrongmap.items():
                         if cars_incorrectly_behind:
                             session_time = self.sdk['SessionTimeRemain']
                             self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
                             self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the left.')
+                            for passed_car in cars_incorrectly_behind:
+                                self._chat(f'/{passed_car} pass the {car} car.')
                     for car, cars_incorrectly_behind in right_wrongmap.items():
                         if cars_incorrectly_behind:
                             session_time = self.sdk['SessionTimeRemain']
                             self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
                             self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the right.')
+                            for passed_car in cars_incorrectly_behind:
+                                self._chat(f'/{passed_car} pass the {car} car.')
 
 
 
