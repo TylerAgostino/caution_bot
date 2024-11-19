@@ -1,3 +1,10 @@
 pyirsdk
 pywinauto
 pyperclip
+streamlit
+streamlit-autorefresh
+langchain-ollama
+langchain
+langchain-core
+langgraph
+langsmith

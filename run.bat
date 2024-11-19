@@ -1,2 +1,2 @@
 cd bot_venv/Scripts
-python ../../caution_bot.py
+python -m streamlit run ../../better_caution_bot.py
