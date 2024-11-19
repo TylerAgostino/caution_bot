@@ -13,7 +13,7 @@ def init_logging(level='INFO'):
         'version': 1,
         'formatters': {
             'default': {
-                'format': '%(asctime)s - %(levelname)s - %(message)s'
+                'format': '%(asctime)s - %(levelname)s - %(message)s \f'
             }
         },
         'handlers': {
