@@ -139,13 +139,13 @@ class RandomCode60Event(RandomTimedEvent):
             for i, car in enumerate(restart_order):
                 if i % 2 == 0:
                     right_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the right '
+                    message = f'/{car["CarNumber"]} line up on the RIGHT '
                     if len(right_line) > 1:
                         message += f'behind car {right_line[-2]["CarNumber"]}'
                     self._chat(message)
                 else:
                     left_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the left '
+                    message = f'/{car["CarNumber"]} line up on the LEFT '
                     if len(left_line) > 1:
                         message += f'behind car {left_line[-2]["CarNumber"]}'
                     self._chat(message)
