@@ -59,11 +59,13 @@ class RandomCode60Event(RandomTimedEvent):
         lead_lap = max([car['LapCompleted'] for car in last_step])
         while not any([car['LapCompleted'] > lead_lap for car in self.get_current_running_order()]):
             last_step = self.get_current_running_order()
+            if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
+                self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
+                session_time = self.sdk['SessionTimeRemain']
             self.sleep(1)
         restart_order = []
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
-        self._chat('Slow and maintain your position unless instructed to overtake.', race_control=True)
 
         wrongmap = {}
         leader = None
@@ -87,6 +89,8 @@ class RandomCode60Event(RandomTimedEvent):
                         if car['total_completed']<max([l['total_completed']-1 for l in restart_order]):
                             self.logger.debug(f'{car["CarNumber"]} is a lap down.')
                             self._chat(f'/{car["CarNumber"]} you may now safely pass the field to unlap yourself.')
+                        else:
+                            self._chat(f'/{car["CarNumber"]} slow down and maintain your position.')
                         # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
                         restart_order = sorted(restart_order, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
                         self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
