@@ -167,20 +167,18 @@ class RandomCode60Event(RandomTimedEvent):
                     right_wrongmap[car['CarNumber']] = cars_incorrectly_behind
                 self.sleep(1)
                 if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
-                    for car, cars_incorrectly_behind in left_wrongmap.items():
-                        if cars_incorrectly_behind:
-                            session_time = self.sdk['SessionTimeRemain']
-                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the left.')
-                            for passed_car in cars_incorrectly_behind:
-                                self._chat(f'/{passed_car} pass the {car} car.')
-                    for car, cars_incorrectly_behind in right_wrongmap.items():
-                        if cars_incorrectly_behind:
-                            session_time = self.sdk['SessionTimeRemain']
-                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the right.')
-                            for passed_car in cars_incorrectly_behind:
-                                self._chat(f'/{passed_car} pass the {car} car.')
+                    for wrongmap in [left_wrongmap, right_wrongmap]:
+                        for car, cars_incorrectly_behind in wrongmap.items():
+                            if cars_incorrectly_behind:
+                                self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
+                                self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+                                for passed_car in cars_incorrectly_behind:
+                                    self._chat(f'/{passed_car} pass the {car} car.')
+                    for car in left_line:
+                        self._chat(f'/{car["CarNumber"]} you will restart on the LEFT.')
+                    for car in right_line:
+                        self._chat(f'/{car["CarNumber"]} you will restart on the RIGHT.')
+                    session_time = self.sdk['SessionTimeRemain']
 
 
 
