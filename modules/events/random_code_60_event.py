@@ -114,7 +114,6 @@ class RandomCode60Event(RandomTimedEvent):
                         for passed_car in cars_incorrectly_behind:
                             self._chat(f'/{passed_car} pass the {car} car.')
 
-                self.logger.debug(f'Leader speed: {speed_km_per_hour} km/h')
                 if speed_km_per_hour > self.max_speed_km:
                     session_time = self.sdk['SessionTimeRemain']
                     self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
