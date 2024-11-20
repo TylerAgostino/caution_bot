@@ -185,12 +185,13 @@ class RandomCode60Event(RandomTimedEvent):
 
 
         self._chat('Get Ready, Code 60 will end soon.', race_control=True)
+        self._chat('Get Ready, Code 60 will end soon.', race_control=True)
         start_time = self.sdk['SessionTime']
         leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
         self.sleep(0.5)
-        self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
         green = False
         while not green:
+            self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
             leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
             end_time = self.sdk['SessionTime']
             distance = leader_end_pos - leader_start_pos
@@ -201,7 +202,10 @@ class RandomCode60Event(RandomTimedEvent):
             speed_km_per_hour = speed_km_per_sec * 3600
             if speed_km_per_hour > self.restart_speed:
                 green = True
+            self.sleep(1)
 
+        self._chat('Green Flag!', race_control=True)
+        self._chat('Green Flag!', race_control=True)
         self._chat('Green Flag!', race_control=True)
 
 
