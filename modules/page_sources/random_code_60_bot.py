@@ -21,7 +21,9 @@ def start_sequence():
             min_time=int(st.session_state.vsc_window_start) * 60,
             max_time=int(st.session_state.vsc_window_end) * 60,
             notify_on_skipped_caution=st.session_state.notify_skipped,
-            max_laps_behind_leader=st.session_state.vsc_laps_behind
+            max_laps_behind_leader=st.session_state.vsc_laps_behind,
+            max_speed_km=st.session_state.vsc_maximum_speed,
+            restart_speed_pct=st.session_state.vsc_restart_speed_pct,
         )
         for caution in st.session_state.vsc
         if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -59,8 +61,8 @@ def ui():
     st.session_state.vsc_window_start = col1.text_input("Window Start (min)", "5")
     st.session_state.vsc_window_end = col2.text_input("Window End (min)", "-15")
     st.session_state.vsc_laps_behind = col3.text_input("Max Laps Behind Leader", "4")
-    st.session_state.vsc_maximum_duration = col4.text_input("Max VSC duration (sec)", "120", disabled=True)
-    st.session_state.vsc_restart_proximity = col5.text_input("Restart Proximity (Lap%)", "5", disabled=True)
+    st.session_state.vsc_maximum_speed = col4.text_input("Max VSC Speed (kph)", "60")
+    st.session_state.vsc_restart_speed_pct = col5.text_input("Restart Speed (% of Max)", "150")
     st.session_state.wave_arounds = col6.checkbox("Wave Arounds", value=True)
     st.session_state.notify_skipped = col7.checkbox("Notify on Skipped Caution")
     st.write('---')
