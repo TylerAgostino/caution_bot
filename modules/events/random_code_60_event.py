@@ -115,7 +115,6 @@ class RandomCode60Event(RandomTimedEvent):
                         for passed_car in cars_incorrectly_behind:
                             self._chat(f'/{passed_car} pass the {car} car.')
 
-                self.logger.debug(f'Leader speed: {speed_km_per_hour} km/h')
                 if speed_km_per_hour > self.max_speed_km:
                     session_time = self.sdk['SessionTimeRemain']
                     self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
@@ -141,13 +140,13 @@ class RandomCode60Event(RandomTimedEvent):
             for i, car in enumerate(restart_order):
                 if i % 2 == 0:
                     right_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the right '
+                    message = f'/{car["CarNumber"]} line up on the RIGHT '
                     if len(right_line) > 1:
                         message += f'behind car {right_line[-2]["CarNumber"]}'
                     self._chat(message)
                 else:
                     left_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the left '
+                    message = f'/{car["CarNumber"]} line up on the LEFT '
                     if len(left_line) > 1:
                         message += f'behind car {left_line[-2]["CarNumber"]}'
                     self._chat(message)
@@ -169,31 +168,30 @@ class RandomCode60Event(RandomTimedEvent):
                     right_wrongmap[car['CarNumber']] = cars_incorrectly_behind
                 self.sleep(1)
                 if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
-                    for car, cars_incorrectly_behind in left_wrongmap.items():
-                        if cars_incorrectly_behind:
-                            session_time = self.sdk['SessionTimeRemain']
-                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the left.')
-                            for passed_car in cars_incorrectly_behind:
-                                self._chat(f'/{passed_car} pass the {car} car.')
-                    for car, cars_incorrectly_behind in right_wrongmap.items():
-                        if cars_incorrectly_behind:
-                            session_time = self.sdk['SessionTimeRemain']
-                            self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                            self._chat(f'/{car} stay behind {", ".join(cars_incorrectly_behind)} on the right.')
-                            for passed_car in cars_incorrectly_behind:
-                                self._chat(f'/{passed_car} pass the {car} car.')
+                    for wrongmap in [left_wrongmap, right_wrongmap]:
+                        for car, cars_incorrectly_behind in wrongmap.items():
+                            if cars_incorrectly_behind:
+                                self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
+                                self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+                                for passed_car in cars_incorrectly_behind:
+                                    self._chat(f'/{passed_car} pass the {car} car.')
+                    for car in left_line:
+                        self._chat(f'/{car["CarNumber"]} you will restart on the LEFT.')
+                    for car in right_line:
+                        self._chat(f'/{car["CarNumber"]} you will restart on the RIGHT.')
+                    session_time = self.sdk['SessionTimeRemain']
 
 
 
 
         self._chat('Get Ready, Code 60 will end soon.', race_control=True)
+        self._chat('Get Ready, Code 60 will end soon.', race_control=True)
         start_time = self.sdk['SessionTime']
         leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
         self.sleep(0.5)
-        self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
         green = False
         while not green:
+            self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
             leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
             end_time = self.sdk['SessionTime']
             distance = leader_end_pos - leader_start_pos
@@ -204,7 +202,10 @@ class RandomCode60Event(RandomTimedEvent):
             speed_km_per_hour = speed_km_per_sec * 3600
             if speed_km_per_hour > self.restart_speed:
                 green = True
+            self.sleep(1)
 
+        self._chat('Green Flag!', race_control=True)
+        self._chat('Green Flag!', race_control=True)
         self._chat('Green Flag!', race_control=True)
 
 
