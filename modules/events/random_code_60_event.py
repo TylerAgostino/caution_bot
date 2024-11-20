@@ -49,7 +49,7 @@ class RandomCode60Event(RandomTimedEvent):
 
         self.busy_event.set()
         self.restart_ready.clear()
-        self._chat(self.reason, race_control=True)
+        # self._chat(self.reason, race_control=True)
         self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
 
         last_step = self.get_current_running_order()
