@@ -51,7 +51,7 @@ class BaseEvent:
         Sleeps for a specified number of seconds and checks for cancellation.
 
         Args:
-            seconds (int): Number of seconds to sleep.
+            seconds (float): Number of seconds to sleep.
 
         Raises:
             KeyboardInterrupt: If the cancel_event is set.
