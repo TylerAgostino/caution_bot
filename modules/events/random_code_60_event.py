@@ -15,7 +15,7 @@ class RandomCode60Event(RandomTimedEvent):
     """
 
     def __init__(self, restart_proximity=None, max_vsc_duration=None, wave_arounds=False,
-                 notify_on_skipped_caution=False, max_speed_km = 60, *args, **kwargs):
+                 notify_on_skipped_caution=False, max_speed_km = 60, restart_speed_pct=150, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -34,6 +34,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.max_speed_km = int(max_speed_km)
         self.double_file = False
         self.reminder_frequency = 8
+        self.restart_speed = max_speed_km * (restart_speed_pct / 100)
         super().__init__(*args, **kwargs)
         self.reason = self.generate_random_caution_reason()
 
@@ -183,7 +184,27 @@ class RandomCode60Event(RandomTimedEvent):
 
 
 
-        self._chat('The field has formed up and the Code 60 will end soon.', race_control=True)
+        self._chat('Get Ready, Code 60 will end soon.', race_control=True)
+        start_time = self.sdk['SessionTime']
+        leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
+        self.sleep(0.5)
+        self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
+        green = False
+        while not green:
+            leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
+            end_time = self.sdk['SessionTime']
+            distance = leader_end_pos - leader_start_pos
+            distance = distance if distance > 0 else distance + 1
+            time = end_time - start_time
+            speed_pct_per_sec = distance / time
+            speed_km_per_sec = speed_pct_per_sec * float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
+            speed_km_per_hour = speed_km_per_sec * 3600
+            if speed_km_per_hour > self.restart_speed:
+                green = True
+
+        self._chat('Green Flag!', race_control=True)
+
+
         for car, cars_incorrectly_behind in wrongmap.items():
             if cars_incorrectly_behind:
                 self.logger.error(f'Car {car} restarted ahead of cars {cars_incorrectly_behind}.')
