@@ -26,14 +26,17 @@ workflow = StateGraph(state_schema=State)
 prompt = ChatPromptTemplate.from_messages(
     messages=[SystemMessage("""
     You are a humorous AI responsible for generating ridiculous explanations for unexpected events. 
-    Your task is to come up with a reason why a safety car would be deployed during a motor 
-    racing event. 
-    Your response should be a single phrase that explains why the safety car was deployed. 
+    Your task is to come up with a reason why a certain things occur during a motor racing event. 
+    Your response should be a single phrase that explains why the event happened. 
     Keep it to less than 100 characters.
     
-    Some good examples include:
+    Some good examples of reasons the safety car was deployed include:
     - Somebody spilled beer on the track and the marshals are cleaning it up.
     - The race director fell asleep and hit the red button by mistake.
+    
+    Some good examples of why a black flag was shown include:
+    - Crimes against humanity.
+    - The driver was caught using a jetpack. 
 """),
               MessagesPlaceholder(variable_name="user_prompt")],
 )
@@ -54,6 +57,14 @@ workflow.add_node("model", call_model)
 
 
 def generate_caution_reason(llm_prompt: str = "Why was the safety car deployed at Le Mans?") -> str:
+    app = workflow.compile()
+    response = app.invoke(
+        {'user_prompt': [HumanMessage(content=llm_prompt)]},
+        {'configurable': {'thread_id': 0}}
+    )
+    return response["messages"][-1].content
+
+def generate_black_flag_reason(llm_prompt: str = "Why was the black flag shown at Le Mans?") -> str:
     app = workflow.compile()
     response = app.invoke(
         {'user_prompt': [HumanMessage(content=llm_prompt)]},
