@@ -32,7 +32,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.max_speed_km = int(max_speed_km)
         self.double_file = False
         self.reminder_frequency = 8
-        self.restart_speed = max_speed_km * (restart_speed_pct / 100)
+        self.restart_speed = self.max_speed_km * (int(restart_speed_pct) / 100)
         super().__init__(*args, **kwargs)
         self.reason = self.generate_random_caution_reason()
 
