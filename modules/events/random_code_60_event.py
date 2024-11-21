@@ -14,8 +14,8 @@ class RandomCode60Event(RandomTimedEvent):
         reason (str): The reason for the VSC.
     """
 
-    def __init__(self, restart_proximity=None, max_vsc_duration=None, wave_arounds=False,
-                 notify_on_skipped_caution=False, max_speed_km = 60, restart_speed_pct=150, *args, **kwargs):
+    def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 60, restart_speed_pct=150,
+                 *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -26,15 +26,13 @@ class RandomCode60Event(RandomTimedEvent):
             wave_arounds (bool, optional): Flag to indicate if wave arounds are allowed. Defaults to False.
             notify_on_skipped_caution (bool, optional): Flag to indicate if notifications should be sent when a caution is skipped. Defaults to False.
         """
-        self.restart_proximity = int(restart_proximity)
-        self.max_vsc_duration = int(max_vsc_duration)
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.restart_ready = threading.Event()
         self.max_speed_km = int(max_speed_km)
         self.double_file = False
         self.reminder_frequency = 8
-        self.restart_speed = max_speed_km * (restart_speed_pct / 100)
+        self.restart_speed = self.max_speed_km * (int(restart_speed_pct) / 100)
         super().__init__(*args, **kwargs)
         self.reason = self.generate_random_caution_reason()
 

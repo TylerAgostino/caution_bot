@@ -10,13 +10,11 @@ logger = st.session_state.logger
 
 
 def empty_vsc():
-    return {'id': uuid.uuid4(), 'likelihood': 100, 'instance': None}
+    return {'id': uuid.uuid4(), 'likelihood': 75, 'instance': None}
 
 def start_sequence():
     cautions = [
         RandomCode60Event(
-            restart_proximity=st.session_state.vsc_restart_proximity,
-            max_vsc_duration=st.session_state.vsc_maximum_duration,
             wave_arounds=st.session_state.wave_arounds,
             min_time=int(st.session_state.vsc_window_start) * 60,
             max_time=int(st.session_state.vsc_window_end) * 60,
@@ -52,7 +50,7 @@ def end_double_file():
             caution.restart_ready.set()
 
 def ui():
-    st.session_state.setdefault('vsc', [empty_vsc()])
+    st.session_state.setdefault('vsc', [empty_vsc(), empty_vsc()])
     st.session_state.setdefault('vsc_instances', [])
     st.session_state.setdefault('refresh', False)
 

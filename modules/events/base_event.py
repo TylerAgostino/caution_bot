@@ -101,7 +101,11 @@ class BaseEvent:
         keys = ['^v']
         if enter:
             keys.append('{ENTER}')
-        self.pwa['iRacing.com Simulator'].type_keys(''.join(keys))
+        try:
+            self.pwa['iRacing.com Simulator'].type_keys(''.join(keys))
+        except Exception as e:
+            self.logger.critical('Error sending chat message.')
+            self.logger.critical(e)
         self.sleep(0.3)
 
     def wave_and_eol(self, car):
