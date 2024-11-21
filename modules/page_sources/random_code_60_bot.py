@@ -10,7 +10,7 @@ logger = st.session_state.logger
 
 
 def empty_vsc():
-    return {'id': uuid.uuid4(), 'likelihood': 100, 'instance': None}
+    return {'id': uuid.uuid4(), 'likelihood': 75, 'instance': None}
 
 def start_sequence():
     cautions = [
@@ -50,7 +50,7 @@ def end_double_file():
             caution.restart_ready.set()
 
 def ui():
-    st.session_state.setdefault('vsc', [empty_vsc()])
+    st.session_state.setdefault('vsc', [empty_vsc(), empty_vsc()])
     st.session_state.setdefault('vsc_instances', [])
     st.session_state.setdefault('refresh', False)
 
