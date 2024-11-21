@@ -5,7 +5,7 @@ import streamlit as st
 import time
 import logging
 import threading
-from modules.llm import generate_caution_reason
+from modules.llm import generate_caution_reason, generate_black_flag_reason
 
 class BaseEvent:
     """
@@ -291,3 +291,13 @@ class BaseEvent:
             str: A random caution reason.
         """
         return generate_caution_reason()
+
+    @staticmethod
+    def generate_random_black_flag_reason():
+        """
+        Generates a random black flag reason.
+
+        Returns:
+            str: A random black flag reason.
+        """
+        return generate_black_flag_reason()
