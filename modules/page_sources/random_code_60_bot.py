@@ -15,8 +15,6 @@ def empty_vsc():
 def start_sequence():
     cautions = [
         RandomCode60Event(
-            restart_proximity=st.session_state.vsc_restart_proximity,
-            max_vsc_duration=st.session_state.vsc_maximum_duration,
             wave_arounds=st.session_state.wave_arounds,
             min_time=int(st.session_state.vsc_window_start) * 60,
             max_time=int(st.session_state.vsc_window_end) * 60,
