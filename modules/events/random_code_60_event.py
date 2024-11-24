@@ -92,6 +92,11 @@ class RandomCode60Event(RandomTimedEvent):
                         # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
                         restart_order = sorted(restart_order, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
                         self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
+                else:
+                    # if they're already in the restart order, make sure they didn't pit
+                    if self.car_has_entered_pits(car, last_step, this_step):
+                        restart_order = [c for c in restart_order if c['CarNumber'] != car['CarNumber']]
+                        self.logger.debug(f'Removed {car["CarNumber"]} from restart order (entered pits).')
 
 
             last_step = this_step
