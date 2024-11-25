@@ -15,7 +15,7 @@ class RandomCode60Event(RandomTimedEvent):
     """
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 60, restart_speed_pct=150,
-                 *args, **kwargs):
+                 restart_lanes=2, separate_classes=False, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -56,65 +56,41 @@ class RandomCode60Event(RandomTimedEvent):
         # wait for someone to start the next lap
         lead_lap = max([car['LapCompleted'] for car in last_step])
         while not any([car['LapCompleted'] > lead_lap for car in self.get_current_running_order()]):
-            last_step = self.get_current_running_order()
             if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
                 self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
                 session_time = self.sdk['SessionTimeRemain']
             self.sleep(1)
-        restart_order = []
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
 
-        wrongmap = {}
         leader = None
         speed_km_per_hour = 0
+        leader_speed_generator = None
+        restart_order_generator = self.generate_restart_order()
+        correct_order = []
 
         while not self.ready_to_restart():
-            leader = restart_order[0] if restart_order else None if not leader else leader
-            leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']] if leader else None
-            start_time = self.sdk['SessionTime']
-            this_step = self.get_current_running_order()
-            for car in this_step:
-                if car['CarNumber'] not in [c['CarNumber'] for c in restart_order]:
-                    if self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
-                        restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (completed lap).')
-                    if self.car_has_left_pits(car, last_step, this_step):
-                        restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits).')
-                    if car['CarNumber'] in [c['CarNumber'] for c in restart_order]:
-                        # if we've just added them to the restart order, check if they're a lap down
-                        if car['total_completed']<max([l['total_completed']-1 for l in restart_order]):
-                            self.logger.debug(f'{car["CarNumber"]} is a lap down.')
-                            self._chat(f'/{car["CarNumber"]} you may now safely pass the field to unlap yourself.')
-                        else:
-                            self._chat(f'/{car["CarNumber"]} slow down and maintain your position.')
-                        # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
-                        restart_order = sorted(restart_order, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
-                        self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
-                else:
-                    # if they're already in the restart order, make sure they didn't pit
-                    if self.car_has_entered_pits(car, last_step, this_step):
-                        restart_order = [c for c in restart_order if c['CarNumber'] != car['CarNumber']]
-                        self.logger.debug(f'Removed {car["CarNumber"]} from restart order (entered pits).')
-
-
-            last_step = this_step
-            correct_order = [car['CarNumber'] for car in restart_order]
+            correct_order = restart_order_generator.__next__()
 
             running_order_uncorrected = self.get_current_running_order()
             running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in running_order_uncorrected]) else 1) + x['total_completed']/1000, reverse=True)
             actual_order = [car['CarNumber'] for car in running_order_lap_down_corrected if car['CarNumber'] in correct_order]
 
+            # Check the leader's speed
+            if len(correct_order) > 0 and (leader_speed_generator is None or leader != correct_order[0]):
+                # New leader
+                leader = correct_order[0]
+                leader_speed_generator = self.monitor_speed(leader)
+            if leader_speed_generator is not None:
+                speed_km_per_hour = leader_speed_generator.__next__()
 
-            for car in actual_order:
-                cars_that_should_be_ahead = correct_order[:correct_order.index(car)]
-                cars_that_are_behind = actual_order[actual_order.index(car) + 1:]
-                cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
-                wrongmap[car] = cars_incorrectly_behind
-
+            # Send reminders
             if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
-                for car, cars_incorrectly_behind in wrongmap.items():
+                # Update the wrong positions
+                # Gives a map of car number to a list of cars that should be in front of it but are behind it
+                wrong_positions = {car: [c for c in actual_order[actual_order.index(car) + 1:] if car in correct_order[:correct_order.index(car)]] for car in actual_order}
+
+                for car, cars_incorrectly_behind in wrong_positions.items():
                     if cars_incorrectly_behind:
                         session_time = self.sdk['SessionTimeRemain']
                         self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
@@ -124,101 +100,42 @@ class RandomCode60Event(RandomTimedEvent):
 
                 if speed_km_per_hour > self.max_speed_km:
                     session_time = self.sdk['SessionTimeRemain']
-                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
+                    self._chat(f'/{leader} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
 
             self.sleep(1)
-
-            if leader_start_pos is not None:
-                leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
-                end_time = self.sdk['SessionTime']
-
-                distance = leader_end_pos - leader_start_pos
-                distance = distance if distance > 0 else distance + 1
-                time = end_time - start_time
-                speed_pct_per_sec = distance / time
-                speed_km_per_sec = speed_pct_per_sec * float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
-                speed_km_per_hour = speed_km_per_sec * 3600
 
         if self.double_file:
             self.restart_ready.clear()
             self._chat('Double File Restart', race_control=True)
-            left_line = []
-            right_line = []
-            for i, car in enumerate(restart_order):
-                if i % 2 == 0:
-                    right_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the RIGHT '
-                    if len(right_line) > 1:
-                        message += f'behind car {right_line[-2]["CarNumber"]}'
-                    self._chat(message)
-                else:
-                    left_line.append(car)
-                    message = f'/{car["CarNumber"]} line up on the LEFT '
-                    if len(left_line) > 1:
-                        message += f'behind car {left_line[-2]["CarNumber"]}'
-                    self._chat(message)
-            left_wrongmap = {}
-            right_wrongmap = {}
-            while not self.ready_to_restart():
-                running_order_uncorrected = self.get_current_running_order()
-                running_order_lap_down_corrected = sorted(running_order_uncorrected, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in running_order_uncorrected]) else 1) + x['total_completed']/1000, reverse=True)
-                actual_order = [car['CarNumber'] for car in running_order_lap_down_corrected if car['CarNumber'] in correct_order]
-                for car in left_line:
-                    cars_that_should_be_ahead = [c['CarNumber'] for c in left_line[:left_line.index(car)]]
-                    cars_that_are_behind = actual_order[actual_order.index(car['CarNumber']) + 1:]
-                    cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
-                    left_wrongmap[car['CarNumber']] = cars_incorrectly_behind
-                for car in right_line:
-                    cars_that_should_be_ahead = [c['CarNumber'] for c in right_line[:right_line.index(car)]]
-                    cars_that_are_behind = actual_order[actual_order.index(car['CarNumber']) + 1:]
-                    cars_incorrectly_behind = [car for car in cars_that_are_behind if car in cars_that_should_be_ahead]
-                    right_wrongmap[car['CarNumber']] = cars_incorrectly_behind
-                self.sleep(1)
-                if session_time - self.sdk['SessionTimeRemain'] > self.reminder_frequency:
-                    for wrongmap in [left_wrongmap, right_wrongmap]:
-                        for car, cars_incorrectly_behind in wrongmap.items():
-                            if cars_incorrectly_behind:
-                                self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                                self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
-                                for passed_car in cars_incorrectly_behind:
-                                    self._chat(f'/{passed_car} pass the {car} car.')
-                    for car in left_line:
-                        self._chat(f'/{car["CarNumber"]} you will restart on the LEFT.')
-                    for car in right_line:
-                        self._chat(f'/{car["CarNumber"]} you will restart on the RIGHT.')
-                    session_time = self.sdk['SessionTimeRemain']
-
-
-
+            restart_order_lanes = self.multi_lane_restart(correct_order, lanes=2, lane_names=['LEFT', 'RIGHT'],
+                                    restart_flag=self.restart_ready, reminder_frequency=self.reminder_frequency)
+        else:
+            restart_order_lanes = [correct_order]
 
         self._chat('Get Ready, Code 60 will end soon.', race_control=True)
         self._chat('Get Ready, Code 60 will end soon.', race_control=True)
-        start_time = self.sdk['SessionTime']
-        leader_start_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
+        throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         self.sleep(0.5)
-        green = False
-        while not green:
-            self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
-            leader_end_pos = self.sdk['CarIdxLapDistPct'][leader['CarIdx']]
-            end_time = self.sdk['SessionTime']
-            distance = leader_end_pos - leader_start_pos
-            distance = distance if distance > 0 else distance + 1
-            time = end_time - start_time
-            speed_pct_per_sec = distance / time
-            speed_km_per_sec = speed_pct_per_sec * float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
-            speed_km_per_hour = speed_km_per_sec * 3600
+        while True:
+            self._chat(f'/{leader} you control the field, go when ready')
+            speed_km_per_hour = leader_speed_generator.__next__()
             if speed_km_per_hour > self.restart_speed:
-                green = True
-            self.sleep(1)
+                break
+            self.sleep(0.5)
+
+        order_at_green = self.get_current_running_order()
 
         self._chat('Green Flag!', race_control=True)
         self._chat('Green Flag!', race_control=True)
         self._chat('Green Flag!', race_control=True)
 
 
-        for car, cars_incorrectly_behind in wrongmap.items():
-            if cars_incorrectly_behind:
-                self.logger.error(f'Car {car} restarted ahead of cars {cars_incorrectly_behind}.')
+        for lane in restart_order_lanes:
+            for car in lane:
+                cars_incorrectly_behind = [car['CarNumber'] for car in order_at_green[order_at_green.index(car)] if car['CarNumber'] in lane[lane.index(car)+1:]]
+                if cars_incorrectly_behind:
+                    self.logger.error(f'Car {car} restarted ahead of cars {cars_incorrectly_behind}.')
+                    self._chat(f'/{car} Restart violation will be investigated after the race.')
 
         self.busy_event.clear()
 
