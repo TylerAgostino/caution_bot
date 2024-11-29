@@ -333,48 +333,21 @@ class BaseEvent:
             'last_time': self.sdk['SessionTime']
         }
         while True:
-            speeds = {
-                'speed': (1 + self.sdk['CarIdxLapDistPct'][carIdx] - speeds['last_location']) % 1 # distance in lap %
-                         / (self.sdk['SessionTime'] - speeds['last_time'] if self.sdk['SessionTime'] - speeds['last_time'] > 0 else None)  # time elapsed in seconds
-                        *  float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', '')) # km per lap
-                        * 3600 # seconds per hour
-                        ,
-                'last_location': self.sdk['CarIdxLapDistPct'][carIdx],
-                'last_time': self.sdk['SessionTime']
-            }
-            yield speeds['speed']
-
-    def generate_restart_order(self):
-        # todo: make this work with multiclass
-        restart_order = []
-        last_step = self.get_current_running_order()
-        while True:
-            this_step = self.get_current_running_order()
-            for car in this_step:
-                if car['CarNumber'] not in [c['CarNumber'] for c in restart_order]:
-                    if self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
-                        restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (completed lap).')
-                    if self.car_has_left_pits(car, last_step, this_step):
-                        restart_order.append(car)
-                        self.logger.debug(f'Added {car["CarNumber"]} to restart order (left pits).')
-                    if car['CarNumber'] in [c['CarNumber'] for c in restart_order]:
-                        # if we've just added them to the restart order, check if they're a lap down
-                        if car['total_completed']<max([l['total_completed']-1 for l in restart_order]):
-                            self.logger.debug(f'{car["CarNumber"]} is a lap down.')
-                            self._chat(f'/{car["CarNumber"]} you may now safely pass the field to unlap yourself.')
-                        else:
-                            self._chat(f'/{car["CarNumber"]} slow down and maintain your position.')
-                        # make sure all the lap down cars are at the end of the restart order, but otherwise keep the order the same
-                        restart_order = sorted(restart_order, key=lambda x: int(2 if x['total_completed']>max([l['total_completed']-1 for l in restart_order]) else 1) - (restart_order.index(x) * 0.01), reverse=True)
-                        self.logger.debug(f'Restart order: {[car["CarNumber"] for car in restart_order]}')
-                else:
-                    # if they're already in the restart order, make sure they didn't pit
-                    if self.car_has_entered_pits(car, last_step, this_step):
-                        restart_order = [c for c in restart_order if c['CarNumber'] != car['CarNumber']]
-                        self.logger.debug(f'Removed {car["CarNumber"]} from restart order (entered pits).')
-            last_step = this_step
-            yield [car['CarNumber'] for car in restart_order]
+            try:
+                distance_in_lap = (1 + self.sdk['CarIdxLapDistPct'][carIdx] - speeds['last_location']) % 1
+                time_elapsed = (self.sdk['SessionTime'] - speeds['last_time'])
+                km_per_lap = float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
+                seconds_per_hour = 3600
+                speed = distance_in_lap / time_elapsed * km_per_lap * seconds_per_hour
+                speeds = {
+                    'speed': speed,
+                    'last_location': self.sdk['CarIdxLapDistPct'][carIdx],
+                    'last_time': self.sdk['SessionTime']
+                }
+                yield speeds['speed']
+            except ZeroDivisionError:
+                self.logger.error('Zero division error in speed calculation.')
+                yield 0
 
     def multi_lane_restart(self, order: list[int], lanes: int = 2, lane_names: list[str] = ['Left', 'Right'],
                            restart_flag: threading.Event = threading.Event(), reminder_frequency: int = 10):
@@ -397,11 +370,11 @@ class BaseEvent:
         last_longer_reminder = self.sdk['SessionTime']
         while not restart_flag.is_set():
             out_of_position = []
-            current_order = self.get_current_running_order()
+            current_order = [c['CarNumber'] for c in self.get_current_running_order()]
             for i, lane in enumerate(lane_order):
                 for car in lane:
-                    cars_incorrectly_behind = [c['CarNumber'] for c in current_order[current_order.index(car):]  # is behind
-                                               if c['CarNumber'] in lane[:lane.index(car)] # should be in front
+                    cars_incorrectly_behind = [c for c in current_order[current_order.index(car):]  # is behind
+                                               if c in lane[:lane.index(car)] # should be in front
                                                ]
                     if cars_incorrectly_behind:
                         out_of_position.append((car, cars_incorrectly_behind))
@@ -421,3 +394,19 @@ class BaseEvent:
                 last_longer_reminder = self.sdk['SessionTime']
 
         return lane_order
+
+    def get_car_class(self, carIdx=None, car_number = None):
+        if carIdx is None:
+            carIdx = [car['CarIdx'] for car in self.sdk['DriverInfo']['Drivers'] if car['CarNumber'] == car_number][0]
+        car_class = self.sdk['CarIdxClass'][carIdx]
+        return car_class
+
+    def get_fastest_lap_for_class(self, car_class):
+        classes = self.sdk['CarIdxClass']
+        best_laps = self.sdk['CarIdxBestLapTime']
+        best_lap = None
+        for i, c in enumerate(classes):
+            if c == car_class:
+                if best_lap is None or best_laps[i] < best_lap:
+                    best_lap = best_laps[i]
+        return best_lap
