@@ -11,6 +11,9 @@ from typing import Sequence
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
+import logging
+
+logger = logging.getLogger(__name__)
 
 chat_ollama = ChatOllama(
     base_url="http://192.168.1.125:11434",
@@ -43,13 +46,17 @@ prompt = ChatPromptTemplate.from_messages(
 
 @traceable
 def call_model(state: State):
-    chain = prompt | chat_ollama
-    response = chain.invoke({
-        "messages": state["messages"],
-        "user_prompt": state["user_prompt"]
-    }
-    )
-    return {"messages": [response]}
+    try:
+        chain = prompt | chat_ollama
+        response = chain.invoke({
+            "messages": state["messages"],
+            "user_prompt": state["user_prompt"]
+        }
+        )
+        return {"messages": [response]}
+    except Exception as e:
+        logger.error("Unable to invoke Ollama")
+        raise e
 
 
 workflow.add_edge(START, "model")
@@ -57,17 +64,25 @@ workflow.add_node("model", call_model)
 
 
 def generate_caution_reason(llm_prompt: str = "Why was the safety car deployed at Le Mans?") -> str:
-    app = workflow.compile()
-    response = app.invoke(
-        {'user_prompt': [HumanMessage(content=llm_prompt)]},
-        {'configurable': {'thread_id': 0}}
-    )
-    return response["messages"][-1].content
+    try:
+        app = workflow.compile()
+        response = app.invoke(
+            {'user_prompt': [HumanMessage(content=llm_prompt)]},
+            {'configurable': {'thread_id': 0}}
+        )
+        return response["messages"][-1].content
+    except Exception as e:
+        logger.error(e)
+        return ""
 
 def generate_black_flag_reason(llm_prompt: str = "Why was the black flag shown at Le Mans?") -> str:
-    app = workflow.compile()
-    response = app.invoke(
-        {'user_prompt': [HumanMessage(content=llm_prompt)]},
-        {'configurable': {'thread_id': 0}}
-    )
-    return response["messages"][-1].content
+    try:
+        app = workflow.compile()
+        response = app.invoke(
+            {'user_prompt': [HumanMessage(content=llm_prompt)]},
+            {'configurable': {'thread_id': 0}}
+        )
+        return response["messages"][-1].content
+    except Exception as e:
+        logger.error(e)
+        return ""
