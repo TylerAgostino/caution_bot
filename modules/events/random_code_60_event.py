@@ -12,10 +12,8 @@ class RestartOrderManager:
         self.out_of_place_cars = []
         self.catchup_cars = []
 
-    def add_car_to_order(self, carIdx):
+    def add_car_to_order(self, carIdx, wave_around=0, slower_class_catchup=0):
         if carIdx not in [car['CarIdx'] for car in self.order]:
-            wave_around = 0
-            slower_class_catchup = 0
             car_restart_record = {
                 'CarIdx': carIdx,
                 'CarNumber': self.sdk['DriverInfo']['Drivers'][carIdx]['CarNumber'],
@@ -47,6 +45,7 @@ class RestartOrderManager:
                 self.order[i]['ExpectedPosition'] = self.order[i]['ActualPosition']
             else:
                 car_ahead = self.order[i-1]
+                # something's wrong here, getting negative numbers
                 self.order[i]['ExpectedPosition'] = (car_ahead['ActualPosition'] - (self.one_meter * 3) +
                                                      car_ahead['WaveAround'] + car_ahead['SlowerClassCatchup'] -
                                                      car['WaveAround'] - car['SlowerClassCatchup'])
@@ -140,6 +139,7 @@ class RandomCode60Event(RandomTimedEvent):
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
                 session_time = self.sdk['SessionTime']
+            last_step = this_step
             this_step = self.get_current_running_order()
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
@@ -151,20 +151,38 @@ class RandomCode60Event(RandomTimedEvent):
 
         while not self.restart_ready.is_set():
             this_step = self.get_current_running_order()
+            # Get the class leaders
+            leaders = {}
+            classes = set(self.get_car_class(carIdx=car['CarIdx']) for car in this_step)
+            for class_ in classes:
+                cars_in_class = [car for car in this_step if self.get_car_class(carIdx=car['CarIdx']) == class_ and not car['InPits']]
+                if cars_in_class:
+                    leaders[class_] = cars_in_class[0]
+
             for car in this_step:
                 if car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order]:
                     if self.car_has_completed_lap(car, last_step, this_step):
-                        restart_order_generator.add_car_to_order(car['CarIdx'])
+                        car_class = self.get_car_class(carIdx=car['CarIdx'])
+                        class_leader = leaders[car_class]
+                        gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] else 0
+                        gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] else 0
+                        restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
                         self.logger.debug(f'Adding car {car["CarNumber"]} to order (completed lap)')
+                        self.logger.debug(f'Wave Around: {gets_wave_around}, Catch Up: {gets_catch_up}')
+                        self.logger.debug(f'Correct order: {restart_order_generator.order}')
                         continue
                 if self.car_has_left_pits(car, last_step, this_step):
-                    restart_order_generator.add_car_to_order(car['CarIdx'])
+                    car_class = self.get_car_class(carIdx=car['CarIdx'])
+                    class_leader = leaders[car_class]
+                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] else 0
+                    gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] else 0
+                    restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
                     self.logger.debug(f'Adding car {car["CarNumber"]} to order (left pits)')
+                    self.logger.debug(f'Wave Around: {gets_wave_around}, Catch Up: {gets_catch_up}')
+                    self.logger.debug(f'Correct order: {restart_order_generator.order}')
                     continue
-                self.logger.debug(f'Car {car["CarNumber"]} not added to order')
 
             correct_order = restart_order_generator.update_order()
-            self.logger.debug(f'Correct order: {restart_order_generator.order}')
 
             # Send reminders
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
@@ -215,4 +233,3 @@ class RandomCode60Event(RandomTimedEvent):
         self._chat('Green Flag!', race_control=True)
 
         self.busy_event.clear()
-
