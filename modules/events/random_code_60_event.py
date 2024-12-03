@@ -113,7 +113,7 @@ class RandomCode60Event(RandomTimedEvent):
                     if cars_incorrectly_behind:
                         session_time = self.sdk['SessionTimeRemain']
                         self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                        self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+                        self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{"s" if len(cars_incorrectly_behind)>1 else ""} by.')
                         for passed_car in cars_incorrectly_behind:
                             self._chat(f'/{passed_car} pass the {car} car.')
 
