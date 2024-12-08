@@ -219,14 +219,17 @@ class BaseEvent:
         """
         return self.get_current_running_order()[0]['CarIdx']
 
-    def wait_for_cars_to_clear_pit_lane(self):
+    def wait_for_cars_to_clear_pit_lane(self, max_time=300):
         """
         Waits for cars to clear the pit lane.
         """
-        self.logger.debug('Waiting for cars to clear pit lane.')
-        while any(self.sdk['CarIdxLapCompleted'][car['CarIdx']] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader for car in self.get_cars_on_pit_lane()):
+        max_time = int(max_time)
+        end_time = self.sdk['SessionTimeRemain'] - max_time
+        self.logger.debug(f'Waiting for cars to clear pit lane with a maximum of {max_time} seconds.')
+        while any(self.sdk['CarIdxLapCompleted'][car['CarIdx']] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader for car in self.get_cars_on_pit_lane())\
+                or self.sdk['SessionTimeRemain'] > end_time:
             self.sleep(1)
-        self.logger.debug('Cars have cleared pit lane.')
+        self.logger.debug(f'Finished waiting for cars to clear pit lane after {end_time + max_time - self.sdk['SessionTimeRemain']} seconds.')
 
     def get_wave_around_cars(self):
         """
