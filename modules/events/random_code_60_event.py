@@ -174,7 +174,7 @@ class RandomCode60Event(RandomTimedEvent):
                         for car, cars_incorrectly_behind in wrongmap.items():
                             if cars_incorrectly_behind:
                                 self.logger.warning(f'Car {car} ahead of cars {cars_incorrectly_behind} when they should be behind.')
-                                self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{'s' if len(cars_incorrectly_behind)>1 else ''} by.')
+                                self._chat(f'/{car} let the {", ".join(cars_incorrectly_behind)} car{"s" if len(cars_incorrectly_behind)>1 else ""} by.')
                                 for passed_car in cars_incorrectly_behind:
                                     self._chat(f'/{passed_car} pass the {car} car.')
                     for car in left_line:
