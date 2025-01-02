@@ -6,7 +6,7 @@ class RestartOrderManager:
     def __init__(self, sdk):
         self.order = []
         self.sdk = sdk
-        self.class_separation = False
+        self.class_separation = False # ToDo: handling of class separation
         self.one_meter = 1 / (float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', '')) * 1000)
         self.wave_around_cars = []
         self.out_of_place_cars = []
@@ -45,10 +45,10 @@ class RestartOrderManager:
                 self.order[i]['ExpectedPosition'] = self.order[i]['ActualPosition']
             else:
                 car_ahead = self.order[i-1]
-                # something's wrong here, getting negative numbers
-                self.order[i]['ExpectedPosition'] = (car_ahead['ActualPosition'] - (self.one_meter * 3) +
-                                                     car_ahead['WaveAround'] + car_ahead['SlowerClassCatchup'] -
-                                                     car['WaveAround'] - car['SlowerClassCatchup'])
+                # something's wrong here, getting negative numbers -- might be fixed now
+                self.order[i]['ExpectedPosition'] = (car_ahead['ActualPosition'] - (self.one_meter * 3) -
+                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
+                                                     car['WaveAround'] + car['SlowerClassCatchup'])
 
         # Then find anyone out of place and tell them to get back in line
         if self.order:
@@ -214,6 +214,7 @@ class RandomCode60Event(RandomTimedEvent):
             last_step = this_step
 
         self.can_separate_classes = False
+        # ToDo: handle multiple restart lanes
 
 
         self._chat('Get Ready, Code 60 will end soon.', race_control=True)
