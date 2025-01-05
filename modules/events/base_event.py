@@ -282,8 +282,7 @@ class BaseEvent:
         this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
         return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1
 
-    @staticmethod
-    def car_has_entered_pits(car, last_step, this_step):
+    def car_has_entered_pits(self, car, last_step, this_step):
         """
         Checks if a car has entered the pits.
 
@@ -295,9 +294,14 @@ class BaseEvent:
         Returns:
             bool: True if the car has entered the pits in the last step, False otherwise.
         """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['InPits'] == 1 and last_step_record['InPits'] == 0
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['InPits'] == 1 and last_step_record['InPits'] == 0
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
     @staticmethod
     def generate_random_caution_reason():
