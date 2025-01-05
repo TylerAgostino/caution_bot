@@ -29,7 +29,7 @@ def main():
     # List of available pages for navigation
     page_list = [
         pages.random_caution_bot,
-        pages.random_code_60_bot,
+        pages.random_code_69_bot,
         pages.beer_goggles,
         pages.sprint_race_dq
     ]

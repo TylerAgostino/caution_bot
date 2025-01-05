@@ -9,12 +9,12 @@ The project is designed around the concept of Events. Events have a time where t
 The `BaseEvent` class is the base class for all events. It provides a common interface for all events, including exposing the sdk, logger, and various functions that are not specific to any one event. It leaves the event sequence to be implemented by the derived classes.
 
 ### RandomTimedEvent
-An extension on the BaseEvent that takes the start and end of a time window, and randomly chooses a time within that window to trigger the event. This is used for the Random Caution and Random Code 60 events.
+An extension on the BaseEvent that takes the start and end of a time window, and randomly chooses a time within that window to trigger the event. This is used for the Random Caution and Random Code 69 events.
 
 ### RandomCautionEvent
 An event that triggers a caution at a random time within a given time window. It waits for cars on pit lane to exit before throwing the caution to prevent the 'Phantom EOL' bug.
 
-### RandomCode60Event
+### RandomCode69Event
 An event that triggers a fully custom Code 60-like event at a random time within a given time window. It provides instructions to drivers via text chat.
 
 ## Streamlit UI

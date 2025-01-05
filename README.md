@@ -7,7 +7,7 @@ While the original intention was to automate Cautions for The Beer League, this 
 ## Features
 - **Random Caution Bot** - triggers an iRacing caution at a random time within a given time window.
     - When the caution is triggered, the bot will first close pit lane, and wait for any cars already on pit lane to exit before throwing the caution. This is intended to prevent the 'Phantom EOL' bug, where cars that are on pit lane when a caution is thrown are told to let cars by, but those cars are not told to pass them.
-- **Random Code 60 Bot** - triggers a fully custom Code 60-like event at a random time within a given time window, providing instructions to drivers via text chat.
+- **Random Code 69 Bot** - triggers a fully custom Code 60-like event at a random time within a given time window, providing instructions to drivers via text chat.
     - Originally designed for longer tracks where the minimum 3 laps of pacing would take a long time. This event instructs the leader to slow down after crossing the start/finish line, and all cars to form up behind them in a frozen order. Cars that overtake or are overtaken are instructed to return to the proper order. It can instruct cars to line up double file, or restart directly from the single file order. When restarting, it monitors the leader's speed and announces the green flag when they accelerate.
 - **Sprint Race DQ** - Waits for a specific moment in the race, and issues a configurable penalty to the specified cars. Typically used to ensure drivers start Feature races from the back of the field despite their finishing position in the Sprint/Heat races.
 - **Beer Goggles** - A very simple wrapper for exposing all the data provided by the API. Meant to be used for debugging and testing the bot.

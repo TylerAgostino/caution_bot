@@ -101,7 +101,7 @@ class RestartOrderManager:
 
 
 
-class RandomCode60Event(RandomTimedEvent):
+class RandomCode69Event(RandomTimedEvent):
     """
     A class to represent a random Virtual Safety Car (VSC) event in the iRacing simulator.
 
@@ -114,8 +114,8 @@ class RandomCode60Event(RandomTimedEvent):
         reason (str): The reason for the VSC.
     """
 
-    def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 60, restart_speed_pct=150,
-                 restart_lanes=2, lane_names=None, *args, **kwargs):
+    def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
+                 restart_lanes=2, lane_names=None, reminder_frequency=8, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -134,7 +134,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.class_separation = False
         self.can_separate_classes = True
         self.can_separate_lanes = True
-        self.reminder_frequency = 8
+        self.reminder_frequency = int(reminder_frequency)
         self.restart_speed = self.max_speed_km * (int(restart_speed_pct) / 100)
         if lane_names is not None:
             self.lane_names = lane_names
@@ -157,7 +157,7 @@ class RandomCode60Event(RandomTimedEvent):
 
     def event_sequence(self):
         """
-        Executes the event sequence for a random Code 60.
+        Executes the event sequence for a random Code 69.
         """
         if self.is_caution_active() or self.busy_event.is_set():
             if self.notify_on_skipped_caution:
@@ -167,7 +167,7 @@ class RandomCode60Event(RandomTimedEvent):
         self.busy_event.set()
         self.restart_ready.clear()
         # self._chat(self.reason, race_control=True)
-        self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
+        self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
 
         last_step = self.get_current_running_order()
         session_time = self.sdk['SessionTime']
@@ -177,7 +177,7 @@ class RandomCode60Event(RandomTimedEvent):
         this_step = last_step
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
-                self._chat('Code 60 will begin at the Start/Finish Line', race_control=True)
+                self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
                 session_time = self.sdk['SessionTime']
             last_step = this_step
             this_step = self.get_current_running_order()
@@ -282,8 +282,8 @@ class RandomCode60Event(RandomTimedEvent):
             self.sleep(0.1)
 
 
-        self._chat('Get Ready, Code 60 will end soon.', race_control=True)
-        self._chat('Get Ready, Code 60 will end soon.', race_control=True)
+        self._chat('Get Ready, Code 69 will end soon.', race_control=True)
+        self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         while True:
             self._chat(f'/{leader} you control the field, go when ready')
