@@ -106,7 +106,7 @@ class BaseEvent:
         except Exception as e:
             self.logger.critical('Error sending chat message.')
             self.logger.critical(e)
-        self.sleep(0.3)
+        self.sleep(0.1)
 
     def wave_and_eol(self, car):
         """
