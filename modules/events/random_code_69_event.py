@@ -227,9 +227,9 @@ class RandomCode69Event(RandomTimedEvent):
             # Send reminders
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 # Check the leader's speed
-                if len(correct_order) > 0 and (leader_speed_generator is None or leader != restart_order_generator.order[0]['CarIdx']):
+                if len(correct_order) > 0 and (leader_speed_generator is None or leader != restart_order_generator.order[0]['CarNumber']):
                     # New leader, we need a new speed generator
-                    leader = restart_order_generator.order[0]['CarIdx']
+                    leader = restart_order_generator.order[0]['CarNumber']
                     leader_speed_generator = self.monitor_speed(leader)
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
@@ -267,9 +267,9 @@ class RandomCode69Event(RandomTimedEvent):
 
         while not self.restart_ready.is_set():
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
-                if len(lane_order_generators[0].order) > 0 and (leader_speed_generator is None or leader != lane_order_generators[0].order[0]['CarIdx']):
+                if len(lane_order_generators[0].order) > 0 and (leader_speed_generator is None or leader != lane_order_generators[0].order[0]['CarNumber']):
                     # New leader, we need a new speed generator
-                    leader = lane_order_generators[0].order[0]['CarIdx']
+                    leader = lane_order_generators[0].order[0]['CarNumber']
                     leader_speed_generator = self.monitor_speed(leader)
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
