@@ -9,7 +9,7 @@ class RestartOrderManager:
         else:
             self.order = []
         self.sdk = sdk
-        self.class_separation = False # ToDo: handling of class separation
+        self.class_separation = False
         self.one_meter = 1 / (float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', '')) * 1000)
         self.wave_around_cars = []
         self.out_of_place_cars = []
@@ -44,23 +44,23 @@ class RestartOrderManager:
                 'WaveAround': wave_around,
                 'SlowerClassCatchup': slower_class_catchup,
                 'ExpectedPosition': 0,
-                'ActualPosition': 0,
-                'EOL': 0
+                'ActualPosition': 0
             }
         else:
+            # Don't EOL everyone here, if someone pits and comes back out they should just be added to the order
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
             self.order.remove(car_restart_record)
             car_restart_record['BeganPacingTick'] = int(self.sdk['SessionTick'])
-            car_restart_record['EOL'] = 1
 
         self.order.append(car_restart_record)
+        self.update_car_positions()
 
     def update_order(self):
         # check if we've separated classes
         if self.class_separation:
-            self.order = sorted(self.order, key=lambda x: (x['EOL'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick']))
+            self.order = sorted(self.order, key=lambda x: (x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick']))
         else:
-            self.order = sorted(self.order, key=lambda x: (x['EOL'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick']))
+            self.order = sorted(self.order, key=lambda x: (x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick']))
 
         self.update_car_positions()
         return [car['CarNumber'] for car in self.order]
@@ -76,9 +76,10 @@ class RestartOrderManager:
             else:
                 car_ahead = self.order[i-1]
                 # something's wrong here, getting negative numbers -- might be fixed now
-                self.order[i]['ExpectedPosition'] = (car_ahead['ActualPosition'] - (self.one_meter * 3) -
+                self.order[i]['ExpectedPosition'] = (min(car_ahead['ActualPosition'], car_ahead['ExpectedPosition']) - (self.one_meter * 0) -
                                                      car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
-                                                     car['WaveAround'] + car['SlowerClassCatchup'])
+                                                     car['WaveAround'] + car['SlowerClassCatchup']) # EOL'd car behind waved car messes this up
+                # If the car ahead
         # Then find anyone out of place and tell them to get back in line
         if self.order:
             leader_position = self.order[0]['ActualPosition']
@@ -90,7 +91,7 @@ class RestartOrderManager:
                 if i == 0:
                     continue
                 # Identify anyone that needs to overtake the leader (they are more than a lap from where they should be)
-                if car['ExpectedPosition'] - car['ActualPosition'] > ((car['ExpectedPosition'] - leader_position) % 1):
+                if car['ExpectedPosition'] - car['ActualPosition'] > ((car['ExpectedPosition'] - leader_position) % 1): # this is wrong, EOL'd cars are being told to overtake
                     self.wave_around_cars.append(car)
                 # Identify anyone far from the car in front of them
                 elif car['ExpectedPosition'] - car['ActualPosition'] > self.one_meter * 20:
@@ -148,7 +149,7 @@ class RandomCode69Event(RandomTimedEvent):
     def send_reminders(self, order_generator):
         # Instructions to cars that are out of place
         for car in order_generator.wave_around_cars:
-            self._chat(f'/{car["CarNumber"]} Overtake the field and join at the back of the pack.')
+            self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
         for car, car_ahead in order_generator.catchup_cars:
             self._chat(f'/{car["CarNumber"]} Catch the {car_ahead["CarNumber"]} car.')
         for car, car_ahead in order_generator.out_of_place_cars:
@@ -176,6 +177,10 @@ class RandomCode69Event(RandomTimedEvent):
         lead_lap = max([car['LapCompleted'] for car in last_step])
         this_step = last_step
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
+            for car in this_step:
+                if (self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]) \
+                        or self.car_has_left_pits(car, last_step, this_step):
+                    self._chat(f'/{car["CarNumber"]} YOU ARE STILL RACING FOR AN ADDITIONAL LAP')
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
                 session_time = self.sdk['SessionTime']
@@ -195,17 +200,24 @@ class RandomCode69Event(RandomTimedEvent):
             leaders = {}
             classes = set(self.get_car_class(carIdx=car['CarIdx']) for car in this_step)
             for class_ in classes:
-                cars_in_class = [car for car in this_step if self.get_car_class(carIdx=car['CarIdx']) == class_ and not car['InPits']]
-                if cars_in_class:
-                    leaders[class_] = cars_in_class[0]
+                cars_in_class_on_track = [car for car in this_step if self.get_car_class(carIdx=car['CarIdx']) == class_ and not car['InPits']]
+                cars_in_class_in_pits = [car for car in this_step if self.get_car_class(carIdx=car['CarIdx']) == class_ and car['InPits']]
+                if cars_in_class_on_track:
+                    leader_on_track = cars_in_class_on_track[0]
+                    leader_in_pits = cars_in_class_in_pits[0] if cars_in_class_in_pits else None
+                    if leader_in_pits and leader_in_pits['LapCompleted'] > leader_on_track['LapCompleted']:
+                            leader_for_class = leader_in_pits
+                    else:
+                        leader_for_class = leader_on_track
+                    leaders[class_] = leader_for_class
 
             for car in this_step:
                 if car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order]:
-                    if self.car_has_completed_lap(car, last_step, this_step):
+                    if self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
                         car_class = self.get_car_class(carIdx=car['CarIdx'])
                         class_leader = leaders[car_class]
-                        gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] else 0
-                        gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] else 0
+                        gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader['InPits'] else 0
+                        gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] or (class_leader['InPits'] and car['total_completed'] + 0.5 < class_leader['total_completed']) else 0
                         restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
                         self.logger.debug(f'Adding car {car["CarNumber"]} to order (completed lap)')
                         self.logger.debug(f'Wave Around: {gets_wave_around}, Catch Up: {gets_catch_up}')
@@ -214,8 +226,8 @@ class RandomCode69Event(RandomTimedEvent):
                 if self.car_has_left_pits(car, last_step, this_step):
                     car_class = self.get_car_class(carIdx=car['CarIdx'])
                     class_leader = leaders[car_class]
-                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] else 0
-                    gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] else 0
+                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader['InPits'] else 0
+                    gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] or (class_leader['InPits'] and car['total_completed'] + 0.5 < class_leader['total_completed']) else 0
                     restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
                     self.logger.debug(f'Adding car {car["CarNumber"]} to order (left pits)')
                     self.logger.debug(f'Wave Around: {gets_wave_around}, Catch Up: {gets_catch_up}')
@@ -227,7 +239,7 @@ class RandomCode69Event(RandomTimedEvent):
             # Send reminders
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 # Check the leader's speed
-                if len(correct_order) > 0 and (leader_speed_generator is None or leader != restart_order_generator.order[0]['CarNumber']):
+                if len(correct_order) > 0 and (leader_speed_generator is None or leader != restart_order_generator.order[0]['CarNumber'] or leader not in [car['CarNumber'] for car in restart_order_generator.order]):
                     # New leader, we need a new speed generator
                     leader = restart_order_generator.order[0]['CarNumber']
                     leader_speed_generator = self.monitor_speed(leader)
@@ -243,14 +255,14 @@ class RandomCode69Event(RandomTimedEvent):
 
             if self.class_separation:
                 if self.can_separate_classes:
-                    self._chat(f'Performing class separation. Faster classes overtake on the {self.lane_names[0]}')
+                    self._chat(f'Performing class separation. Faster classes overtake on the {self.lane_names[0]}', race_control=True)
                 restart_order_generator.class_separation = True
                 self.can_separate_classes = False
             last_step = this_step
 
         if self.extra_lanes:
             self.restart_ready.clear()
-            self._chat(f'Forming {self.restart_lanes} restart lanes, leader in the {self.lane_names[0]} lane.')
+            self._chat(f'Forming {self.restart_lanes} restart lanes, leader in the {self.lane_names[0]} lane.', race_control=True)
             lanes_raw = [[] for _ in range(self.restart_lanes)]
             lane_order_generators = []
             i = 0
@@ -267,15 +279,15 @@ class RandomCode69Event(RandomTimedEvent):
 
         while not self.restart_ready.is_set():
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
-                if len(lane_order_generators[0].order) > 0 and (leader_speed_generator is None or leader != lane_order_generators[0].order[0]['CarNumber']):
+                if len(lane_order_generators[0].order) > 0 and (leader_speed_generator is None or leader != lane_order_generators[0].order[0]['CarNumber'] or leader not in [car['CarNumber'] for car in lane_order_generators[0].order]):
                     # New leader, we need a new speed generator
                     leader = lane_order_generators[0].order[0]['CarNumber']
                     leader_speed_generator = self.monitor_speed(leader)
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
                 for i in range(self.restart_lanes):
-                    self.send_reminders(lane_order_generators[i])
                     lane_order_generators[i].update_car_positions()
+                    self.send_reminders(lane_order_generators[i])
                 if speed_km_per_hour > self.max_speed_km:
                     self._chat(f'/{leader} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
                 session_time = self.sdk['SessionTime']

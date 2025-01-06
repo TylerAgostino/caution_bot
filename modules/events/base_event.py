@@ -71,7 +71,11 @@ class BaseEvent:
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
-        self.event_sequence()
+        try:
+            self.event_sequence()
+        except Exception as e:
+            self.logger.exception('Error in event sequence.')
+            self.logger.exception(e)
 
     def event_sequence(self):
         """
@@ -248,8 +252,7 @@ class BaseEvent:
         """
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
 
-    @staticmethod
-    def car_has_completed_lap(car, last_step, this_step):
+    def car_has_completed_lap(self, car, last_step, this_step):
         """
         Checks if a car has completed a lap.
 
@@ -261,12 +264,16 @@ class BaseEvent:
         Returns:
             bool: True if the car has completed their lap in the last step, False otherwise.
         """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['LapCompleted'] > last_step_record['LapCompleted']
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['LapCompleted'] > last_step_record['LapCompleted'] and last_step_record['LapCompleted'] > 0 and this_step_record['LapCompleted'] > 0
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
-    @staticmethod
-    def car_has_left_pits(car, last_step, this_step):
+    def car_has_left_pits(self, car, last_step, this_step):
         """
         Checks if a car has left the pits.
 
@@ -278,9 +285,14 @@ class BaseEvent:
         Returns:
             bool: True if the car has left the pits in the last step, False otherwise.
         """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
     def car_has_entered_pits(self, car, last_step, this_step):
         """
