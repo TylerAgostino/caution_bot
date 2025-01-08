@@ -118,7 +118,7 @@ class RandomCode69Event(RandomTimedEvent):
     """
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
-                 restart_lanes=2, lane_names=None, reminder_frequency=8, *args, **kwargs):
+                 lane_names=None, reminder_frequency=8, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -143,7 +143,6 @@ class RandomCode69Event(RandomTimedEvent):
             self.lane_names = lane_names
         else:
             self.lane_names = ['LEFT', 'RIGHT']
-        self.restart_lanes = int(restart_lanes)
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
         # self.reason = self.generate_random_caution_reason()
@@ -263,14 +262,15 @@ class RandomCode69Event(RandomTimedEvent):
             last_step = this_step
 
         if self.extra_lanes:
+            number_of_lanes = len(self.lane_names)
             self.restart_ready.clear()
-            self._chat(f'Forming {self.restart_lanes} restart lanes, leader in the {self.lane_names[0]} lane.', race_control=True)
-            lanes_raw = [[] for _ in range(self.restart_lanes)]
+            self._chat(f'Forming {number_of_lanes} restart lanes, leader in the {self.lane_names[0]} lane.', race_control=True)
+            lanes_raw = [[] for _ in range(number_of_lanes)]
             lane_order_generators = []
             i = 0
             for car in restart_order_generator.order:
-                lanes_raw[i % self.restart_lanes].append(car)
-                self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i % self.restart_lanes]).upper()} lane.')
+                lanes_raw[i % number_of_lanes].append(car)
+                self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i % number_of_lanes]).upper()} lane.')
                 i += 1
             for lane_cars in lanes_raw:
                 lane_order_generators.append(RestartOrderManager(self.sdk, preset_order=lane_cars))
@@ -278,6 +278,7 @@ class RandomCode69Event(RandomTimedEvent):
             self.can_separate_lanes = False
 
         else:
+            number_of_lanes = 1
             lane_order_generators = [restart_order_generator]
 
         while not self.restart_ready.is_set():
@@ -288,7 +289,7 @@ class RandomCode69Event(RandomTimedEvent):
                     leader_speed_generator = self.monitor_speed(leader['CarIdx'])
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
-                for i in range(self.restart_lanes):
+                for i in range(number_of_lanes):
                     lane_order_generators[i].update_car_positions()
                     self.send_reminders(lane_order_generators[i])
                 if speed_km_per_hour > self.max_speed_km:
@@ -297,6 +298,7 @@ class RandomCode69Event(RandomTimedEvent):
             self.sleep(0.1)
 
 
+        self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago

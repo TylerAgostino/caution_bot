@@ -22,7 +22,6 @@ def start_sequence():
             reminder_frequency=st.session_state.reminder_frequency,
             max_speed_km=st.session_state.vsc_maximum_speed,
             restart_speed_pct=st.session_state.vsc_restart_speed_pct,
-            restart_lanes=int(st.session_state.restart_lanes),
             lane_names=st.session_state.restart_lane_names.split(',')
         )
         for caution in st.session_state.vsc
@@ -51,7 +50,6 @@ def form_lanes():
         for caution in st.session_state.vsc_runner:
             if caution.busy_event.is_set():
                 caution.extra_lanes = True
-                caution.restart_lanes = int(st.session_state.restart_lanes)
                 caution.lane_names = st.session_state.restart_lane_names.split(',')
                 caution.restart_ready.set()
 
@@ -75,8 +73,7 @@ def ui():
     st.session_state.vsc_restart_speed_pct = col3.text_input("Restart Speed (% of Max)", "125", help='Green flag when the leader reaches this speed after the \'End Code 69\' button is pressed.')
     st.session_state.wave_arounds = col3.checkbox("Wave Arounds", value=True, help='Automatically let cars unlap themselves at the start of the event.')
     st.session_state.notify_skipped = col3.checkbox("Notify on Skipped Caution", help='Send a message to the chat if a caution is skipped.')
-    st.session_state.restart_lanes = col4.text_input("Restart Lanes", "2", help='How many lanes to form when the button is clicked.')
-    st.session_state.restart_lane_names = col4.text_input("Restart Lane Names", "Inside,Outside", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.")
+    st.session_state.restart_lane_names = col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.")
     st.write('---')
 
     for i, caution in enumerate(st.session_state.vsc):
