@@ -1,4 +1,4 @@
-from modules.llm import generate_caution_reason
+from modules.llm import generate_caution_reason, generate_black_flag_reason
 import streamlit as st
 
 def ui():

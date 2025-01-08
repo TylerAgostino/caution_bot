@@ -71,7 +71,11 @@ class BaseEvent:
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
-        self.event_sequence()
+        try:
+            self.event_sequence()
+        except Exception as e:
+            self.logger.exception('Error in event sequence.')
+            self.logger.exception(e)
 
     def event_sequence(self):
         """
@@ -106,7 +110,7 @@ class BaseEvent:
         except Exception as e:
             self.logger.critical('Error sending chat message.')
             self.logger.critical(e)
-        self.sleep(0.3)
+        self.sleep(0.1)
 
     def wave_and_eol(self, car):
         """
@@ -251,8 +255,7 @@ class BaseEvent:
         """
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
 
-    @staticmethod
-    def car_has_completed_lap(car, last_step, this_step):
+    def car_has_completed_lap(self, car, last_step, this_step):
         """
         Checks if a car has completed a lap.
 
@@ -264,12 +267,16 @@ class BaseEvent:
         Returns:
             bool: True if the car has completed their lap in the last step, False otherwise.
         """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['LapCompleted'] > last_step_record['LapCompleted']
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['LapCompleted'] > last_step_record['LapCompleted'] and last_step_record['LapCompleted'] > 0 and this_step_record['LapCompleted'] > 0
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
-    @staticmethod
-    def car_has_left_pits(car, last_step, this_step):
+    def car_has_left_pits(self, car, last_step, this_step):
         """
         Checks if a car has left the pits.
 
@@ -281,9 +288,35 @@ class BaseEvent:
         Returns:
             bool: True if the car has left the pits in the last step, False otherwise.
         """
-        last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
-        this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-        return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['InPits'] == 0 and last_step_record['InPits'] == 1  and last_step_record['LapCompleted'] > 0 and this_step_record['LapCompleted'] > 0
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
+
+    def car_has_entered_pits(self, car, last_step, this_step):
+        """
+        Checks if a car has entered the pits.
+
+        Args:
+            car (dict): The car to check.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
+
+        Returns:
+            bool: True if the car has entered the pits in the last step, False otherwise.
+        """
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['InPits'] == 1 and last_step_record['InPits'] == 0  and last_step_record['LapCompleted'] > 0 and this_step_record['LapCompleted'] > 0
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
     @staticmethod
     def generate_random_caution_reason():
@@ -304,3 +337,95 @@ class BaseEvent:
             str: A random black flag reason.
         """
         return generate_black_flag_reason()
+
+    def monitor_speed(self, carIdx):
+        """
+        Yields the speed of a car.
+
+        Args:
+            carIdx (int): The car index to monitor.
+        """
+        carIdx = int(carIdx)
+        speeds = {
+            'speed': 0,
+            'last_location': self.sdk['CarIdxLapDistPct'][carIdx],
+            'last_time': self.sdk['SessionTime']
+        }
+        while True:
+            try:
+                distance_in_lap = (1 + self.sdk['CarIdxLapDistPct'][carIdx] - speeds['last_location']) % 1
+                time_elapsed = (self.sdk['SessionTime'] - speeds['last_time'])
+                km_per_lap = float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', ''))
+                seconds_per_hour = 3600
+                speed = distance_in_lap / time_elapsed * km_per_lap * seconds_per_hour
+                speeds = {
+                    'speed': speed,
+                    'last_location': self.sdk['CarIdxLapDistPct'][carIdx],
+                    'last_time': self.sdk['SessionTime']
+                }
+                yield speeds['speed']
+            except ZeroDivisionError:
+                self.logger.error('Zero division error in speed calculation.')
+                yield 0
+
+    def multi_lane_restart(self, order: list[int], lanes: int = 2, lane_names: list[str] = ['Left', 'Right'],
+                           restart_flag: threading.Event = threading.Event(), reminder_frequency: int = 10):
+        # make sure the lists are the same length
+        if len(lane_names) != lanes:
+            raise ValueError('The number of lane names must match the number of lanes')
+        # split the order into lanes
+        lane_order = [order[i::lanes] for i in range(lanes)]
+        # send the cars to their lanes
+        for i, lane in enumerate(lane_order):
+            for car in lane:
+                car_ahead = lane[lane.index(car) - 1] if lane.index(car) > 0 else None
+                message = f'/{car} line up in the {str(lane_names[i]).upper()} lane'
+                if car_ahead:
+                    message += f' behind the #{car_ahead}'
+                self._chat(message)
+
+        # make sure everyone stays in position
+        last_reminder = self.sdk['SessionTime']
+        last_longer_reminder = self.sdk['SessionTime']
+        while not restart_flag.is_set():
+            out_of_position = []
+            current_order = [c['CarNumber'] for c in self.get_current_running_order()]
+            for i, lane in enumerate(lane_order):
+                for car in lane:
+                    cars_incorrectly_behind = [c for c in current_order[current_order.index(car):]  # is behind
+                                               if c in lane[:lane.index(car)] # should be in front
+                                               ]
+                    if cars_incorrectly_behind:
+                        out_of_position.append((car, cars_incorrectly_behind))
+
+            if self.sdk['SessionTime'] - last_reminder > reminder_frequency:
+                for car, cars in out_of_position:
+                    self._chat(f'/{car} let the #{", ".join(cars)} by.')
+                    for c in cars:
+                        self._chat(f'/{c} pass the #{car}.')
+                last_reminder = self.sdk['SessionTime']
+
+            if self.sdk['SessionTime'] - last_longer_reminder > reminder_frequency*3:
+                # remind cars what lane they're in
+                for i, lane in enumerate(lane_order):
+                    for car in lane:
+                        self._chat(f'/{car} {str(lane_names[i]).upper()} lane.')
+                last_longer_reminder = self.sdk['SessionTime']
+
+        return lane_order
+
+    def get_car_class(self, carIdx=None, car_number = None):
+        if carIdx is None:
+            carIdx = [car['CarIdx'] for car in self.sdk['DriverInfo']['Drivers'] if car['CarNumber'] == car_number][0]
+        car_class = self.sdk['CarIdxClass'][carIdx]
+        return car_class
+
+    def get_fastest_lap_for_class(self, car_class):
+        classes = self.sdk['CarIdxClass']
+        best_laps = self.sdk['CarIdxBestLapTime']
+        best_lap = None
+        for i, c in enumerate(classes):
+            if c == car_class:
+                if best_lap is None or best_laps[i] < best_lap:
+                    best_lap = best_laps[i]
+        return best_lap

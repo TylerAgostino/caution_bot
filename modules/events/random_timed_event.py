@@ -54,7 +54,11 @@ class RandomTimedEvent(BaseEvent):
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.wait_for_start()
-        self.event_sequence()
+        try:
+            self.event_sequence()
+        except Exception as e:
+            self.logger.exception('Error in event sequence.')
+            self.logger.exception(e)
 
 
 class TimedEvent(RandomTimedEvent):

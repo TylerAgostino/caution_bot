@@ -29,7 +29,7 @@ def main():
     # List of available pages for navigation
     page_list = [
         pages.random_caution_bot,
-        pages.random_code_60_bot,
+        pages.random_code_69_bot,
         pages.beer_goggles,
         pages.sprint_race_dq
     ]
@@ -49,7 +49,10 @@ def main():
         st.session_state.logger.handlers[0].setLevel(st.session_state.log_level)  # Update the logger's level
         with st.container(height=450):
             # Read and reverse the log content for display
-            log_content = '\n'.join(open(st.session_state.logfile).read().split('\f')[::-1])
+            log_lines = open(st.session_state.logfile).read().split('\f')[::-1]
+            if len(log_lines) > 1000:
+                log_lines = log_lines[:1000]
+            log_content = '\n'.join(log_lines)
             st.code(log_content, language='log', wrap_lines=False)  # Display the log content in a text area
 
 if __name__ == '__main__':
