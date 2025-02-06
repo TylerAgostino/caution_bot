@@ -46,13 +46,14 @@ class RestartOrderManager:
                 'WaveAround': wave_around,
                 'SlowerClassCatchup': slower_class_catchup,
                 'ExpectedPosition': 0,
-                'ActualPosition': 0
+                'ActualPosition': 0,
+                'LatePit': 0
             }
         else:
-            # Don't EOL everyone here, if someone pits and comes back out they should just be added to the order
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
             self.order.remove(car_restart_record)
             car_restart_record['BeganPacingTick'] = int(self.sdk['SessionTick'])
+            car_restart_record['LatePit'] = 1
 
         self.order.append(car_restart_record)
         self.update_car_positions()
@@ -60,10 +61,9 @@ class RestartOrderManager:
     def update_order(self):
         # check if we've separated classes
         if self.class_separation:
-            self.order = sorted(self.order, key=lambda x: (x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick']))
+            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick']))
         else:
-            self.order = sorted(self.order, key=lambda x: (x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick']))
-
+            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick']))
         self.update_car_positions()
         return [car['CarNumber'] for car in self.order]
 
