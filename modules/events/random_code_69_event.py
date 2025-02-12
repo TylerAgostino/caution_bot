@@ -220,15 +220,18 @@ class RandomCode69Event(RandomTimedEvent):
                 )):
                     car_class = self.get_car_class(carIdx=car['CarIdx'])
                     class_leader = leaders[car_class]
-                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader['InPits'] else 0
-                    gets_wave_around = 1 if car['LapCompleted'] < class_leader['LapCompleted'] or (class_leader['InPits'] and car['total_completed'] + 0.5 < class_leader['total_completed']) else 0
-                    if gets_wave_around:
-                        self.logger.debug(f'Laps Completed: {car['LapCompleted']}')
-                        self.logger.debug(f'Class Leader Laps Completed: {class_leader['LapCompleted']}')
 
-                        self.logger.debug(f'Class Leader in pits: {class_leader['InPits']}')
-                        self.logger.debug(f'Total Completed: {car['total_completed']}')
-                        self.logger.debug(f'Class Leader Total Completed: {class_leader['total_completed']}')
+                    distance_completed = car['total_completed']
+                    class_leader_distance_completed = class_leader['total_completed']
+                    class_leader_in_pits = class_leader['InPits']
+
+                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader_in_pits else 0
+                    gets_wave_around = 1 if (1 < distance_completed < class_leader_distance_completed-1) or (class_leader_in_pits and distance_completed + 0.5 < class_leader_distance_completed) else 0
+                    if gets_wave_around:
+                        self.logger.debug(f'Laps Completed: {distance_completed}')
+                        self.logger.debug(f'Class Leader Laps Completed: {class_leader_distance_completed}')
+
+                        self.logger.debug(f'Class Leader in pits: {class_leader_in_pits}')
 
                     restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
                     if len(restart_order_generator.order) > 1:
