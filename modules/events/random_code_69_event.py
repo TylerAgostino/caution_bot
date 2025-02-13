@@ -79,8 +79,8 @@ class RestartOrderManager:
                 car_ahead = self.order[i-1]
                 # something's wrong here, getting negative numbers -- might be fixed now
                 self.order[i]['ExpectedPosition'] = (min(car_ahead['ActualPosition'], car_ahead['ExpectedPosition']) - (self.one_meter * 0.1) -
-                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
-                                                     car['WaveAround'] + car['SlowerClassCatchup']) # EOL'd car behind waved car messes this up
+                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup']  - car_ahead['LatePit'] +
+                                                     car['WaveAround'] + car['SlowerClassCatchup'] + car['LatePit']) # EOL'd car behind waved car messes this up
                 # If the car ahead
         # Then find anyone out of place and tell them to get back in line
         if self.order:
