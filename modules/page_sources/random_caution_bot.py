@@ -1,7 +1,7 @@
 import random
 import streamlit as st
 import uuid
-from modules.events.random_caution_event import RandomCautionEvent
+from modules.events.random_caution_event import RandomCautionEvent, LapCautionEvent
 from modules.subprocess_manager import SubprocessManager
 import logging
 from streamlit_autorefresh import st_autorefresh
@@ -22,19 +22,39 @@ def start_sequence():
     """
     Starts the caution sequence by initializing RandomCaution instances based on the session state settings.
     """
-    cautions = [
-        RandomCautionEvent(
-            pit_close_advance_warning=st.session_state.pit_close_advance_warning,
-            pit_close_max_duration=st.session_state.pit_close_maximum_duration,
-            max_laps_behind_leader=st.session_state.max_laps_behind_leader,
-            wave_arounds=st.session_state.wave_arounds,
-            min_time=int(st.session_state.caution_window_start) * 60,
-            max_time=int(st.session_state.caution_window_end) * 60,
-            notify_on_skipped_caution=st.session_state.notify_skipped
-        )
-        for caution in st.session_state.cautions
-        if random.randrange(0, 100) <= int(caution['likelihood'])
-    ]
+    window_type = st.session_state.get('caution_window_type', '')
+    if window_type == 'Time':
+        cautions = [
+            RandomCautionEvent(
+                pit_close_advance_warning=st.session_state.pit_close_advance_warning,
+                pit_close_max_duration=st.session_state.pit_close_maximum_duration,
+                max_laps_behind_leader=st.session_state.max_laps_behind_leader,
+                wave_arounds=st.session_state.wave_arounds,
+                min_time=int(st.session_state.caution_window_start) * 60,
+                max_time=int(st.session_state.caution_window_end) * 60,
+                notify_on_skipped_caution=st.session_state.notify_skipped,
+                full_sequence=st.session_state.pit_close_sequence
+            )
+            for caution in st.session_state.cautions
+            if random.randrange(0, 100) <= int(caution['likelihood'])
+        ]
+    elif window_type == 'Lap':
+        cautions = [
+            LapCautionEvent(
+                pit_close_advance_warning=st.session_state.pit_close_advance_warning,
+                pit_close_max_duration=st.session_state.pit_close_maximum_duration,
+                max_laps_behind_leader=st.session_state.max_laps_behind_leader,
+                wave_arounds=st.session_state.wave_arounds,
+                min_lap=int(st.session_state.caution_window_start),
+                max_lap=int(st.session_state.caution_window_end),
+                notify_on_skipped_caution=st.session_state.notify_skipped,
+                full_sequence=st.session_state.pit_close_sequence
+            )
+            for caution in st.session_state.cautions
+            if random.randrange(0, 100) <= int(caution['likelihood'])
+        ]
+    else:
+        raise ValueError('Invalid caution window type.')
 
     st.session_state.caution_runner = cautions
     st.session_state.spm = SubprocessManager([c.run for c in cautions])
@@ -61,13 +81,15 @@ def ui():
 
     st.header("Global Settings")
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-    st.session_state.caution_window_start = col1.text_input("Window Start (min)", "5")
-    st.session_state.caution_window_end = col2.text_input("Window End (min)", "-15")
-    st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5")
-    st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120")
+    st.session_state.caution_window_start = col1.text_input("Window Start (min/lap)", "5")
+    st.session_state.caution_window_type = col1.radio("Window Type", ["Time", "Lap"], index=0)
+    st.session_state.caution_window_end = col2.text_input("Window End (min/lap)", "-15")
+    st.session_state.pit_close_sequence = col2.checkbox("Full Pit Close Sequence", value=True)
+    st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5", disabled=not st.session_state.pit_close_sequence)
+    st.session_state.wave_arounds = col3.checkbox("Wave Arounds", value=True)
+    st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120", disabled=not st.session_state.pit_close_sequence)
+    st.session_state.notify_skipped = col4.checkbox("Notify on Skipped Caution")
     st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")
-    st.session_state.wave_arounds = col6.checkbox("Wave Arounds", value=True)
-    st.session_state.notify_skipped = col7.checkbox("Notify on Skipped Caution")
     st.write('---')
 
     for i, caution in enumerate(st.session_state.cautions):

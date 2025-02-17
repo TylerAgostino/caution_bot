@@ -2,7 +2,7 @@ import streamlit as st
 import uuid
 from streamlit_autorefresh import st_autorefresh
 import random
-from modules.events.random_code_69_event import RandomCode69Event
+from modules.events.random_code_69_event import RandomTimedCode69Event, RandomLapCode69Event
 from modules.subprocess_manager import SubprocessManager
 
 
@@ -13,20 +13,37 @@ def empty_vsc():
     return {'id': uuid.uuid4(), 'likelihood': 75, 'instance': None}
 
 def start_sequence():
-    cautions = [
-        RandomCode69Event(
-            wave_arounds=st.session_state.wave_arounds,
-            min_time=int(st.session_state.vsc_window_start) * 60,
-            max_time=int(st.session_state.vsc_window_end) * 60,
-            notify_on_skipped_caution=st.session_state.notify_skipped,
-            reminder_frequency=st.session_state.reminder_frequency,
-            max_speed_km=st.session_state.vsc_maximum_speed,
-            restart_speed_pct=st.session_state.vsc_restart_speed_pct,
-            lane_names=st.session_state.restart_lane_names.split(',')
-        )
-        for caution in st.session_state.vsc
-        if random.randrange(0, 100) <= int(caution['likelihood'])
-    ]
+    window_type = st.session_state.get('vsc_type', '')
+    if window_type == 'Time':
+        cautions = [
+            RandomTimedCode69Event(
+                wave_arounds=st.session_state.wave_arounds,
+                min_time=int(st.session_state.vsc_window_start) * 60,
+                max_time=int(st.session_state.vsc_window_end) * 60,
+                notify_on_skipped_caution=st.session_state.notify_skipped,
+                reminder_frequency=st.session_state.reminder_frequency,
+                max_speed_km=st.session_state.vsc_maximum_speed,
+                restart_speed_pct=st.session_state.vsc_restart_speed_pct,
+                lane_names=st.session_state.restart_lane_names.split(',')
+            )
+            for caution in st.session_state.vsc
+            if random.randrange(0, 100) <= int(caution['likelihood'])
+        ]
+    elif window_type == 'Lap':
+        cautions = [
+            RandomLapCode69Event(
+                wave_arounds=st.session_state.wave_arounds,
+                min_lap=int(st.session_state.vsc_window_start),
+                max_lap=int(st.session_state.vsc_window_end),
+                notify_on_skipped_caution=st.session_state.notify_skipped,
+                reminder_frequency=st.session_state.reminder_frequency,
+                max_speed_km=st.session_state.vsc_maximum_speed,
+                restart_speed_pct=st.session_state.vsc_restart_speed_pct,
+                lane_names=st.session_state.restart_lane_names.split(',')
+            )
+            for caution in st.session_state.vsc
+            if random.randrange(0, 100) <= int(caution['likelihood'])
+        ]
 
     st.session_state.vsc_runner = cautions
     st.session_state.vsc_spm = SubprocessManager([c.run for c in cautions])
@@ -65,15 +82,16 @@ def ui():
     st.session_state.setdefault('refresh', False)
 
     st.header("Global Settings")
-    col1, col2, col3, col4 = st.columns(4)
-    st.session_state.vsc_window_start = col1.text_input("Window Start (min)", "5", help='Start of the window in minutes.')
-    st.session_state.vsc_window_end = col1.text_input("Window End (min)", "-15", help='End of the window in minutes. Negative values are subtracted from the end of the session.')
+    col0, col1, col2, col3, col4 = st.columns(5)
+    st.session_state.vsc_type = col0.radio("VSC Type", ['Time', 'Lap'], index=0, help='The type of window to trigger the VSC.')
+    st.session_state.vsc_window_start = col1.text_input("Window Start (min/lap)", "5", help='Start of the window in minutes.')
+    st.session_state.vsc_window_end = col1.text_input("Window End (min/lap)", "-15", help='End of the window in minutes. Negative values are subtracted from the end of the session.')
     st.session_state.reminder_frequency = col2.text_input("Reminder Frequency", "10", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.')
     st.session_state.vsc_maximum_speed = col2.text_input("Max VSC Speed (kph)", "69", help='Pesters the leader to stay below this speed.')
     st.session_state.vsc_restart_speed_pct = col3.text_input("Restart Speed (% of Max)", "125", help='Green flag when the leader reaches this speed after the \'End Code 69\' button is pressed.')
     st.session_state.wave_arounds = col3.checkbox("Wave Arounds", value=True, help='Automatically let cars unlap themselves at the start of the event.')
-    st.session_state.notify_skipped = col3.checkbox("Notify on Skipped Caution", help='Send a message to the chat if a caution is skipped.')
     st.session_state.restart_lane_names = col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.")
+    st.session_state.notify_skipped = col4.checkbox("Notify on Skipped Caution", help='Send a message to the chat if a caution is skipped.')
     st.write('---')
 
     for i, caution in enumerate(st.session_state.vsc):
