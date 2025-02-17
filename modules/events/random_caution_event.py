@@ -82,3 +82,20 @@ class RandomCautionEvent(RandomTimedEvent):
         self.logger.debug('Caution has ended.')
 
         self.busy_event.clear()
+
+from modules.events.random_lap_event import RandomLapEvent
+class LapCautionEvent(RandomLapEvent, RandomCautionEvent):
+    """
+    A class to represent a lap caution event in the iRacing simulator.
+    """
+    def __init__(self, *args, **kwargs):
+        """
+        Initializes the LapCautionEvent class.
+        """
+        super().__init__(*args, **kwargs)
+
+    def event_sequence(self):
+        """
+        Executes the event sequence for a lap caution.
+        """
+        super().event_sequence()
