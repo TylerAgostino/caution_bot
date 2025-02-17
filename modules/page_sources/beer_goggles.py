@@ -102,11 +102,14 @@ def ui():
         session_info = {
             'DriverInfo': {k: v for k,v in st.session_state.goggle_event.sdk['DriverInfo'].items() if k != 'Drivers'},
             'Drivers': st.session_state.goggle_event.sdk['DriverInfo']['Drivers'],
-            'QualifyResultsInfo': st.session_state.goggle_event.sdk['QualifyResultsInfo']['Results'],
             'SplitTimeInfo': st.session_state.goggle_event.sdk['SplitTimeInfo']['Sectors'],
             'WeekendInfo': {k: v for k,v in st.session_state.goggle_event.sdk['WeekendInfo'].items() if k != 'WeekendOptions' and k != 'TelemetryOptions'},
             'WeekendOptions': st.session_state.goggle_event.sdk['WeekendInfo']['WeekendOptions'],
         }
+        try:
+            session_info['QualifyResultsInfo'] = st.session_state.goggle_event.sdk['QualifyResultsInfo']['Results']
+        except:
+            pass
         with st.expander("Static Info"):
             tabs = st.tabs(session_info.keys())
             for i, (section, fields) in enumerate(session_info.items()):
@@ -114,8 +117,11 @@ def ui():
                     if isinstance(fields, list):
                         st.dataframe(fields)
                     else:
-                        for field, value in fields.items():
-                            st.metric(field, value)
+                        try:
+                            for field, value in fields.items():
+                                st.metric(field, value)
+                        except:
+                            pass
             # for key, value in session_info.items():
             #     st.subheader(key)
             #     st.dataframe(value)
