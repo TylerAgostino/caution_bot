@@ -34,7 +34,7 @@ class RandomTimedEvent(BaseEvent):
         """
         total_session_time = self.sdk['SessionTimeTotal']
         time_remaining = self.sdk['SessionTimeRemain']
-        return (total_session_time - time_remaining >= self.start_time - adjustment) and time_remaining > 1
+        return (total_session_time - time_remaining >= self.start_time + adjustment) and time_remaining > 1
 
     def wait_for_start(self):
         """
