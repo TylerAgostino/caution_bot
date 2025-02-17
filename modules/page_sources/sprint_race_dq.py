@@ -3,6 +3,8 @@ import threading
 import streamlit as st
 import uuid
 from modules.events.random_timed_event import TimedEvent
+from streamlit_autorefresh import st_autorefresh
+from modules.subprocess_manager import SubprocessManager
 
 
 class SprintRaceDQEvent(TimedEvent):
@@ -18,15 +20,16 @@ class SprintRaceDQEvent(TimedEvent):
             self._chat(f'!bl {car["car_number"]} {self.penalty}')
 
 def start_sequence():
-    with st.status('DQ Bot Armed'):
-        dq_event = SprintRaceDQEvent(st.session_state.dq_cars, event_time=st.session_state.dq_time, penalty=st.session_state.dq_penalty)
-        thread = threading.Thread(target=dq_event.run)
-        st.session_state.bot = dq_event
-        thread.start()
+    st.session_state.spm = SubprocessManager([SprintRaceDQEvent(st.session_state.dq_cars, event_time=st.session_state.dq_time, penalty=st.session_state.dq_penalty).run])
+    st.session_state.spm.start()
+    st.session_state.refresh = True
 
 def end_sequence():
-    if 'bot' in st.session_state:
-        st.session_state.bot.cancel_event.set()
+    if 'spm' in st.session_state:
+        st.session_state.spm.stop()
+    st.session_state.refresh = False
+    st_autorefresh(limit=1)
+
 
 def ui():
     st.session_state.setdefault('dq_cars', [
