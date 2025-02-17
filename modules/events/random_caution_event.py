@@ -11,7 +11,7 @@ class RandomCautionEvent(RandomTimedEvent):
         notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
     """
 
-    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True, notify_on_skipped_caution=False, *args, **kwargs):
+    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True, notify_on_skipped_caution=False, full_sequence=True, *args, **kwargs):
         """
         Initializes the RandomCaution class.
 
@@ -25,6 +25,7 @@ class RandomCautionEvent(RandomTimedEvent):
         self.pit_close_max_duration = int(pit_close_max_duration)
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
+        self.full_sequence = full_sequence
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
@@ -38,8 +39,9 @@ class RandomCautionEvent(RandomTimedEvent):
             return
 
         self.busy_event.set()
-        self.close_pits(self.pit_close_advance_warning)
-        self.wait_for_cars_to_clear_pit_lane(self.pit_close_max_duration)
+        if self.full_sequence:
+            self.close_pits(self.pit_close_advance_warning)
+            self.wait_for_cars_to_clear_pit_lane(self.pit_close_max_duration)
         self.throw_caution()
 
         if self.wave_arounds:
