@@ -13,6 +13,7 @@ class RestartOrderManager:
         self.one_meter = 1 / (float(str(self.sdk['WeekendInfo']['TrackLength']).replace(' km', '')) * 1000)
         self.wave_around_cars = []
         self.out_of_place_cars = []
+        self.displaced_cars = []
         self.catchup_cars = []
         self.race_classes = self.sdk['CarIdxClass']
         self.class_lap_times = {}
@@ -47,7 +48,9 @@ class RestartOrderManager:
                 'SlowerClassCatchup': slower_class_catchup,
                 'ExpectedPosition': 0,
                 'ActualPosition': 0,
-                'LatePit': 0
+                'LatePit': 0,
+                'IncorrectOvertakes': [],
+                'IncorrectlyOvertakenBy': []
             }
         else:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
@@ -76,16 +79,28 @@ class RestartOrderManager:
             if i == 0:
                 self.order[i]['ExpectedPosition'] = self.order[i]['ActualPosition']
             else:
+                self.order[i]['IncorrectOvertakes'] = []
+                self.order[i]['IncorrectlyOvertakenBy'] = []
+                for car_ahead in self.order[:i]:
+                    wave_adjusted_car_ahead_position = car_ahead['ActualPosition'] - car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
+                    if car['ActualPosition'] > wave_adjusted_car_ahead_position and not self.sdk['CarIdxOnPitRoad'][car_ahead['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
+                        self.order[i]['IncorrectOvertakes'].append(car_ahead['CarNumber'])
+                for car_behind in self.order[i+1:]:
+                    wave_adjusted_car_behind_position = car_behind['ActualPosition'] + car_behind['WaveAround'] + car_behind['SlowerClassCatchup'] - car['WaveAround'] - car['SlowerClassCatchup']
+                    if car['ActualPosition'] < wave_adjusted_car_behind_position and not self.sdk['CarIdxOnPitRoad'][car_behind['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
+                        self.order[i]['IncorrectlyOvertakenBy'].append(car_behind['CarNumber'])
+
+
                 car_ahead = self.order[i-1]
-                # something's wrong here, getting negative numbers -- might be fixed now
                 self.order[i]['ExpectedPosition'] = (min(car_ahead['ActualPosition'], car_ahead['ExpectedPosition']) - (self.one_meter * 0.1) -
-                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup']  - car_ahead['LatePit'] +
-                                                     car['WaveAround'] + car['SlowerClassCatchup'] + car['LatePit']) # EOL'd car behind waved car messes this up
-                # If the car ahead
-        # Then find anyone out of place and tell them to get back in line
+                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
+                                                     car['WaveAround'] + car['SlowerClassCatchup'])
+
+
         if self.order:
             leader_position = self.order[0]['ActualPosition']
             self.out_of_place_cars = []
+            self.displaced_cars = []
             self.catchup_cars = []
             self.wave_around_cars = []
             for i, car in enumerate(self.order):
@@ -96,11 +111,15 @@ class RestartOrderManager:
                 if car['ExpectedPosition'] - car['ActualPosition'] > ((1 + car['ExpectedPosition'] - leader_position) % 1): # this is wrong, EOL'd cars are being told to overtake
                     self.wave_around_cars.append(car)
                 # Identify anyone far from the car in front of them
-                elif car['ExpectedPosition'] - car['ActualPosition'] > self.one_meter * 200:
+                if car['ExpectedPosition'] - car['ActualPosition'] > self.one_meter * 200:
                     self.catchup_cars.append((car, self.order[i-1]))
-                # Identify anyone in front of cars they should be behind
-                elif car['ActualPosition'] > car['ExpectedPosition']:
-                    self.out_of_place_cars.append((car, self.order[i-1]))
+                # # Identify anyone in front of cars they should be behind
+                # elif car['ActualPosition'] > car['ExpectedPosition']:
+                #     self.out_of_place_cars.append((car, self.order[i-1]))
+                if car['IncorrectOvertakes']:
+                    self.out_of_place_cars.append(car)
+                if car['IncorrectlyOvertakenBy']:
+                    self.displaced_cars.append(car)
 
 
 
@@ -153,9 +172,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
         for car, car_ahead in order_generator.catchup_cars:
             self._chat(f'/{car["CarNumber"]} Catch the {car_ahead["CarNumber"]} car.')
-        for car, car_ahead in order_generator.out_of_place_cars:
-            self._chat(f'/{car["CarNumber"]} Let the {car_ahead["CarNumber"]} car by.')
-            self._chat(f'/{car_ahead["CarNumber"]} Pass the {car["CarNumber"]} car.')
+        for car in order_generator.out_of_place_cars:
+            self._chat(f'/{car["CarNumber"]} Let the {", ".join(car['IncorrectOvertakes'])} car{"s" if len(car['IncorrectOvertakes']) > 1 else ""} by.')
+        for car in order_generator.displaced_cars:
+            self._chat(f'/{car["CarNumber"]} Pass the {", ".join(car["IncorrectlyOvertakenBy"])} car{"s" if len(car["IncorrectlyOvertakenBy"]) > 1 else ""}.')
 
     def event_sequence(self):
         """
@@ -215,9 +235,13 @@ class RandomTimedCode69Event(RandomTimedEvent):
             for car in this_step:
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
-                        or (
+                or (
                     self.car_has_left_pits(car, last_step, this_step)
-                )):
+                )
+                or (car['CarIdx'] in [c['CarIdx'] for c in restart_order_generator.order] and
+                      self.car_has_entered_pits(car, last_step, this_step)
+                        )
+                ):
                     car_class = self.get_car_class(carIdx=car['CarIdx'])
                     class_leader = leaders[car_class]
 
@@ -234,7 +258,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         self.logger.debug(f'Class Leader in pits: {class_leader_in_pits}')
 
                     restart_order_generator.add_car_to_order(car['CarIdx'], wave_around=gets_wave_around, slower_class_catchup=gets_catch_up)
-                    if len(restart_order_generator.order) > 1:
+                    if len(restart_order_generator.order) > 1 and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
                         self._chat(f'/{car["CarNumber"]} Catch the field and look for further instructions')
                     else:
                         self._chat(f'/{car["CarNumber"]} Slow down and look for further instructions')
@@ -329,9 +353,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self._chat('Green Flag!', race_control=True)
 
         for i in range(len(lane_order_generators)):
-            if lane_order_generators[i].out_of_place_cars:
-                for car, car_ahead in lane_order_generators[i].out_of_place_cars:
-                    self._chat(f'/{car["CarNumber"]} RESTART VIOLATION will be investigated after the race.')
+            for car in lane_order_generators[i].out_of_place_cars:
+                self._chat(f'/{car["CarNumber"]} RESTART VIOLATION will be investigated after the race.')
 
         self.busy_event.clear()
 
