@@ -11,7 +11,9 @@ class RandomCautionEvent(RandomTimedEvent):
         notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
     """
 
-    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True, notify_on_skipped_caution=False, full_sequence=True, *args, **kwargs):
+    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True,
+                 notify_on_skipped_caution=False, full_sequence=True, wave_around_lap = 1,  extend_laps = 0,
+                 *args, **kwargs):
         """
         Initializes the RandomCaution class.
 
@@ -26,6 +28,8 @@ class RandomCautionEvent(RandomTimedEvent):
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.full_sequence = full_sequence
+        self.wave_around_lap = int(wave_around_lap)
+        self.extend_laps = int(extend_laps)
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
@@ -35,6 +39,8 @@ class RandomCautionEvent(RandomTimedEvent):
         if self.is_caution_active() or self.busy_event.is_set():
             self.logger.debug('Additional caution skipped due to active caution.')
             if self.notify_on_skipped_caution:
+                import random
+                self.sleep(random.randint(1, 5))
                 self._chat('Additional caution skipped due to active caution.')
             return
 
@@ -44,17 +50,28 @@ class RandomCautionEvent(RandomTimedEvent):
             self.wait_for_cars_to_clear_pit_lane(self.pit_close_max_duration)
         self.throw_caution()
 
-        if self.wave_arounds:
-            pace_car = next(driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1)['CarIdx']
-            initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
-            self.logger.debug(f'Pace car starting on lap {initial_lap}')
+        pace_car = next(driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1)['CarIdx']
+        initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
+        self.logger.debug(f'Pace car starting on lap {initial_lap}')
 
+        def await_pace_car_lap():
             while not (0.4 <= self.sdk['CarIdxLapDistPct'][pace_car] <= 0.5):
                 self.sleep(1)
 
             while self.sdk['CarIdxLapCompleted'][pace_car] < initial_lap + 1:
                 self.sleep(1)
             self.logger.debug('Pace car has completed a lap.')
+
+        if self.extend_laps > 0:
+            await_pace_car_lap()
+            self._chat(f'!p +{self.extend_laps}')
+
+        if self.wave_arounds:
+            laps_completed = 1
+            while laps_completed < self.wave_around_lap:
+                await_pace_car_lap()
+                laps_completed += 1
+            self.logger.debug('Ready for Wave Arounds.')
 
             current_positions = self.get_wave_around_cars()
 
@@ -73,6 +90,9 @@ class RandomCautionEvent(RandomTimedEvent):
                         self.wave_and_eol(car)
                 last_step = this_step
                 self.sleep(1)
+                if not self.is_caution_active():
+                    self.logger.warn('Caution ended during wave arounds.')
+                    break
 
             self.logger.info('Wave arounds complete.')
 

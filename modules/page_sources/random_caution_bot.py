@@ -33,7 +33,9 @@ def start_sequence():
                 min_time=int(st.session_state.caution_window_start) * 60,
                 max_time=int(st.session_state.caution_window_end) * 60,
                 notify_on_skipped_caution=st.session_state.notify_skipped,
-                full_sequence=st.session_state.pit_close_sequence
+                full_sequence=st.session_state.pit_close_sequence,
+                wave_around_lap=st.session_state.wave_around_lap,
+                extend_laps=st.session_state.extend_laps
             )
             for caution in st.session_state.cautions
             if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -48,7 +50,9 @@ def start_sequence():
                 min_lap=int(st.session_state.caution_window_start),
                 max_lap=int(st.session_state.caution_window_end),
                 notify_on_skipped_caution=st.session_state.notify_skipped,
-                full_sequence=st.session_state.pit_close_sequence
+                full_sequence=st.session_state.pit_close_sequence,
+                wave_around_lap=st.session_state.wave_around_lap,
+                extend_laps=st.session_state.extend_laps
             )
             for caution in st.session_state.cautions
             if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -80,7 +84,7 @@ def ui():
         st.session_state.cautions = [empty_caution(), empty_caution()]
 
     st.header("Global Settings")
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     st.session_state.caution_window_start = col1.text_input("Window Start (min/lap)", "5")
     st.session_state.caution_window_type = col1.radio("Window Type", ["Time", "Lap"], index=0)
     st.session_state.caution_window_end = col2.text_input("Window End (min/lap)", "-15")
@@ -90,6 +94,8 @@ def ui():
     st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120", disabled=not st.session_state.pit_close_sequence)
     st.session_state.notify_skipped = col4.checkbox("Notify on Skipped Caution")
     st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")
+    st.session_state.wave_around_lap = col5.text_input("Pace Laps Before Wave Around", "1", disabled=not st.session_state.wave_arounds)
+    st.session_state.extend_laps = col6.text_input("Extend Laps", "6")
     st.write('---')
 
     for i, caution in enumerate(st.session_state.cautions):
