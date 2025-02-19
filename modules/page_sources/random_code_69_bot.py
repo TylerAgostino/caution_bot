@@ -50,7 +50,8 @@ def start_sequence():
     discord_voice = AudioConsumerEvent(vc_id=1057329833278976160)
 
     st.session_state.vsc_runner = cautions
-    st.session_state.vsc_spm = SubprocessManager([discord_voice.run, *[c.run for c in cautions]])
+    all_events = [discord_voice.run, *[c.run for c in cautions]] if st.session_state.use_discord else [c.run for c in cautions]
+    st.session_state.vsc_spm = SubprocessManager(all_events)
     st.session_state.vsc_spm.start()
     st.session_state.refresh = True
 
@@ -88,6 +89,7 @@ def ui():
     st.header("Global Settings")
     col0, col1, col2, col3, col4 = st.columns(5)
     st.session_state.vsc_type = col0.radio("VSC Type", ['Time', 'Lap'], index=0, help='The type of window to trigger the VSC.')
+    st.session_state.use_discord = col1.checkbox("Use Discord Voice", value=False, help='Use Discord voice chat for the VSC. Requires the BOT_TOKEN environment variable to be set.')
     st.session_state.vsc_window_start = col1.text_input("Window Start (min/lap)", "5", help='Start of the window in minutes.')
     st.session_state.vsc_window_end = col1.text_input("Window End (min/lap)", "-15", help='End of the window in minutes. Negative values are subtracted from the end of the session.')
     st.session_state.reminder_frequency = col2.text_input("Reminder Frequency", "10", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.')

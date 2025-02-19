@@ -65,7 +65,8 @@ def start_sequence():
     discord_voice = AudioConsumerEvent(vc_id=1057329833278976160)
 
     st.session_state.caution_runner = cautions
-    st.session_state.spm = SubprocessManager([discord_voice.run, *[c.run for c in cautions]])
+    all_events = [discord_voice.run, *[c.run for c in cautions]] if st.session_state.use_discord else [c.run for c in cautions]
+    st.session_state.spm = SubprocessManager(all_events)
     st.session_state.spm.start()
     st.session_state.refresh = True
 
@@ -91,6 +92,7 @@ def ui():
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     st.session_state.caution_window_start = col1.text_input("Window Start (min/lap)", "5")
     st.session_state.caution_window_type = col1.radio("Window Type", ["Time", "Lap"], index=0)
+    st.session_state.use_discord = col1.checkbox("Use Discord Voice", value=False, help='Use Discord voice chat for the VSC. Requires the BOT_TOKEN environment variable to be set.')
     st.session_state.caution_window_end = col2.text_input("Window End (min/lap)", "-15")
     st.session_state.pit_close_sequence = col2.checkbox("Full Pit Close Sequence", value=True)
     st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5", disabled=not st.session_state.pit_close_sequence)
