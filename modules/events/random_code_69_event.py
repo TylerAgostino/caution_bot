@@ -59,7 +59,7 @@ class RestartOrderManager:
             car_restart_record['LatePit'] = 1
 
         self.order.append(car_restart_record)
-        self.update_car_positions()
+        self.update_order()
 
     def update_order(self):
         # check if we've separated classes
@@ -86,7 +86,7 @@ class RestartOrderManager:
                     if car['ActualPosition'] > wave_adjusted_car_ahead_position and not self.sdk['CarIdxOnPitRoad'][car_ahead['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
                         self.order[i]['IncorrectOvertakes'].append(car_ahead['CarNumber'])
                 for car_behind in self.order[i+1:]:
-                    wave_adjusted_car_behind_position = car_behind['ActualPosition'] + car_behind['WaveAround'] + car_behind['SlowerClassCatchup'] - car['WaveAround'] - car['SlowerClassCatchup']
+                    wave_adjusted_car_behind_position = car_behind['ActualPosition'] - car_behind['WaveAround'] - car_behind['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
                     if car['ActualPosition'] < wave_adjusted_car_behind_position and not self.sdk['CarIdxOnPitRoad'][car_behind['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
                         self.order[i]['IncorrectlyOvertakenBy'].append(car_behind['CarNumber'])
 
