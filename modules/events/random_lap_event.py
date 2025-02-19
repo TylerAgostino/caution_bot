@@ -76,4 +76,4 @@ class LapEvent(RandomLapEvent):
         Args:
             event_time (int): The time for the event
         """
-        super().__init__(min_lap=int(event_lap), max_lap=int(event_lap)+1, *args, **kwargs)
+        super().__init__(min_lap=int(event_lap), max_lap=int(event_lap), *args, **kwargs)
