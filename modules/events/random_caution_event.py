@@ -11,7 +11,7 @@ class RandomCautionEvent(RandomTimedEvent):
         notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
     """
 
-    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True,
+    def __init__(self, pit_close_advance_warning=5, pit_close_max_duration=90, wave_arounds=True, pre_extend_laps = 1,
                  notify_on_skipped_caution=False, full_sequence=True, wave_around_lap = 1,  extend_laps = 0,
                  *args, **kwargs):
         """
@@ -30,6 +30,7 @@ class RandomCautionEvent(RandomTimedEvent):
         self.full_sequence = full_sequence
         self.wave_around_lap = int(wave_around_lap)
         self.extend_laps = int(extend_laps)
+        self.pre_extend_laps = int(pre_extend_laps)
         super().__init__(*args, **kwargs)
 
     def event_sequence(self):
@@ -49,6 +50,7 @@ class RandomCautionEvent(RandomTimedEvent):
             self.close_pits(self.pit_close_advance_warning)
             self.wait_for_cars_to_clear_pit_lane(self.pit_close_max_duration)
         self.throw_caution()
+        self.audio_queue.put('caution')
 
         pace_car = next(driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1)['CarIdx']
         initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
@@ -63,20 +65,23 @@ class RandomCautionEvent(RandomTimedEvent):
             self.logger.debug('Pace car has completed a lap.')
 
         if self.extend_laps > 0:
-            await_pace_car_lap()
+            for _ in range(self.pre_extend_laps):
+                await_pace_car_lap()
             self._chat(f'!p +{self.extend_laps}')
 
         if self.wave_arounds:
-            laps_completed = 1
+            self.audio_queue.put('wavesoon')
+            laps_completed = self.pre_extend_laps
             while laps_completed < self.wave_around_lap:
                 await_pace_car_lap()
                 laps_completed += 1
             self.logger.debug('Ready for Wave Arounds.')
-
+            self.audio_queue.put('wavenow')
             current_positions = self.get_wave_around_cars()
 
             last_step = self.get_current_running_order()
 
+            overridden = False
             while current_positions:
                 this_step = self.get_current_running_order()
                 for car in current_positions:
@@ -92,14 +97,18 @@ class RandomCautionEvent(RandomTimedEvent):
                 self.sleep(1)
                 if not self.is_caution_active():
                     self.logger.warn('Caution ended during wave arounds.')
+                    overridden = True
                     break
-
-            self.logger.info('Wave arounds complete.')
+            if not overridden:
+                self._chat('!p 3')
+                self.audio_queue.put('wavecomplete')
+                self.logger.info('Wave arounds complete.')
 
         while self.is_caution_active():
             self.sleep(1)
 
         self.logger.debug('Caution has ended.')
+        self.audio_queue.put('open')
 
         self.busy_event.clear()
 

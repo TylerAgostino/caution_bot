@@ -5,6 +5,7 @@ from modules.events.random_caution_event import RandomCautionEvent, LapCautionEv
 from modules.subprocess_manager import SubprocessManager
 import logging
 from streamlit_autorefresh import st_autorefresh
+from modules.events.audio_consumer_event import AudioConsumerEvent
 
 logger = st.session_state.logger
 
@@ -35,7 +36,8 @@ def start_sequence():
                 notify_on_skipped_caution=st.session_state.notify_skipped,
                 full_sequence=st.session_state.pit_close_sequence,
                 wave_around_lap=st.session_state.wave_around_lap,
-                extend_laps=st.session_state.extend_laps
+                extend_laps=st.session_state.extend_laps,
+                pre_extend_laps=st.session_state.pre_extend_laps
             )
             for caution in st.session_state.cautions
             if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -52,16 +54,18 @@ def start_sequence():
                 notify_on_skipped_caution=st.session_state.notify_skipped,
                 full_sequence=st.session_state.pit_close_sequence,
                 wave_around_lap=st.session_state.wave_around_lap,
-                extend_laps=st.session_state.extend_laps
+                extend_laps=st.session_state.extend_laps,
+                pre_extend_laps=st.session_state.pre_extend_laps
             )
             for caution in st.session_state.cautions
             if random.randrange(0, 100) <= int(caution['likelihood'])
         ]
     else:
         raise ValueError('Invalid caution window type.')
+    discord_voice = AudioConsumerEvent(vc_id=1057329833278976160)
 
     st.session_state.caution_runner = cautions
-    st.session_state.spm = SubprocessManager([c.run for c in cautions])
+    st.session_state.spm = SubprocessManager([discord_voice.run, *[c.run for c in cautions]])
     st.session_state.spm.start()
     st.session_state.refresh = True
 
@@ -96,6 +100,7 @@ def ui():
     st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")
     st.session_state.wave_around_lap = col5.text_input("Pace Laps Before Wave Around", "1", disabled=not st.session_state.wave_arounds)
     st.session_state.extend_laps = col6.text_input("Extend Laps", "6")
+    st.session_state.pre_extend_laps = col6.text_input("Pre-Extend Laps", "1")
     st.write('---')
 
     for i, caution in enumerate(st.session_state.cautions):

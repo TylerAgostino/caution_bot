@@ -4,6 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 import random
 from modules.events.random_code_69_event import RandomTimedCode69Event, RandomLapCode69Event
 from modules.subprocess_manager import SubprocessManager
+from modules.events.audio_consumer_event import AudioConsumerEvent
 
 
 logger = st.session_state.logger
@@ -44,9 +45,12 @@ def start_sequence():
             for caution in st.session_state.vsc
             if random.randrange(0, 100) <= int(caution['likelihood'])
         ]
+    else:
+        raise ValueError('Invalid caution window type.')
+    discord_voice = AudioConsumerEvent(vc_id=1057329833278976160)
 
     st.session_state.vsc_runner = cautions
-    st.session_state.vsc_spm = SubprocessManager([c.run for c in cautions])
+    st.session_state.vsc_spm = SubprocessManager([discord_voice.run, *[c.run for c in cautions]])
     st.session_state.vsc_spm.start()
     st.session_state.refresh = True
 

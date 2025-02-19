@@ -167,6 +167,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         # self.reason = self.generate_random_caution_reason()
 
     def send_reminders(self, order_generator):
+        self.logger.debug(order_generator.order)
         # Instructions to cars that are out of place
         for car in order_generator.wave_around_cars:
             self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
@@ -190,6 +191,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.restart_ready.clear()
         # self._chat(self.reason, race_control=True)
         self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
+        self.audio_queue.put('code69beginsoon')
 
         last_step = self.get_current_running_order()
         session_time = self.sdk['SessionTime']
@@ -209,6 +211,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             this_step = self.get_current_running_order()
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
+        self.audio_queue.put('code69begin')
 
         speed_km_per_hour = 0
         leader_speed_generator = None
@@ -299,6 +302,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         if self.extra_lanes:
             number_of_lanes = len(self.lane_names)
             self.restart_ready.clear()
+            self.audio_queue.put('lanes')
             self._chat(f'Forming {number_of_lanes} restart lanes, leader in the {self.lane_names[0]} lane.', race_control=True)
             lanes_raw = [[] for _ in range(number_of_lanes)]
             lane_order_generators = []
@@ -332,10 +336,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 session_time = self.sdk['SessionTime']
             self.sleep(0.1)
 
-
+        self.audio_queue.put('code69end')
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
+        self.sleep(5)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         while True:
             self._chat(f'/{leader['CarNumber']} you control the field, go when ready')
@@ -350,7 +355,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         self._chat('Green Flag!', race_control=True)
         self._chat('Green Flag!', race_control=True)
+        self.audio_queue.put('green')
         self._chat('Green Flag!', race_control=True)
+
 
         for i in range(len(lane_order_generators)):
             for car in lane_order_generators[i].out_of_place_cars:

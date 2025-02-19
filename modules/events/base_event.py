@@ -5,6 +5,7 @@ import streamlit as st
 import time
 import logging
 import threading
+import queue
 from modules.llm import generate_caution_reason, generate_black_flag_reason
 
 class BaseEvent:
@@ -23,7 +24,7 @@ class BaseEvent:
         max_laps_behind_leader (int): Maximum Laps Down for cars to be considered in the field.
     """
 
-    def __init__(self, sdk=None, pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(), max_laps_behind_leader=99):
+    def __init__(self, sdk=irsdk.IRSDK(), pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(), audio_queue=queue.Queue(), max_laps_behind_leader=99):
         """
         Initializes the BaseEvent class.
 
@@ -34,16 +35,18 @@ class BaseEvent:
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
             max_laps_behind_leader (int, optional): Maximum Laps Down for cars to be considered in the field. Defaults to 99.
         """
-        self.sdk = sdk or irsdk.IRSDK()
-        self.pwa = pwa or pywinauto.Application()
-        self.sdk.startup()
-        self.pwa.connect(best_match='iRacing.com Simulator', timeout=10)
+        self.sdk = sdk
+        if self.sdk:
+            self.pwa = pwa or pywinauto.Application()
+            self.sdk.startup()
+            self.pwa.connect(best_match='iRacing.com Simulator', timeout=10)
         self.thread = None
         self.killed = False
         self.task = None
         self.logger = st.session_state.get('logger', logging.getLogger(__name__))
         self.cancel_event = cancel_event
         self.busy_event = busy_event
+        self.audio_queue = audio_queue
         self.max_laps_behind_leader = int(max_laps_behind_leader)
 
     def sleep(self, seconds):
@@ -61,16 +64,18 @@ class BaseEvent:
             self.logger.info('Event cancelled.')
             raise KeyboardInterrupt
 
-    def run(self, cancel_event=None, busy_event=None):
+    def run(self, cancel_event=None, busy_event=None, audio_queue=None):
         """
         Runs the event sequence.
 
         Args:
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
+            audio_queue (queue.Queue, optional): Queue for audio commands. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
+        self.audio_queue = audio_queue or self.audio_queue
         try:
             self.event_sequence()
         except Exception as e:

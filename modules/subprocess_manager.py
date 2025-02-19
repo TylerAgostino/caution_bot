@@ -1,4 +1,5 @@
 import threading
+import queue
 from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 class SubprocessManager:
@@ -22,7 +23,8 @@ class SubprocessManager:
         self.stopped = False
         self.cancel_event = threading.Event()
         self.busy_event = threading.Event()
-        self.threads = [threading.Thread(target=coro, kwargs={'cancel_event': self.cancel_event, 'busy_event': self.busy_event}) for coro in coros]
+        self.audio_queue = queue.Queue()
+        self.threads = [threading.Thread(target=coro, kwargs={'cancel_event': self.cancel_event, 'busy_event': self.busy_event, 'audio_queue': self.audio_queue}) for coro in coros]
 
     def start(self):
         """
