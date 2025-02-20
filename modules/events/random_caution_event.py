@@ -93,8 +93,6 @@ class RandomCautionEvent(RandomTimedEvent):
                             self.logger.debug(f'{car} is on pit road.')
                             continue
                         self.wave_and_eol(car)
-                    else:
-                        self.logger.debug(f'{args}')
                 for car in to_remove:
                     current_positions.pop(current_positions.index(car))
                 last_step = this_step
