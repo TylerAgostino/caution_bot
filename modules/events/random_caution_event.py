@@ -53,12 +53,11 @@ class RandomCautionEvent(RandomTimedEvent):
         self.audio_queue.put('caution')
 
         pace_car = next(driver for driver in self.sdk['DriverInfo']['Drivers'] if driver['CarIsPaceCar'] == 1)['CarIdx']
-        initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
-        self.logger.debug(f'Pace car starting on lap {initial_lap}')
 
         def await_pace_car_lap():
             while not (0.4 <= self.sdk['CarIdxLapDistPct'][pace_car] <= 0.5):
                 self.sleep(1)
+            initial_lap = self.sdk['CarIdxLapCompleted'][pace_car]
 
             while self.sdk['CarIdxLapCompleted'][pace_car] < initial_lap + 1:
                 self.sleep(1)
@@ -84,15 +83,20 @@ class RandomCautionEvent(RandomTimedEvent):
             overridden = False
             while current_positions:
                 this_step = self.get_current_running_order()
+                to_remove = []
                 for car in current_positions:
                     args = [{'CarIdx': car}, last_step, this_step]
                     if int(hex(self.sdk['CarIdxPaceFlags'][car])[-1]) >= 4:
-                        current_positions.pop(current_positions.index(car))
+                        to_remove.append(car)
                     if self.car_has_completed_lap(*args) or self.car_has_left_pits(*args):
                         if self.sdk['CarIdxOnPitRoad'][car]:
                             self.logger.debug(f'{car} is on pit road.')
                             continue
                         self.wave_and_eol(car)
+                    else:
+                        self.logger.debug(f'{args}')
+                for car in to_remove:
+                    current_positions.pop(current_positions.index(car))
                 last_step = this_step
                 self.sleep(1)
                 if not self.is_caution_active():
