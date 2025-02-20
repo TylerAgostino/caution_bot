@@ -11,3 +11,4 @@ langsmith
 discord.py
 pynacl
 ffmpeg
+imageio-ffmpeg

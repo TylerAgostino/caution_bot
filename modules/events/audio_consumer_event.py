@@ -1,19 +1,14 @@
 import queue
-
 from modules.events.base_event import BaseEvent
-import random
-import pytchat
-from yapper import PiperSpeaker, PiperVoiceUS
 import discord
 from discord.ext import tasks
 import os
 import asyncio
-import time
-from tempfile import NamedTemporaryFile
+from imageio_ffmpeg import get_ffmpeg_exe
 
 # Replace with the path to your FFmpeg executable
-module_path = os.path.dirname(os.path.realpath(__file__))
-FFMPEG_PATH = os.path.join(module_path, 'ffmpeg.exe')
+module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
     def __init__(self, vc_id, sdk=None, *args, **kwargs):
@@ -32,7 +27,7 @@ class AudioConsumerEvent(BaseEvent):
         self.logger.debug('Setting methods.')
 
         async def play(message=None):
-            fname = f"C:\\Users\\sniff\\IdeaProjects\\Better Caution Bot\\audio\\{message}.mp3"
+            fname = os.path.join(module_path, 'audio', f'{message}.mp3')
             source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=2.0)
             self.vc.play(source)
             while self.vc.is_playing():
