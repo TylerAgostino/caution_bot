@@ -12,7 +12,8 @@ import time
 from tempfile import NamedTemporaryFile
 
 # Replace with the path to your FFmpeg executable
-FFMPEG_PATH = "C:\\Users\\sniff\\miniconda3\\Lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win64-v4.2.2.exe"
+module_path = os.path.dirname(os.path.realpath(__file__))
+FFMPEG_PATH = os.path.join(module_path, 'ffmpeg.exe')
 
 class AudioConsumerEvent(BaseEvent):
     def __init__(self, vc_id, sdk=None, *args, **kwargs):
