@@ -47,7 +47,7 @@ def start_sequence():
         ]
     else:
         raise ValueError('Invalid caution window type.')
-    discord_voice = AudioConsumerEvent(vc_id=1057329833278976160)
+    discord_voice = AudioConsumerEvent(vc_id=int(st.session_state.discord_vc_id))
 
     st.session_state.vsc_runner = cautions
     all_events = [discord_voice.run, *[c.run for c in cautions]] if st.session_state.use_discord else [c.run for c in cautions]
@@ -90,6 +90,7 @@ def ui():
     col0, col1, col2, col3, col4 = st.columns(5)
     st.session_state.vsc_type = col0.radio("VSC Type", ['Time', 'Lap'], index=0, help='The type of window to trigger the VSC.')
     st.session_state.use_discord = col0.checkbox("Use Discord Voice", value=False, help='Use Discord voice chat for the VSC. Requires the BOT_TOKEN environment variable to be set.')
+    st.session_state.discord_vc_id = col0.text_input("Discord Voice Channel ID", "1057329833278976160", disabled=not st.session_state.use_discord)
     st.session_state.vsc_window_start = col1.text_input("Window Start (min/lap)", "5", help='Start of the window in minutes.')
     st.session_state.vsc_window_end = col1.text_input("Window End (min/lap)", "-15", help='End of the window in minutes. Negative values are subtracted from the end of the session.')
     st.session_state.reminder_frequency = col2.text_input("Reminder Frequency", "10", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.')
