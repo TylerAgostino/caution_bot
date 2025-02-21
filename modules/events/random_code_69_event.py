@@ -14,7 +14,6 @@ class RestartOrderManager:
         self.wave_around_cars = []
         self.out_of_place_cars = []
         self.displaced_cars = []
-        self.catchup_cars = []
         self.race_classes = self.sdk['CarIdxClass']
         self.class_lap_times = {}
         def get_fastest_lap_for_class(cc):
@@ -50,7 +49,8 @@ class RestartOrderManager:
                 'ActualPosition': 0,
                 'LatePit': 0,
                 'IncorrectOvertakes': [],
-                'IncorrectlyOvertakenBy': []
+                'IncorrectlyOvertakenBy': [],
+                'WavesRemain': False,
             }
         else:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
@@ -96,26 +96,20 @@ class RestartOrderManager:
                                                      car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
                                                      car['WaveAround'] + car['SlowerClassCatchup'])
 
+            self.order[i]['WavesRemain'] = car['ActualPosition'] < self.order[0]['ActualPosition'] < car['ExpectedPosition'] or car['ActualPosition'] < self.order[0]['ActualPosition']+1 < car['ExpectedPosition']
+
 
         if self.order:
             leader_position = self.order[0]['ActualPosition']
             self.out_of_place_cars = []
             self.displaced_cars = []
-            self.catchup_cars = []
             self.wave_around_cars = []
             for i, car in enumerate(self.order):
                 # skip the leader
                 if i == 0:
                     continue
-                # Identify anyone that needs to overtake the leader (they are more than a lap from where they should be)
-                if car['ExpectedPosition'] - car['ActualPosition'] > ((1 + car['ExpectedPosition'] - leader_position) % 1): # this is wrong, EOL'd cars are being told to overtake
+                if car['WavesRemain']:
                     self.wave_around_cars.append(car)
-                # Identify anyone far from the car in front of them
-                if car['ExpectedPosition'] - car['ActualPosition'] > self.one_meter * 200:
-                    self.catchup_cars.append((car, self.order[i-1]))
-                # # Identify anyone in front of cars they should be behind
-                # elif car['ActualPosition'] > car['ExpectedPosition']:
-                #     self.out_of_place_cars.append((car, self.order[i-1]))
                 if car['IncorrectOvertakes']:
                     self.out_of_place_cars.append(car)
                 if car['IncorrectlyOvertakenBy']:
@@ -171,8 +165,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
         # Instructions to cars that are out of place
         for car in order_generator.wave_around_cars:
             self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
-        for car, car_ahead in order_generator.catchup_cars:
-            self._chat(f'/{car["CarNumber"]} Catch the {car_ahead["CarNumber"]} car.')
         for car in order_generator.out_of_place_cars:
             self._chat(f'/{car["CarNumber"]} Let the {", ".join(car['IncorrectOvertakes'])} car{"s" if len(car['IncorrectOvertakes']) > 1 else ""} by.')
         for car in order_generator.displaced_cars:
