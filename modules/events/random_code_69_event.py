@@ -1,3 +1,5 @@
+from math import floor
+
 from modules.events.random_timed_event import RandomTimedEvent
 import threading
 import enum
@@ -35,6 +37,14 @@ class RestartOrderManager:
         print(self.class_lap_times)
 
     def add_car_to_order(self, carIdx, wave_around=0, slower_class_catchup=0):
+        began_pacing_distance = self.sdk['CarIdxLapDistPct'][carIdx]
+        if not self.order:
+            laps_lost = 0
+        else:
+            leader = self.order[0]['CarIdx']
+            leader_position = self.sdk['CarIdxLapCompleted'][leader] + self.sdk['CarIdxLapDistPct'][leader] - self.order[0]['BeganPacingLap']
+            laps_lost = leader_position - ((leader_position - began_pacing_distance)%1)
+
         if carIdx not in [car['CarIdx'] for car in self.order]:
             car_restart_record = {
                 'CarIdx': carIdx,
@@ -42,7 +52,7 @@ class RestartOrderManager:
                 'CarClassOrder': self.class_speed_rank[self.sdk['CarIdxClass'][carIdx]],
                 'BeganPacingLap': self.sdk['CarIdxLapCompleted'][carIdx],
                 'BeganPacingTick': int(self.sdk['SessionTick']),
-                'BeganPacingDistance': self.sdk['CarIdxLapDistPct'][carIdx],
+                'BeganPacingDistance': began_pacing_distance,
                 'WaveAround': wave_around,
                 'SlowerClassCatchup': slower_class_catchup,
                 'ExpectedPosition': 0,
@@ -51,6 +61,7 @@ class RestartOrderManager:
                 'IncorrectOvertakes': [],
                 'IncorrectlyOvertakenBy': [],
                 'WavesRemain': False,
+                'LapsLostDuringEvent': laps_lost
             }
         else:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
@@ -64,43 +75,34 @@ class RestartOrderManager:
     def update_order(self):
         # check if we've separated classes
         if self.class_separation:
-            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick']))
+            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick'], -x['BeganPacingDistance']))
         else:
-            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick']))
+            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick'], -x['BeganPacingDistance']))
         self.update_car_positions()
         return [car['CarNumber'] for car in self.order]
 
     def update_car_positions(self):
         # First update all the actual positions
+        self.sdk.freeze_var_buffer_latest()
         for i, car in enumerate(self.order):
             self.order[i]['ActualPosition'] = self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']] - car['BeganPacingLap']
+        self.sdk.unfreeze_var_buffer_latest()
         # Then update the expected positions to be right behind the car in front of them
         for i, car in enumerate(self.order):
-            if i == 0:
-                self.order[i]['ExpectedPosition'] = self.order[i]['ActualPosition']
-            else:
-                self.order[i]['IncorrectOvertakes'] = []
-                self.order[i]['IncorrectlyOvertakenBy'] = []
-                for car_ahead in self.order[:i]:
-                    wave_adjusted_car_ahead_position = car_ahead['ActualPosition'] - car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
-                    if car['ActualPosition'] > wave_adjusted_car_ahead_position and not self.sdk['CarIdxOnPitRoad'][car_ahead['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
-                        self.order[i]['IncorrectOvertakes'].append(car_ahead['CarNumber'])
-                for car_behind in self.order[i+1:]:
-                    wave_adjusted_car_behind_position = car_behind['ActualPosition'] - car_behind['WaveAround'] - car_behind['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
-                    if car['ActualPosition'] < wave_adjusted_car_behind_position and not self.sdk['CarIdxOnPitRoad'][car_behind['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
-                        self.order[i]['IncorrectlyOvertakenBy'].append(car_behind['CarNumber'])
+            self.order[i]['IncorrectOvertakes'] = []
+            self.order[i]['IncorrectlyOvertakenBy'] = []
+            for car_ahead in self.order[:i]:
+                wave_adjusted_car_ahead_position = car_ahead['ActualPosition'] - car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
+                if car['ActualPosition'] > wave_adjusted_car_ahead_position and not self.sdk['CarIdxOnPitRoad'][car_ahead['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
+                    self.order[i]['IncorrectOvertakes'].append(car_ahead['CarNumber'])
+            for car_behind in self.order[i+1:]:
+                wave_adjusted_car_behind_position = car_behind['ActualPosition'] - car_behind['WaveAround'] - car_behind['SlowerClassCatchup'] + car['WaveAround'] + car['SlowerClassCatchup']
+                if car['ActualPosition'] < wave_adjusted_car_behind_position and not self.sdk['CarIdxOnPitRoad'][car_behind['CarIdx']] and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]:
+                    self.order[i]['IncorrectlyOvertakenBy'].append(car_behind['CarNumber'])
 
-
-                car_ahead = self.order[i-1]
-                self.order[i]['ExpectedPosition'] = (min(car_ahead['ActualPosition'], car_ahead['ExpectedPosition']) - (self.one_meter * 0.1) -
-                                                     car_ahead['WaveAround'] - car_ahead['SlowerClassCatchup'] +
-                                                     car['WaveAround'] + car['SlowerClassCatchup'])
-
-            self.order[i]['WavesRemain'] = car['ActualPosition'] < self.order[0]['ActualPosition'] < car['ExpectedPosition'] or car['ActualPosition'] < self.order[0]['ActualPosition']+1 < car['ExpectedPosition']
-
+            self.order[i]['WavesRemain'] = car['ActualPosition'] - (car['WaveAround'] + car['SlowerClassCatchup'] - car['LapsLostDuringEvent']) < self.order[0]['ActualPosition'] - 1
 
         if self.order:
-            leader_position = self.order[0]['ActualPosition']
             self.out_of_place_cars = []
             self.displaced_cars = []
             self.wave_around_cars = []
@@ -131,7 +133,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
     """
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
-                 lane_names=None, reminder_frequency=8, *args, **kwargs):
+                 lane_names=None, reminder_frequency=8, auto_restart_get_ready=True, auto_restart_get_ready_position=1.85,
+                 auto_restart_form_lanes=True, auto_restart_form_lanes_position=1.5, extra_lanes=False, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -146,19 +149,22 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.restart_ready = threading.Event()
         self.max_speed_km = int(max_speed_km)
-        self.extra_lanes = False
+        self.extra_lanes = extra_lanes
         self.class_separation = False
         self.can_separate_classes = True
         self.can_separate_lanes = True
         self.reminder_frequency = int(reminder_frequency)
         self.restart_speed = self.max_speed_km * (int(restart_speed_pct) / 100)
+        self.auto_restart_get_ready = auto_restart_get_ready
+        self.auto_restart_form_lanes = auto_restart_form_lanes
+        self.auto_restart_get_ready_position = float(auto_restart_get_ready_position)
+        self.auto_restart_form_lanes_position = float(auto_restart_form_lanes_position)
         if lane_names is not None:
             self.lane_names = lane_names
         else:
             self.lane_names = ['LEFT', 'RIGHT']
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
-        # self.reason = self.generate_random_caution_reason()
 
     def send_reminders(self, order_generator):
         self.logger.debug(order_generator.order)
@@ -211,6 +217,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         leader = -1
 
         while not self.restart_ready.is_set():
+
             this_step = self.get_current_running_order()
             # Get the class leaders
             leaders = {}
@@ -227,6 +234,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         leader_for_class = leader_on_track
                     leaders[class_] = leader_for_class
 
+            self.sdk.freeze_var_buffer_latest()
             for car in this_step:
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
@@ -263,6 +271,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     if gets_wave_around or gets_catch_up:
                         self.logger.info(f'{car["CarNumber"]} gets wave around: {gets_wave_around}, catch up: {gets_catch_up}')
                     continue
+            self.sdk.unfreeze_var_buffer_latest()
 
             correct_order = restart_order_generator.update_order()
 
@@ -291,6 +300,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 self.logger.debug(restart_order_generator.order)
             last_step = this_step
 
+            if self.auto_restart_form_lanes and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_form_lanes_position:
+                self.restart_ready.set()
+                self.extra_lanes = True
+            elif self.auto_restart_get_ready and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
+                self.restart_ready.set()
+
         if self.extra_lanes:
             number_of_lanes = len(self.lane_names)
             self.restart_ready.clear()
@@ -313,6 +328,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
             lane_order_generators = [restart_order_generator]
 
         while not self.restart_ready.is_set():
+            if lane_order_generators[0].order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
+                self.restart_ready.set()
+
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 if len(lane_order_generators[0].order) > 0 and (leader_speed_generator is None or leader['CarNumber'] != lane_order_generators[0].order[0]['CarNumber'] or leader['CarNumber'] not in [car['CarNumber'] for car in lane_order_generators[0].order]):
                     # New leader, we need a new speed generator
@@ -327,6 +345,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     self._chat(f'/{leader['CarNumber']} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
                 session_time = self.sdk['SessionTime']
             self.sleep(0.1)
+
 
         self.audio_queue.put('code69end')
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)

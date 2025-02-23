@@ -25,7 +25,12 @@ def start_sequence():
                 reminder_frequency=st.session_state.reminder_frequency,
                 max_speed_km=st.session_state.vsc_maximum_speed,
                 restart_speed_pct=st.session_state.vsc_restart_speed_pct,
-                lane_names=st.session_state.restart_lane_names.split(',')
+                lane_names=st.session_state.restart_lane_names.split(','),
+                auto_restart_form_lanes=st.session_state.auto_restart_lanes,
+                auto_restart_form_lanes_position=float(st.session_state.lanes_position),
+                auto_restart_get_ready=st.session_state.auto_restart,
+                auto_restart_get_ready_position=float(st.session_state.auto_restart_position),
+                extra_lanes = len(st.session_state.restart_lane_names.split(',')) > 1
             )
             for caution in st.session_state.vsc
             if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -40,7 +45,12 @@ def start_sequence():
                 reminder_frequency=st.session_state.reminder_frequency,
                 max_speed_km=st.session_state.vsc_maximum_speed,
                 restart_speed_pct=st.session_state.vsc_restart_speed_pct,
-                lane_names=st.session_state.restart_lane_names.split(',')
+                lane_names=st.session_state.restart_lane_names.split(','),
+                auto_restart_form_lanes=st.session_state.auto_restart_lanes,
+                auto_restart_form_lanes_position=float(st.session_state.lanes_position),
+                auto_restart_get_ready=st.session_state.auto_restart,
+                auto_restart_get_ready_position=float(st.session_state.auto_restart_position),
+                extra_lanes = len(st.session_state.restart_lane_names.split(',')) > 1
             )
             for caution in st.session_state.vsc
             if random.randrange(0, 100) <= int(caution['likelihood'])
@@ -71,8 +81,6 @@ def form_lanes():
     if 'vsc_runner' in st.session_state:
         for caution in st.session_state.vsc_runner:
             if caution.busy_event.is_set():
-                caution.extra_lanes = True
-                caution.lane_names = st.session_state.restart_lane_names.split(',')
                 caution.restart_ready.set()
 
 def class_separation():
@@ -89,8 +97,6 @@ def ui():
     st.header("Global Settings")
     col0, col1, col2, col3, col4 = st.columns(5)
     st.session_state.vsc_type = col0.radio("VSC Type", ['Time', 'Lap'], index=0, help='The type of window to trigger the VSC.')
-    st.session_state.use_discord = col0.checkbox("Use Discord Voice", value=False, help='Use Discord voice chat for the VSC. Requires the BOT_TOKEN environment variable to be set.')
-    st.session_state.discord_vc_id = col0.text_input("Discord Voice Channel ID", "1057329833278976160", disabled=not st.session_state.use_discord)
     st.session_state.vsc_window_start = col1.text_input("Window Start (min/lap)", "5", help='Start of the window in minutes.')
     st.session_state.vsc_window_end = col1.text_input("Window End (min/lap)", "-15", help='End of the window in minutes. Negative values are subtracted from the end of the session.')
     st.session_state.reminder_frequency = col2.text_input("Reminder Frequency", "10", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.')
@@ -99,6 +105,14 @@ def ui():
     st.session_state.wave_arounds = col3.checkbox("Wave Arounds", value=True, help='Automatically let cars unlap themselves at the start of the event.')
     st.session_state.restart_lane_names = col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.")
     st.session_state.notify_skipped = col4.checkbox("Notify on Skipped Caution", help='Send a message to the chat if a caution is skipped.')
+
+    col0, col1, col2, col3, col4 = st.columns(5)
+    st.session_state.use_discord = col0.checkbox("Use Discord Voice", value=False, help='Use Discord voice chat for the VSC. Requires the BOT_TOKEN environment variable to be set.')
+    st.session_state.discord_vc_id = col0.text_input("Discord Voice Channel ID", "1057329833278976160", disabled=not st.session_state.use_discord)
+    st.session_state.auto_restart_lanes = col1.checkbox("Auto Form Lanes", value=True, help='Automatically form multiple restart lanes.')
+    st.session_state.lanes_position = col1.text_input("Form Lanes Position", "1.5", help='Laps of pacing before forming the restart lanes.', disabled=not st.session_state.auto_restart_lanes)
+    st.session_state.auto_restart = col2.checkbox("Auto Restart", value=True, help='Automatically restart the race after the VSC ends.')
+    st.session_state.auto_restart_position = col2.text_input("Auto Restart Position", "1.85", help='Laps of pacing before restarting.', disabled=not st.session_state.auto_restart)
     st.write('---')
 
     for i, caution in enumerate(st.session_state.vsc):
