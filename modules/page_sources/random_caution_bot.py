@@ -62,7 +62,7 @@ def start_sequence():
         ]
     else:
         raise ValueError('Invalid caution window type.')
-    discord_voice = AudioConsumerEvent(vc_id=int(st.session_state.discord_vc_id))
+    discord_voice = AudioConsumerEvent(vc_id=int(st.session_state.discord_vc_id), volume=float(st.session_state.discord_volume))
 
     st.session_state.caution_runner = cautions
     all_events = [discord_voice.run, *[c.run for c in cautions]] if st.session_state.use_discord else [c.run for c in cautions]
@@ -98,6 +98,7 @@ def ui():
     st.session_state.discord_vc_id = col2.text_input("Discord Voice Channel ID", "1057329833278976160", disabled=not st.session_state.use_discord)
     st.session_state.pit_close_advance_warning = col3.text_input("Pit Close Warning (sec)", "5", disabled=not st.session_state.pit_close_sequence)
     st.session_state.wave_arounds = col3.checkbox("Wave Arounds", value=True)
+    st.session_state.discord_volume = col3.slider("Discord Volume", 0.0, 2.0, 1.5, disabled=not st.session_state.use_discord)
     st.session_state.pit_close_maximum_duration = col4.text_input("Max Pit Close Time (sec)", "120", disabled=not st.session_state.pit_close_sequence)
     st.session_state.notify_skipped = col4.checkbox("Notify on Skipped Caution")
     st.session_state.max_laps_behind_leader = col5.text_input("Max Laps Behind Leader", "3")

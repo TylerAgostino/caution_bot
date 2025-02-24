@@ -11,9 +11,10 @@ module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(_
 FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
-    def __init__(self, vc_id, sdk=None, *args, **kwargs):
+    def __init__(self, vc_id, volume=1, sdk=None, *args, **kwargs):
         self.vc_id = vc_id
         self.vc = None
+        self.volume = volume
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f'Voice Channel ID: {self.vc_id}')
 
@@ -28,7 +29,7 @@ class AudioConsumerEvent(BaseEvent):
 
         async def play(message=None):
             fname = os.path.join(module_path, 'audio', f'{message}.mp3')
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=2.0)
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=self.volume)
             self.vc.play(source)
             while self.vc.is_playing():
                 await asyncio.sleep(1)
