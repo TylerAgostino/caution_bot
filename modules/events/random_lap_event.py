@@ -1,8 +1,8 @@
 import random
-from modules.events.base_event import BaseEvent
+from modules.events.random_event import RandomEvent
 import time
 
-class RandomLapEvent(BaseEvent):
+class RandomLapEvent(RandomEvent):
     """
     A class to represent a random lap event in the iRacing simulator.
 
@@ -24,7 +24,7 @@ class RandomLapEvent(BaseEvent):
         self.start_lap = random.randint(min_lap if min_lap >= 0 else int(self.sdk['SessionLapsRemain']) + min_lap,
                                         max_lap if max_lap >= 0 else int(self.sdk['SessionLapsRemain']) + max_lap)
 
-    def is_lap_to_start(self, adjustment=-0.5):
+    def is_time_to_start(self, adjustment=-0.5):
         """
         Checks if it is lap to start the event.
 
@@ -37,32 +37,6 @@ class RandomLapEvent(BaseEvent):
         order = self.get_current_running_order()
         lap = max([car['total_completed'] for car in order])
         return lap >= self.start_lap + adjustment
-
-    def wait_for_start(self):
-        """
-        Waits until it is lap to start the event.
-        """
-        while not self.is_lap_to_start():
-            self.sleep(1)
-
-    def run(self, cancel_event=None, busy_event=None, audio_queue=None):
-        """
-        Runs the event sequence.
-
-        Args:
-            cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
-            busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
-            audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
-        """
-        self.cancel_event = cancel_event or self.cancel_event
-        self.busy_event = busy_event or self.busy_event
-        self.audio_queue = audio_queue or self.audio_queue
-        self.wait_for_start()
-        try:
-            self.event_sequence()
-        except Exception as e:
-            self.logger.exception('Error in event sequence.')
-            self.logger.exception(e)
 
 
 class LapEvent(RandomLapEvent):
