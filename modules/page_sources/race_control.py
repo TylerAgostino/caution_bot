@@ -38,7 +38,7 @@ def ui():
             st.session_state['events'][i]['type'] = event_type
 
             try:
-                st.session_state['events'][i]['args'] = event_types[event_type].ui(i, event['args'])
+                st.session_state['events'][i]['args'] = event_types[event_type].ui(i)
             except NotImplementedError:
                 st.write(f"UI for {event_type} not implemented yet.")
 

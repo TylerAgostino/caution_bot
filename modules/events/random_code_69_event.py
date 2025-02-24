@@ -167,7 +167,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.max_laps_behind_leader = 99999
 
     @staticmethod
-    def ui(ident = '', defaults=None):
+    def ui(ident = ''):
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         return {
@@ -181,7 +181,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             'max_speed_km': col2.text_input("Max VSC Speed (kph)", "69", help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
             'auto_restart_get_ready': col2.checkbox("Auto Restart", value=True, help='Automatically restart the race after the VSC ends.', key=f'{ident}auto_restart_get_ready'),
             'auto_restart_get_ready_position': col2.text_input("Auto Restart Position", "1.85", help='Laps of pacing before restarting.', key=f'{ident}auto_restart_get_ready_position'),
-            'lane_names': col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list."),
+            'lane_names': col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.", key=f'{ident}lane_names'),
             'likelihood': col5.text_input(f'Likelihood (%)', key=f'{ident}likelihood', value='100'),
             'reminder_frequency': col5.text_input("Reminder Frequency", "8", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
             'restart_speed_pct': col5.text_input("Restart Speed (% of Max)", "125", help='Green flag when the leader reaches this speed after the \'End Code 69\' button is pressed.', key=f'{ident}restart_speed_pct'),

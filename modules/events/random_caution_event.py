@@ -34,7 +34,7 @@ class RandomCautionEvent(RandomTimedEvent):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def ui(ident = '', defaults=None):
+    def ui(ident = ''):
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         return {

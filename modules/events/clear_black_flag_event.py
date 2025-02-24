@@ -7,17 +7,12 @@ class ClearBlackFlagEvent(BaseEvent):
         self.audio = audio
 
     @staticmethod
-    def ui(ident='', defaults=None):
+    def ui(ident=''):
         import streamlit as st
         col1, col2, col3, _ = st.columns([1, 1, 1, 3])
-        if not defaults or defaults == {}:
-            defaults = {
-                'interval': 5,
-                'audio': False
-            }
         return {
-            'interval': st.text_input(label_visibility='collapsed', label="interval", key=f'{ident}interval', value=defaults['interval']),
-            'audio': st.checkbox('Audio', key=f'{ident}audio', value=defaults['audio'])
+            'interval': st.text_input(label_visibility='collapsed', label="interval", key=f'{ident}interval', value=5),
+            'audio': st.checkbox('Audio', key=f'{ident}audio', value=False)
         }
 
     def event_sequence(self):
