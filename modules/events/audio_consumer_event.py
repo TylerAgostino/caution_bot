@@ -18,6 +18,13 @@ class AudioConsumerEvent(BaseEvent):
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f'Voice Channel ID: {self.vc_id}')
 
+    @staticmethod
+    def ui(ident=''):
+        import streamlit as st
+        col1, col2, col3 = st.columns(3)
+        col1.text_input("Discord Voice Channel ID", "1057329833278976160", key=f'{ident}discord_vc_id')
+        col2.slider("Discord Volume", 0.0, 2.0, 1.5, key=f'{ident}discord_volume')
+
     def event_sequence(self):
         # Set up the bot
         self.logger.debug('Setting up the bot.')
