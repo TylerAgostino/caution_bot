@@ -136,7 +136,7 @@ def ui():
 
     if st.session_state.refresh:
         st_autorefresh()
-    if 'spm' in st.session_state and not any(c.is_alive() for c in st.session_state.spm.threads):
+    if 'vsc_spm' in st.session_state and not any(c.is_alive() for c in st.session_state.vsc_spm.threads):
         st.session_state.refresh = False
         st_autorefresh(limit=1)
 
