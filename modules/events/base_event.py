@@ -258,6 +258,9 @@ class BaseEvent:
         Returns:
             bool: True if a caution flag is active, False otherwise.
         """
+        if self.sdk['SessionFlags'] == 0:
+            self.logger.debug('Might be a replay')
+            return False
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
 
     def car_has_completed_lap(self, car, last_step, this_step):
