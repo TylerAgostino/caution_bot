@@ -10,19 +10,19 @@ class RandomLapEvent(RandomEvent):
         start_lap (int): The start lap of the event.
     """
 
-    def __init__(self, min_lap: int = 0, max_lap: int = 1, *args, **kwargs):
+    def __init__(self, min: int = 0, max: int = 1, *args, **kwargs):
         """
         Initializes the RandomLapEvent class.
 
         Args:
-            min_lap (int, optional): Minimum lap for the event to start. Defaults to 0.
-            max_lap (int, optional): Maximum lap for the event to start. Defaults to 1.
+            min (int, optional): Minimum lap for the event to start. Defaults to 0.
+            max (int, optional): Maximum lap for the event to start. Defaults to 1.
         """
         super().__init__(*args, **kwargs)
-        if self.sdk['SessionLapsRemain'] == 32767 and (min_lap < 0 or max_lap < 0):
+        if self.sdk['SessionLapsRemain'] == 32767 and (min < 0 or max < 0):
             raise ValueError('Cannot use negative lap values for time-based races.')
-        self.start_lap = random.randint(min_lap if min_lap >= 0 else int(self.sdk['SessionLapsRemain']) + min_lap,
-                                        max_lap if max_lap >= 0 else int(self.sdk['SessionLapsRemain']) + max_lap)
+        self.start_lap = random.randint(min if min >= 0 else int(self.sdk['SessionLapsRemain']) + min,
+                                        max if max >= 0 else int(self.sdk['SessionLapsRemain']) + max)
 
     def is_time_to_start(self, adjustment=-0.5):
         """
@@ -50,4 +50,4 @@ class LapEvent(RandomLapEvent):
         Args:
             event_time (int): The time for the event
         """
-        super().__init__(min_lap=int(event_lap), max_lap=int(event_lap), *args, **kwargs)
+        super().__init__(min=int(event_lap), max=int(event_lap), *args, **kwargs)

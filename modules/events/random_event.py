@@ -5,8 +5,8 @@ class RandomEvent(BaseEvent):
     """
     An event that may or may not happen, determined by some likelihood percentage. It may also be scheduled by reimplementing the is_time_to_start method.
     """
-    def __init__(self, likelihood=100):
-        super().__init__()
+    def __init__(self, likelihood=100, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.likelihood = likelihood
 
     def wait_for_start(self):
@@ -30,7 +30,7 @@ class RandomEvent(BaseEvent):
         self.audio_queue = audio_queue or self.audio_queue
         self.wait_for_start()
 
-        if random.randrange(0, 100) > self.likelihood:
+        if random.randrange(0, 100) > float(self.likelihood):
             self.logger.debug(f'{type(self)} Event skipped.')
             return
         try:

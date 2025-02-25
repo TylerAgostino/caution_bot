@@ -171,20 +171,19 @@ class RandomTimedCode69Event(RandomTimedEvent):
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         return {
-            'window_start': col1.text_input("Window Start (min/lap)", "5", key=f'{ident}window_start'),
-            'window_end': col2.text_input("Window End (min/lap)", "-15", key=f'{ident}window_end'),
-            'auto_restart_form_lanes_position': col1.text_input("Form Lanes Position", "1.5", help='Laps of pacing before forming the restart lanes.', key=f'{ident}auto_restart_form_lanes_position'),
+            'min': col1.number_input("Window Start (min/lap)", 5, key=f'{ident}window_start'),
+            'max': col2.number_input("Window End (min/lap)", -15, key=f'{ident}window_end'),
+            'auto_restart_form_lanes_position': col1.number_input("Form Lanes Position", 1.5, help='Laps of pacing before forming the restart lanes.', key=f'{ident}auto_restart_form_lanes_position'),
             'auto_restart_form_lanes': col1.checkbox("Auto Form Lanes", value=True, help='Automatically form multiple restart lanes.', key=f'{ident}auto_restart_lanes'),
-            'max_laps_behind_leader': col3.number_input(f'Max Laps Behind Leader', key=f'{ident}max_laps_behind_leader', min_value=0, value=0),
             'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
             'notify_on_skipped_caution': col4.checkbox(f'Notify on Skipped Caution', key=f'{ident}notify_on_skipped_caution', value=False),
-            'max_speed_km': col2.text_input("Max VSC Speed (kph)", "69", help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
+            'max_speed_km': col2.number_input("Max VSC Speed (kph)", 69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
             'auto_restart_get_ready': col2.checkbox("Auto Restart", value=True, help='Automatically restart the race after the VSC ends.', key=f'{ident}auto_restart_get_ready'),
-            'auto_restart_get_ready_position': col2.text_input("Auto Restart Position", "1.85", help='Laps of pacing before restarting.', key=f'{ident}auto_restart_get_ready_position'),
+            'auto_restart_get_ready_position': col2.number_input("Auto Restart Position", 1.85, help='Laps of pacing before restarting.', key=f'{ident}auto_restart_get_ready_position'),
             'lane_names': col4.text_input("Restart Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.", key=f'{ident}lane_names'),
-            'likelihood': col5.text_input(f'Likelihood (%)', key=f'{ident}likelihood', value='100'),
-            'reminder_frequency': col5.text_input("Reminder Frequency", "8", help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
-            'restart_speed_pct': col5.text_input("Restart Speed (% of Max)", "125", help='Green flag when the leader reaches this speed after the \'End Code 69\' button is pressed.', key=f'{ident}restart_speed_pct'),
+            'likelihood': col5.number_input(f'Likelihood (%)', key=f'{ident}likelihood', value=100),
+            'reminder_frequency': col5.number_input("Reminder Frequency", 8, help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
+            'restart_speed_pct': col5.number_input("Restart Speed (% of Max)", 125, help='Green flag when the leader reaches this speed after the \'End Code 69\' button is pressed.', key=f'{ident}restart_speed_pct'),
         }
 
     def send_reminders(self, order_generator):

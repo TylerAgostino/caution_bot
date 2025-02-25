@@ -11,8 +11,8 @@ class ClearBlackFlagEvent(BaseEvent):
         import streamlit as st
         col1, col2, col3, _ = st.columns([1, 1, 1, 3])
         return {
-            'interval': st.text_input(label_visibility='collapsed', label="interval", key=f'{ident}interval', value=5),
-            'audio': st.checkbox('Audio', key=f'{ident}audio', value=False)
+            'interval': col1.text_input(label="Interval", key=f'{ident}interval', value=5),
+            'audio': col2.checkbox('Audio', key=f'{ident}audio', value=False)
         }
 
     def event_sequence(self):
