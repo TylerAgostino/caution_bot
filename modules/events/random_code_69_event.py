@@ -170,7 +170,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.max_laps_behind_leader = 99999
 
     @staticmethod
-    def ui(ident = ''):
+    def ui(ident = '', default_values=None):
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         return {

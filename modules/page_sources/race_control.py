@@ -18,8 +18,22 @@ event_types = {
     "Scheduled Message": ScheduledMessageEvent
 }
 
+def set_events(midway = True):
+    if midway:
+        for guid in st.session_state['events']:
+            for key in st.session_state.keys():
+                if key.startswith(f"{guid}"):
+                    st.session_state[key] = st.session_state[key]
+    configured_events = [{
+        "type": st.session_state[f'{i}_type'],
+        "args": {key.split(f"{i}")[1]: st.session_state[key] for key in st.session_state.keys() if key.startswith(f"{i}") and key != f"{i}_type"}
+    } for i in st.session_state.get('events', [])]
+    st.session_state.configured_events = configured_events
+
 def start():
-    event_run_methods = [event_types[event['type']](**event['args']).run for event in st.session_state['events'].values()]
+    event_run_methods = [
+        event_types[event['type']](**event['args']).event_sequence for event in st.session_state.get('configured_events', [])
+    ]
     st.session_state.subprocess_manager = SubprocessManager(event_run_methods)
     st.session_state.subprocess_manager.start()
     st.session_state.refresh = True
@@ -33,7 +47,7 @@ def ui():
     st.title("Event Configuration")
 
     if 'events' not in st.session_state:
-        st.session_state['events'] = {}
+        st.session_state['events'] = []
 
 
     col1, col2, col3, _ = st.columns(4)
@@ -42,29 +56,33 @@ def ui():
     if col2.button("Stop"):
         stop()
     if col3.button("Add Event"):
-        st.session_state['events'][str(uuid.uuid4())] = {"type": None, "args": {}}
+        st.session_state['events'].append(str(uuid.uuid4())) # ] = {"type": None, "args": {}}
     if st.session_state.get('refresh', False):
         st_autorefresh()
 
     st.write('---')
     n = 0
-    for i, event in st.session_state['events'].items():
+    for i in st.session_state['events']:
         n += 1
         left, right = st.columns((5, 1))
         with right:
             if st.button("Remove", key=f"remove_{i}"):
-                st.session_state['events'].pop(i)
+                st.session_state['events'].remove(i)
+                for key in st.session_state.keys():
+                    if key.startswith(f"{i}"):
+                        del st.session_state[key]
+                set_events()
                 st.rerun()
         with left:
             st.subheader(f"Event {n}")
-            event_type = st.selectbox(f"Select Event Type for Event {i}", list(event_types.keys()), key=f"type_{i}", index=list(event_types.keys()).index(event['type']) if event['type'] else 1)
-            st.session_state['events'][i]['type'] = event_type
-
+            st.selectbox(f"Select Event Type for Event {i}", list(event_types.keys()), key=f"{i}_type", index= list(event_types.keys()).index(st.session_state.get(f'{i}_type', 'Lap Caution Event')))
+            event_type = st.session_state[f'{i}_type']
             try:
-                st.session_state['events'][i]['args'] = event_types[event_type].ui(i)
+                event_types[event_type].ui(i)
             except NotImplementedError:
                 st.write(f"UI for {event_type} not implemented yet.")
         st.write('---')
-    st.write("Configured Events:", st.session_state['events'])
+    set_events(False)
+    st.write("Configured Events:", st.session_state.get('configured_events', []))
 
 race_control = st.Page(ui, title='Race Control', url_path='race_control', icon='🏁')
