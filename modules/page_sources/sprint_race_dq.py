@@ -7,17 +7,7 @@ from streamlit_autorefresh import st_autorefresh
 from modules.subprocess_manager import SubprocessManager
 
 
-class SprintRaceDQEvent(TimedEvent):
-    def __init__(self, cars, penalty, *args, **kwargs):
-        self.cars = cars
-        self.penalty = penalty
-        self.reason = self.generate_random_black_flag_reason()
-        super().__init__(*args, **kwargs)
 
-    def event_sequence(self):
-        self._chat(f'Black Flag: {self.reason}', race_control=True)
-        for car in self.cars:
-            self._chat(f'!bl {car["car_number"]} {self.penalty}')
 
 def start_sequence():
     st.session_state.spm = SubprocessManager([SprintRaceDQEvent(st.session_state.dq_cars, event_time=st.session_state.dq_time, penalty=st.session_state.dq_penalty).run])

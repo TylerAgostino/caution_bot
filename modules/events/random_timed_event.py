@@ -10,7 +10,7 @@ class RandomTimedEvent(RandomEvent):
         start_time (int): The start time of the event.
     """
 
-    def __init__(self, min: int = 0, max: int = 1, *args, **kwargs):
+    def __init__(self, min: float = 0, max: float = 1, *args, **kwargs):
         """
         Initializes the RandomTimedEvent class.
 
@@ -19,8 +19,10 @@ class RandomTimedEvent(RandomEvent):
             max (int, optional): Maximum time for the event to start. Defaults to 1.
         """
         super().__init__(*args, **kwargs)
-        self.start_time = random.randrange(min if min >= 0 else int(self.sdk['SessionTimeTotal']) + min,
-                                           max if max >= 0 else int(self.sdk['SessionTimeTotal']) + max)
+        min = float(min)
+        max = float(max)
+        self.start_time = random.randint(min*60 if min >= 0 else int(self.sdk['SessionTimeTotal']) + min*60,
+                                         max*60 if max >= 0 else int(self.sdk['SessionTimeTotal']) + max*60)
 
     def is_time_to_start(self, adjustment=0):
         """
@@ -50,4 +52,4 @@ class TimedEvent(RandomTimedEvent):
         Args:
             event_time (int): The time for the event
         """
-        super().__init__(min=int(event_time), max=int(event_time)+1, *args, **kwargs)
+        super().__init__(min=float(event_time), max=float(event_time), *args, **kwargs)

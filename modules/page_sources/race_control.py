@@ -6,7 +6,9 @@ from modules.events.clear_black_flag_event import ClearBlackFlagEvent
 from modules.events.audio_consumer_event import AudioConsumerEvent
 from modules.subprocess_manager import SubprocessManager
 from modules.events.scheduled_message_event import ScheduledMessageEvent
+from modules.events.scheduled_black_flag_event import SprintRaceDQEvent
 import uuid
+from streamlit.errors import StreamlitAPIException
 
 event_types = {
     "Lap Caution Event": LapCautionEvent,
@@ -15,15 +17,22 @@ event_types = {
     "Random Timed Code69 Event": RandomTimedCode69Event,
     "Clear Black Flag Event": ClearBlackFlagEvent,
     "Discord Bot": AudioConsumerEvent,
-    "Scheduled Message": ScheduledMessageEvent
+    "Scheduled Message": ScheduledMessageEvent,
+    "Sprint DQ": SprintRaceDQEvent
 }
 
-def set_events(midway = True):
-    if midway:
-        for guid in st.session_state['events']:
-            for key in st.session_state.keys():
-                if key.startswith(f"{guid}"):
+def touch_all_state():
+    for guid in st.session_state.get('events', []):
+        for key in st.session_state.keys():
+            if key.startswith(f"{guid}"):
+                try:
                     st.session_state[key] = st.session_state[key]
+                except StreamlitAPIException:
+                    pass
+
+touch_all_state()
+
+def set_events(midway = True):
     configured_events = [{
         "type": st.session_state[f'{i}_type'],
         "args": {key.split(f"{i}")[1]: st.session_state[key] for key in st.session_state.keys() if key.startswith(f"{i}") and key != f"{i}_type"}
@@ -32,7 +41,7 @@ def set_events(midway = True):
 
 def start():
     event_run_methods = [
-        event_types[event['type']](**event['args']).event_sequence for event in st.session_state.get('configured_events', [])
+        event_types[event['type']](**event['args']).run for event in st.session_state.get('configured_events', [])
     ]
     st.session_state.subprocess_manager = SubprocessManager(event_run_methods)
     st.session_state.subprocess_manager.start()
@@ -43,8 +52,78 @@ def stop():
         st.session_state.subprocess_manager.stop()
     st.session_state.refresh = False
 
+def apply_preset(default_events):
+    st.session_state.events = [str(uuid.uuid4()) for _ in default_events]
+    for i, event in enumerate(default_events):
+        for key, value in event['args'].items():
+            st.session_state[f"{st.session_state['events'][i]}{key}"] = value
+        st.session_state[f"{st.session_state['events'][i]}_type"] = event['type']
+    set_events()
+    st.rerun()
+
+
 def ui():
     st.title("Event Configuration")
+    col1, col2, col3 = st.columns(3)
+    if col1.button("Beer League Race"):
+        default_events = [
+            {
+                "type": "Discord Bot",
+                "args": {
+                    'vc_id': '1057329833278976160',
+                    'volume': 2.0
+                }
+            },
+            {
+                "type": "Random Timed Code69 Event",
+                "args": {}
+            },
+            {
+                "type": "Random Timed Code69 Event",
+                "args": {}
+            },
+            {
+                "type": "Scheduled Message",
+                "args": {
+                    "message": "The Code 69 Window is now open.",
+                    "event_time": 5,
+                    "race_control": True
+                }
+            },
+            {
+                "type": "Scheduled Message",
+                "args": {
+                    "message": "The Code 69 Window is now closed.",
+                    "event_time": -15,
+                    "race_control": True
+                }
+            },
+            {
+                "type": "Scheduled Message",
+                "args": {
+                    "message": "HALFWAY",
+                    "event_time": 30,
+                    "race_control": True
+                }
+            }
+        ]
+        apply_preset(default_events)
+    if col2.button("Beer League Sprint"):
+        default_events = [
+            {
+                "type": "Sprint DQ",
+                "args": {}
+            },
+            {
+                "type": "Scheduled Message",
+                "args": {
+                    "message": "HALFWAY",
+                    "event_time": 7.5,
+                    "race_control": True
+                }
+            }
+        ]
+        apply_preset(default_events)
 
     if 'events' not in st.session_state:
         st.session_state['events'] = []
@@ -68,6 +147,7 @@ def ui():
         with right:
             if st.button("Remove", key=f"remove_{i}"):
                 st.session_state['events'].remove(i)
+                touch_all_state()
                 for key in st.session_state.keys():
                     if key.startswith(f"{i}"):
                         del st.session_state[key]
@@ -82,7 +162,7 @@ def ui():
             except NotImplementedError:
                 st.write(f"UI for {event_type} not implemented yet.")
         st.write('---')
-    set_events(False)
+    set_events()
     st.write("Configured Events:", st.session_state.get('configured_events', []))
 
 race_control = st.Page(ui, title='Race Control', url_path='race_control', icon='🏁')

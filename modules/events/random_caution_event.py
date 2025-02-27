@@ -38,8 +38,8 @@ class RandomCautionEvent(RandomTimedEvent):
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         return {
-            'min': col1.number_input("Window Start (min/lap)", value=5, key=f'{ident}window_start')*60,
-            'max': col2.number_input("Window End (min/lap)", value=10, key=f'{ident}window_end')*60,
+            'min': col1.number_input("Window Start (min/lap)", value=5, key=f'{ident}min')*60,
+            'max': col2.number_input("Window End (min/lap)", value=10, key=f'{ident}max')*60,
             'pit_close_advance_warning': col1.number_input(f'Pit Close Advance Warning', key=f'{ident}pit_close_advance_warning', min_value=0, max_value=30, value=5),
             'pit_close_max_duration': col2.number_input(f'Pit Close Max Duration', key=f'{ident}pit_close_max_duration', min_value=0, max_value=300, value=90),
             'max_laps_behind_leader': col3.number_input(f'Max Laps Behind Leader', key=f'{ident}max_laps_behind_leader', min_value=0, value=0),

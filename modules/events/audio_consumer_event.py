@@ -21,10 +21,10 @@ class AudioConsumerEvent(BaseEvent):
     @staticmethod
     def ui(ident=''):
         import streamlit as st
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         return {
-            'vc_id': col1.text_input("Discord Voice Channel ID", "1057329833278976160", key=f'{ident}discord_vc_id'),
-            'volume': col2.slider("Discord Volume", 0.0, 2.0, 1.5, key=f'{ident}discord_volume')
+            'vc_id': col1.text_input("Discord Voice Channel ID", key=f'{ident}vc_id', value='420037391882125313'),
+            'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume')
         }
 
     def event_sequence(self):
