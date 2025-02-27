@@ -12,11 +12,20 @@ FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
     def __init__(self, vc_id, volume=1, sdk=None, *args, **kwargs):
-        self.vc_id = vc_id
+        self.vc_id = int(vc_id)
         self.vc = None
         self.volume = volume
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f'Voice Channel ID: {self.vc_id}')
+
+    @staticmethod
+    def ui(ident=''):
+        import streamlit as st
+        col1, col2 = st.columns(2)
+        return {
+            'vc_id': col1.text_input("Discord Voice Channel ID", key=f'{ident}vc_id', value='420037391882125313'),
+            'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume')
+        }
 
     def event_sequence(self):
         # Set up the bot

@@ -33,6 +33,7 @@ def main():
         pages.beer_goggles,
         pages.sprint_race_dq,
         pages.clear_black_flags,
+        pages.race_control,
     ]
 
     st.set_page_config(layout='wide')  # Set the page layout to wide

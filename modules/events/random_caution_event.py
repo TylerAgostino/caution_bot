@@ -33,6 +33,26 @@ class RandomCautionEvent(RandomTimedEvent):
         self.pre_extend_laps = int(pre_extend_laps)
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def ui(ident = ''):
+        import streamlit as st
+        col1, col2, col3, col4, col5 = st.columns(5)
+        return {
+            'min': col1.number_input("Window Start (min/lap)", value=5, key=f'{ident}min')*60,
+            'max': col2.number_input("Window End (min/lap)", value=10, key=f'{ident}max')*60,
+            'pit_close_advance_warning': col1.number_input(f'Pit Close Advance Warning', key=f'{ident}pit_close_advance_warning', min_value=0, max_value=30, value=5),
+            'pit_close_max_duration': col2.number_input(f'Pit Close Max Duration', key=f'{ident}pit_close_max_duration', min_value=0, max_value=300, value=90),
+            'max_laps_behind_leader': col3.number_input(f'Max Laps Behind Leader', key=f'{ident}max_laps_behind_leader', min_value=0, value=0),
+            'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
+            'notify_on_skipped_caution': col4.checkbox(f'Notify on Skipped Caution', key=f'{ident}notify_on_skipped_caution', value=False),
+            'full_sequence': col5.checkbox(f'Full Pit Close Sequence', key=f'{ident}full_sequence', value=True),
+            'wave_around_lap': col1.number_input(f'Wave Around Lap', key=f'{ident}wave_around_lap', min_value=1, value=1),
+            'extend_laps': col2.number_input(f'Extend Laps', key=f'{ident}extend_laps', min_value=0, value=0),
+            'pre_extend_laps': col3.number_input(f'Pre-Extend Laps', key=f'{ident}pre_extend_laps', min_value=0, value=1),
+            'likelihood': col5.text_input(f'Likelihood (%)', key=f'{ident}likelihood', value='100')
+        }
+
+
     def event_sequence(self):
         """
         Executes the event sequence for a random caution.

@@ -1,8 +1,8 @@
 import random
-from modules.events.base_event import BaseEvent
+from modules.events.random_event import RandomEvent
 import time
 
-class RandomTimedEvent(BaseEvent):
+class RandomTimedEvent(RandomEvent):
     """
     A class to represent a random timed event in the iRacing simulator.
 
@@ -10,17 +10,19 @@ class RandomTimedEvent(BaseEvent):
         start_time (int): The start time of the event.
     """
 
-    def __init__(self, min_time: int = 0, max_time: int = 1, *args, **kwargs):
+    def __init__(self, min: float = 0, max: float = 1, *args, **kwargs):
         """
         Initializes the RandomTimedEvent class.
 
         Args:
-            min_time (int, optional): Minimum time for the event to start. Defaults to 0.
-            max_time (int, optional): Maximum time for the event to start. Defaults to 1.
+            min (int, optional): Minimum time for the event to start. Defaults to 0.
+            max (int, optional): Maximum time for the event to start. Defaults to 1.
         """
         super().__init__(*args, **kwargs)
-        self.start_time = random.randrange(min_time if min_time >= 0 else int(self.sdk['SessionTimeTotal']) + min_time,
-                                           max_time if max_time >= 0 else int(self.sdk['SessionTimeTotal']) + max_time)
+        min = float(min)
+        max = float(max)
+        self.start_time = random.randint(min*60 if min >= 0 else int(self.sdk['SessionTimeTotal']) + min*60,
+                                         max*60 if max >= 0 else int(self.sdk['SessionTimeTotal']) + max*60)
 
     def is_time_to_start(self, adjustment=0):
         """
@@ -36,31 +38,7 @@ class RandomTimedEvent(BaseEvent):
         time_remaining = self.sdk['SessionTimeRemain']
         return (total_session_time - time_remaining >= self.start_time + adjustment) and time_remaining > 1 and self.sdk['SessionState'] == 4
 
-    def wait_for_start(self):
-        """
-        Waits until it is time to start the event.
-        """
-        while not self.is_time_to_start():
-            self.sleep(1)
 
-    def run(self, cancel_event=None, busy_event=None, audio_queue=None):
-        """
-        Runs the event sequence.
-
-        Args:
-            cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
-            busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
-            audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
-        """
-        self.cancel_event = cancel_event or self.cancel_event
-        self.busy_event = busy_event or self.busy_event
-        self.audio_queue = audio_queue or self.audio_queue
-        self.wait_for_start()
-        try:
-            self.event_sequence()
-        except Exception as e:
-            self.logger.exception('Error in event sequence.')
-            self.logger.exception(e)
 
 
 class TimedEvent(RandomTimedEvent):
@@ -74,4 +52,4 @@ class TimedEvent(RandomTimedEvent):
         Args:
             event_time (int): The time for the event
         """
-        super().__init__(min_time=int(event_time), max_time=int(event_time)+1, *args, **kwargs)
+        super().__init__(min=float(event_time), max=float(event_time), *args, **kwargs)

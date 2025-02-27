@@ -19,8 +19,8 @@ def start_sequence():
         cautions = [
             RandomTimedCode69Event(
                 wave_arounds=st.session_state.wave_arounds,
-                min_time=int(st.session_state.vsc_window_start) * 60,
-                max_time=int(st.session_state.vsc_window_end) * 60,
+                min=int(st.session_state.vsc_window_start) * 60,
+                max=int(st.session_state.vsc_window_end) * 60,
                 notify_on_skipped_caution=st.session_state.notify_skipped,
                 reminder_frequency=st.session_state.reminder_frequency,
                 max_speed_km=st.session_state.vsc_maximum_speed,
@@ -39,8 +39,8 @@ def start_sequence():
         cautions = [
             RandomLapCode69Event(
                 wave_arounds=st.session_state.wave_arounds,
-                min_lap=int(st.session_state.vsc_window_start),
-                max_lap=int(st.session_state.vsc_window_end),
+                min=int(st.session_state.vsc_window_start),
+                max=int(st.session_state.vsc_window_end),
                 notify_on_skipped_caution=st.session_state.notify_skipped,
                 reminder_frequency=st.session_state.reminder_frequency,
                 max_speed_km=st.session_state.vsc_maximum_speed,

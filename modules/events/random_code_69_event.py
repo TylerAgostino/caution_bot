@@ -20,7 +20,7 @@ class RestartOrderManager:
         self.class_lap_times = {}
         def get_fastest_lap_for_class(cc):
             classes = self.sdk['CarIdxClass']
-            best_laps = self.sdk['CarIdxBestLapTime']
+            best_laps = self.sdk['CarIdxBestLapTime'] or self.sdk['CarIdxLastLapTime']
             best_lap = None
             for i, c in enumerate(classes):
                 if c == cc:
@@ -134,7 +134,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
                  lane_names=None, reminder_frequency=8, auto_restart_get_ready=True, auto_restart_get_ready_position=1.85,
-                 auto_restart_form_lanes=True, auto_restart_form_lanes_position=1.5, extra_lanes=False, *args, **kwargs):
+                 auto_restart_form_lanes=True, auto_restart_form_lanes_position=1.5, extra_lanes=False,
+                 auto_class_separate=True, auto_class_separate_position=1.0, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -157,6 +158,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.restart_speed = self.max_speed_km * (int(restart_speed_pct) / 100)
         self.auto_restart_get_ready = auto_restart_get_ready
         self.auto_restart_form_lanes = auto_restart_form_lanes
+        self.auto_class_separate = auto_class_separate
+        self.auto_class_separate_position = float(auto_class_separate_position)
         self.auto_restart_get_ready_position = float(auto_restart_get_ready_position)
         self.auto_restart_form_lanes_position = float(auto_restart_form_lanes_position)
         if lane_names is not None:
@@ -165,6 +168,32 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self.lane_names = ['LEFT', 'RIGHT']
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
+
+    @staticmethod
+    def ui(ident = '', default_values=None):
+        import streamlit as st
+        col1, col2, col3, col4, col5 = st.columns(5)
+        return {
+            'min': col1.number_input(f"Window Start", value=5, key=f'{ident}min', help="Minutes/Laps before the start of the window. Negative values are relative to the end of the race."),
+            'max': col1.number_input("Window End", value=-15, key=f'{ident}max', help="Minutes/Laps before the end of the window. Negative values are relative to the end of the race"),
+            'reminder_frequency': col1.number_input("Reminder Frequency", value=8, help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
+
+            'likelihood': col2.number_input(f'% Chance', key=f'{ident}likelihood', value=75, help="The likelihood of the event happening. 100% means it will happen every time."),
+            'max_speed_km': col2.number_input("Pace Speed (kph)", 69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
+            'notify_on_skipped_caution': col2.checkbox(f'Notify on Skip', key=f'{ident}notify_on_skipped_caution', value=False, help='Send a message to the chat if the event is triggered and skipped while another event is in progress.'),
+
+            'auto_class_separate': col3.checkbox("Auto Class Separate", value=True, help='Automatically separate classes after a predetermined distance under Code69', key=f'{ident}auto_class_separate'),
+            'auto_class_separate_position': col3.number_input("Class Separation Distance", value=1.0, help='Laps of pacing before separating classes.', key=f'{ident}auto_class_separate_position'),
+            'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
+
+            'auto_restart_form_lanes': col4.checkbox("Auto Form Lanes", value=True, help='Automatically form multiple restart lanes after a predetermined distance under Code69.', key=f'{ident}auto_restart_form_lanes'),
+            'auto_restart_form_lanes_position': col4.number_input("Lanes Form Distance", value=1.5, help='Laps of pacing before forming the restart lanes.', key=f'{ident}auto_restart_form_lanes_position'),
+            'lane_names': col4.text_input("Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.", key=f'{ident}lane_names').split(','),
+
+            'auto_restart_get_ready': col5.checkbox("Auto Restart", value=True, help='Automatically hand control to the leader and resume the race after a predetermined distance under Code69', key=f'{ident}auto_restart_get_ready'),
+            'auto_restart_get_ready_position': col5.number_input("Restart Position", value=1.85, help='Laps of pacing before restarting.', key=f'{ident}auto_restart_get_ready_position'),
+            'restart_speed_pct': col5.number_input("Restart Speed %", value=125, help='After the leader receives the "You control the field" message, show the green flag when they reach this % of the pacing speed', key=f'{ident}restart_speed_pct'),
+        }
 
     def send_reminders(self, order_generator):
         self.logger.debug(order_generator.order)
@@ -292,7 +321,13 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 session_time = self.sdk['SessionTime']
             self.sleep(0.1)
 
-            if self.class_separation:
+            if (self.class_separation
+                    or (
+                            self.auto_class_separate
+                            and restart_order_generator.order[0]['ActualPosition'] >= self.auto_class_separate_position
+                            and self.can_separate_classes
+                    )
+            ) and len([i for i, v in restart_order_generator.class_lap_times.items() if v is not None]) > 1:
                 if self.can_separate_classes:
                     self._chat(f'Performing class separation. Faster classes overtake on the {self.lane_names[0]}', race_control=True)
                 restart_order_generator.class_separation = True
@@ -327,6 +362,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             number_of_lanes = 1
             lane_order_generators = [restart_order_generator]
 
+        double_session_time = session_time
         while not self.restart_ready.is_set():
             if lane_order_generators[0].order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
                 self.restart_ready.set()
@@ -344,6 +380,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 if speed_km_per_hour > self.max_speed_km:
                     self._chat(f'/{leader['CarNumber']} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
                 session_time = self.sdk['SessionTime']
+            if self.sdk['SessionTime'] - double_session_time > self.reminder_frequency * 2:
+                for i in range(number_of_lanes):
+                    for car in lane_order_generators[i].order:
+                        self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i]).upper()} lane.')
+                double_session_time = self.sdk['SessionTime']
+
             self.sleep(0.1)
 
 

@@ -91,6 +91,14 @@ class BaseEvent:
         """
         raise NotImplementedError
 
+    @staticmethod
+    def ui(ident=''):
+        """
+        Defines the UI for the event. Must be implemented by subclasses.
+        :return:
+        """
+        raise NotImplementedError
+
     def _chat(self, message, enter=True, race_control=False):
         """
         Sends a chat message in the iRacing simulator.
