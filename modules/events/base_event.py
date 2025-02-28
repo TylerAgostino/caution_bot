@@ -286,7 +286,7 @@ class BaseEvent:
         try:
             last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
             this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
-            return this_step_record['LapCompleted'] > last_step_record['LapCompleted'] and last_step_record['LapCompleted'] > 0 and this_step_record['LapCompleted'] > 0
+            return this_step_record['LapCompleted'] == last_step_record['LapCompleted'] + 1
         except IndexError as e:
             self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
             self.logger.error(e)

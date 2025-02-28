@@ -26,6 +26,9 @@ class RestartOrderManager:
                 if c == cc:
                     if (best_lap is None or best_laps[i] < best_lap) and best_laps[i] > 0:
                         best_lap = best_laps[i]
+
+            if best_lap is None:
+                return 999999
             return best_lap
         for car_class in self.race_classes:
             if car_class not in self.class_lap_times:
@@ -163,7 +166,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.auto_restart_get_ready_position = float(auto_restart_get_ready_position)
         self.auto_restart_form_lanes_position = float(auto_restart_form_lanes_position)
         if lane_names is not None:
-            self.lane_names = lane_names
+            if isinstance(lane_names, str):
+                self.lane_names = lane_names.split(',')
+            else:
+                self.lane_names = lane_names
         else:
             self.lane_names = ['LEFT', 'RIGHT']
         super().__init__(*args, **kwargs)
@@ -227,6 +233,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
         lead_lap = max([car['LapCompleted'] for car in last_step])
         this_step = last_step
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
+            self.sdk.unfreeze_var_buffer_latest()
+            self.sdk.freeze_var_buffer_latest()
+            last_step = this_step
+            this_step = self.get_current_running_order()
             for car in this_step:
                 if (self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]) \
                         or self.car_has_left_pits(car, last_step, this_step):
@@ -234,8 +244,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
                 self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
                 session_time = self.sdk['SessionTime']
-            last_step = this_step
-            this_step = self.get_current_running_order()
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
         self.audio_queue.put('code69begin')
@@ -246,7 +254,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
         leader = -1
 
         while not self.restart_ready.is_set():
-
             this_step = self.get_current_running_order()
             # Get the class leaders
             leaders = {}
@@ -263,7 +270,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         leader_for_class = leader_on_track
                     leaders[class_] = leader_for_class
 
-            self.sdk.freeze_var_buffer_latest()
             for car in this_step:
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
@@ -301,6 +307,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         self.logger.info(f'{car["CarNumber"]} gets wave around: {gets_wave_around}, catch up: {gets_catch_up}')
                     continue
             self.sdk.unfreeze_var_buffer_latest()
+            self.sdk.freeze_var_buffer_latest()
 
             correct_order = restart_order_generator.update_order()
 
@@ -324,7 +331,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             if (self.class_separation
                     or (
                             self.auto_class_separate
-                            and restart_order_generator.order[0]['ActualPosition'] >= self.auto_class_separate_position
+                            and len(restart_order_generator.order)>1 and restart_order_generator.order[0]['ActualPosition'] >= self.auto_class_separate_position
                             and self.can_separate_classes
                     )
             ) and len([i for i, v in restart_order_generator.class_lap_times.items() if v is not None]) > 1:
@@ -335,10 +342,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 self.logger.debug(restart_order_generator.order)
             last_step = this_step
 
-            if self.auto_restart_form_lanes and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_form_lanes_position:
+            if self.auto_restart_form_lanes and restart_order_generator.order and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_form_lanes_position:
                 self.restart_ready.set()
                 self.extra_lanes = True
-            elif self.auto_restart_get_ready and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
+            elif self.auto_restart_get_ready and restart_order_generator.order and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
                 self.restart_ready.set()
 
         if self.extra_lanes:
@@ -385,6 +392,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     for car in lane_order_generators[i].order:
                         self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i]).upper()} lane.')
                 double_session_time = self.sdk['SessionTime']
+            self.sdk.unfreeze_var_buffer_latest()
+            self.sdk.freeze_var_buffer_latest()
 
             self.sleep(0.1)
 
@@ -401,6 +410,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
             if speed_km_per_hour > self.restart_speed:
                 break
             self.sleep(0.5)
+            self.sdk.unfreeze_var_buffer_latest()
+            self.sdk.freeze_var_buffer_latest()
 
         for i in range(len(lane_order_generators)):
             lane_order_generators[i].update_order()
@@ -416,6 +427,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             for car in lane_order_generators[i].out_of_place_cars:
                 self._chat(f'/{car["CarNumber"]} RESTART VIOLATION will be investigated after the race.')
 
+        self.sdk.unfreeze_var_buffer_latest()
         self.busy_event.clear()
 
 

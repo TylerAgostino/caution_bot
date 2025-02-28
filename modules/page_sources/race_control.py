@@ -125,6 +125,18 @@ def ui():
         ]
         apply_preset(default_events)
 
+    if col3.button("Test"):
+        default_events = [
+            {
+                "type": "Random Timed Code69 Event",
+                "args": {
+                    'min': 1,
+                    'max': 2
+                }
+            }
+        ]
+        apply_preset(default_events)
+
     if 'events' not in st.session_state:
         st.session_state['events'] = []
 
