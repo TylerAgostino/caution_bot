@@ -64,7 +64,7 @@ def apply_preset(default_events):
 
 def ui():
     st.title("Event Configuration")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     if col1.button("Beer League Race"):
         default_events = [
             {
@@ -124,8 +124,40 @@ def ui():
             }
         ]
         apply_preset(default_events)
-
-    if col3.button("Test"):
+    if col3.button("Nurb"):
+        default_events = [
+            {
+                "type": "Discord Bot",
+                "args": {
+                    'vc_id': '1057329833278976160',
+                    'volume': 2.0
+                }
+            },
+            {
+                "type": "Random Lap Code69 Event",
+                "args": {
+                    'min': 1,
+                    'max': 6,
+                    'auto_class_separate': False,
+                    'auto_restart_form_lanes': False,
+                    'auto_restart_get_ready': True,
+                    'auto_restart_get_ready_position': 0.24,
+                }
+            },
+            {
+                "type": "Random Lap Code69 Event",
+                "args": {
+                    'min': 1,
+                    'max': 6,
+                    'auto_class_separate': False,
+                    'auto_restart_form_lanes': False,
+                    'auto_restart_get_ready': True,
+                    'auto_restart_get_ready_position': 0.24,
+                }
+            }
+        ]
+        apply_preset(default_events)
+    if col4.button("Test"):
         default_events = [
             {
                 "type": "Random Timed Code69 Event",
