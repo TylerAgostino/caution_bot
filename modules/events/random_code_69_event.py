@@ -237,6 +237,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self.sdk.freeze_var_buffer_latest()
             last_step = this_step
             this_step = self.get_current_running_order()
+            if any([car['LapCompleted'] > lead_lap for car in this_step]):
+                break
             for car in this_step:
                 if (self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]) \
                         or self.car_has_left_pits(car, last_step, this_step):
