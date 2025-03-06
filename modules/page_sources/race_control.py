@@ -142,6 +142,7 @@ def ui():
                     'auto_restart_form_lanes': False,
                     'auto_restart_get_ready': True,
                     'auto_restart_get_ready_position': 0.24,
+                    'wave_arounds': False
                 }
             },
             {
@@ -153,6 +154,7 @@ def ui():
                     'auto_restart_form_lanes': False,
                     'auto_restart_get_ready': True,
                     'auto_restart_get_ready_position': 0.24,
+                    'wave_arounds': False
                 }
             }
         ]
