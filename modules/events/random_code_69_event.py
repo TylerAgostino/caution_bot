@@ -402,7 +402,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
-        self.sleep(5)
+        self.sleep(2)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         while True:
             self._chat(f'/{leader['CarNumber']} you control the field, go when ready')
