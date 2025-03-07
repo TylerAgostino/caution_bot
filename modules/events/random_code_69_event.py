@@ -49,9 +49,11 @@ class RestartOrderManager:
             laps_lost = leader_position - ((leader_position - began_pacing_distance)%1)
 
         if carIdx not in [car['CarIdx'] for car in self.order]:
+            driver = [d for d in self.sdk['DriverInfo']['Drivers'] if d['CarIdx']==carIdx][0]
+            car_number = driver['CarNumber']
             car_restart_record = {
                 'CarIdx': carIdx,
-                'CarNumber': self.sdk['DriverInfo']['Drivers'][carIdx]['CarNumber'],
+                'CarNumber': car_number,
                 'CarClassOrder': self.class_speed_rank[self.sdk['CarIdxClass'][carIdx]],
                 'BeganPacingLap': self.sdk['CarIdxLapCompleted'][carIdx],
                 'BeganPacingTick': int(self.sdk['SessionTick']),

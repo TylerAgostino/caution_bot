@@ -38,6 +38,7 @@ class BaseEvent:
         self.sdk = sdk
         if self.sdk:
             self.pwa = pwa or pywinauto.Application()
+            self.sdk.shutdown()
             self.sdk.startup()
             self.pwa.connect(best_match='iRacing.com Simulator', timeout=10)
         self.thread = None
@@ -132,7 +133,8 @@ class BaseEvent:
         Args:
             car (int): The car index.
         """
-        car_number = self.sdk['DriverInfo']['Drivers'][car]['CarNumber']
+        driver = [d for d in self.sdk['DriverInfo']['Drivers'] if d['CarIdx']==car][0]
+        car_number = driver['CarNumber']
         self.logger.info(f'Waving around car {car_number}')
         self._chat(f'!w {car_number}')
         self._chat(f'!eol {car_number}')
