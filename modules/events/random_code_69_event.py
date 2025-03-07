@@ -225,7 +225,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.busy_event.set()
         self.restart_ready.clear()
         # self._chat(self.reason, race_control=True)
-        self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
         self.audio_queue.put('code69beginsoon')
 
         last_step = self.get_current_running_order()
@@ -234,6 +233,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         # wait for someone to start the next lap
         lead_lap = max([car['LapCompleted'] for car in last_step])
         this_step = last_step
+        msg = f'Code 69 will begin at the end of lap {lead_lap + 1}'
+        self._chat(msg, race_control=True)
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
@@ -246,7 +247,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         or self.car_has_left_pits(car, last_step, this_step):
                     self._chat(f'/{car["CarNumber"]} YOU ARE STILL RACING FOR AN ADDITIONAL LAP')
             if self.sdk['SessionTime'] - session_time > self.reminder_frequency:
-                self._chat('Code 69 will begin at the Start/Finish Line', race_control=True)
+                self._chat(msg, race_control=True)
                 session_time = self.sdk['SessionTime']
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
@@ -340,7 +341,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     )
             ) and len([i for i, v in restart_order_generator.class_lap_times.items() if v is not None]) > 1:
                 if self.can_separate_classes:
-                    self._chat(f'Performing class separation. Faster classes overtake on the {self.lane_names[0]}', race_control=True)
+                    self._chat(f'Performing class separation.', race_control=True)
                 restart_order_generator.class_separation = True
                 self.can_separate_classes = False
                 self.logger.debug(restart_order_generator.order)
@@ -356,13 +357,13 @@ class RandomTimedCode69Event(RandomTimedEvent):
             number_of_lanes = len(self.lane_names)
             self.restart_ready.clear()
             self.audio_queue.put('lanes')
-            self._chat(f'Forming {number_of_lanes} restart lanes, leader in the {self.lane_names[0]} lane.', race_control=True)
+            self._chat(f'Forming {number_of_lanes} restart lanes.', race_control=True)
             lanes_raw = [[] for _ in range(number_of_lanes)]
             lane_order_generators = []
             i = 0
             for car in restart_order_generator.order:
                 lanes_raw[i % number_of_lanes].append(car)
-                self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i % number_of_lanes]).upper()} lane.')
+                self._chat(f'/{car["CarNumber"]} Line up {number_of_lanes} wide in the {str(self.lane_names[i % number_of_lanes]).upper()} lane.')
                 i += 1
             for lane_cars in lanes_raw:
                 lane_order_generators.append(RestartOrderManager(self.sdk, preset_order=lane_cars))
@@ -394,7 +395,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             if self.sdk['SessionTime'] - double_session_time > self.reminder_frequency * 2:
                 for i in range(number_of_lanes):
                     for car in lane_order_generators[i].order:
-                        self._chat(f'/{car["CarNumber"]} Line up in the {str(self.lane_names[i]).upper()} lane.')
+                        self._chat(f'/{car["CarNumber"]} Line up {number_of_lanes} wide in the {str(self.lane_names[i]).upper()} lane.')
                 double_session_time = self.sdk['SessionTime']
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
