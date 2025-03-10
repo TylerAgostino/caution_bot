@@ -14,6 +14,7 @@ While the original intention was to automate Cautions for The Beer League, this 
 - **Sprint Race DQ** - Waits for a specific moment in the race, and issues a configurable penalty to the specified cars. Typically used to ensure drivers start Feature races from the back of the field despite their finishing position in the Sprint/Heat races.
 - **Clear All Black Flags** - Every few seconds, if any driver is being shown a black flag, the bot will send the `!clearall` command to clear all black flags.
 - **Discord Integration** - Provides audio cues for Code 69 and Caution events. Bring your own Discord bot token and channel ID.
+- **Scheduled Messages** - Allows the Admin to schedule messages to be sent to the iRacing chat at specific times.
 - **Beer Goggles** - A very simple wrapper for exposing all the data provided by the API. Meant to be used for debugging and testing the bot.
 
 
