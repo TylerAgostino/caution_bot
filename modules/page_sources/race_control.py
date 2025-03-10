@@ -124,37 +124,27 @@ def ui():
             }
         ]
         apply_preset(default_events)
-    if col3.button("Nurb"):
+    if col3.button("Beer League Practice"):
         default_events = [
             {
                 "type": "Discord Bot",
                 "args": {
                     'vc_id': '1057329833278976160',
-                    'volume': 2.0
+                    'volume': 1.5
                 }
             },
             {
-                "type": "Random Lap Code69 Event",
+                "type": "Random Timed Code69 Event",
                 "args": {
-                    'min': 1,
-                    'max': 6,
+                    'min': 7,
+                    'max': 8,
+                    'likelihood': 100,
                     'auto_class_separate': False,
-                    'auto_restart_form_lanes': False,
+                    'auto_restart_form_lanes': True,
+                    'auto_restart_form_lanes_position': 0.80,
                     'auto_restart_get_ready': True,
-                    'auto_restart_get_ready_position': 0.24,
-                    'wave_arounds': False
-                }
-            },
-            {
-                "type": "Random Lap Code69 Event",
-                "args": {
-                    'min': 1,
-                    'max': 6,
-                    'auto_class_separate': False,
-                    'auto_restart_form_lanes': False,
-                    'auto_restart_get_ready': True,
-                    'auto_restart_get_ready_position': 0.24,
-                    'wave_arounds': False
+                    'auto_restart_get_ready_position': 0.95,
+                    'wave_arounds': True
                 }
             }
         ]
