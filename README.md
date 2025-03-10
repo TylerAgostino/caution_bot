@@ -9,7 +9,11 @@ While the original intention was to automate Cautions for The Beer League, this 
     - When the caution is triggered, the bot will first close pit lane, and wait for any cars already on pit lane to exit before throwing the caution. This is intended to prevent the 'Phantom EOL' bug, where cars that are on pit lane when a caution is thrown are told to let cars by, but those cars are not told to pass them.
 - **Random Code 69 Bot** - triggers a fully custom Code 60-like event at a random time within a given time window, providing instructions to drivers via text chat.
     - Originally designed for longer tracks where the minimum 3 laps of pacing would take a long time. This event instructs the leader to slow down after crossing the start/finish line, and all cars to form up behind them in a frozen order. Cars that overtake or are overtaken are instructed to return to the proper order. It can instruct cars to line up double file, or restart directly from the single file order. When restarting, it monitors the leader's speed and announces the green flag when they accelerate.
+    - Supports Class Separation for multiclass races, automatic wave-arounds for lapped cars as well as cars 'trapped' a lap down (overall leader between them and their leader while on the same lap as their leader)
+    - Supports fully scripted class separation, multilane restart, and green flag based on a predetermined pacing distance before each event
 - **Sprint Race DQ** - Waits for a specific moment in the race, and issues a configurable penalty to the specified cars. Typically used to ensure drivers start Feature races from the back of the field despite their finishing position in the Sprint/Heat races.
+- **Clear All Black Flags** - Every few seconds, if any driver is being shown a black flag, the bot will send the `!clearall` command to clear all black flags.
+- **Discord Integration** - Provides audio cues for Code 69 and Caution events. Bring your own Discord bot token and channel ID.
 - **Beer Goggles** - A very simple wrapper for exposing all the data provided by the API. Meant to be used for debugging and testing the bot.
 
 
@@ -23,8 +27,8 @@ While the original intention was to automate Cautions for The Beer League, this 
     - The first time you start Streamlit, you may be prompted to enter an email address for sharing usage data with Streamlit. This is optional and can be skipped by pressing the 'Enter' key in the terminal window.
 
 ## Planned Features
-- **Multiclass Restarts** to help with class separation during restarts.
-- **Auto Black-Flag Clearing** to run `!clearall` on a loop for no-rules races or practice sessions
+- ~~**Multiclass Restarts** to help with class separation during restarts.~~ DONE
+- ~~**Auto Black-Flag Clearing** to run `!clearall` on a loop for no-rules races or practice sessions~~ DONE
 - **Incident Limit Enforcement** to issue penalties to drivers who exceed a configurable number of incidents in a session.
 
 ## Contributing
