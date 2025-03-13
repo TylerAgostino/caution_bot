@@ -364,6 +364,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
             for car in restart_order_generator.order:
                 lanes_raw[i % number_of_lanes].append(car)
                 self._chat(f'/{car["CarNumber"]} Line up {number_of_lanes} wide in the {str(self.lane_names[i % number_of_lanes]).upper()} lane.')
+                try:
+                    if car['CarNumber'] == self.sdk['PlayerCarIdx']:
+                        self.logger.warn(f"{str(self.lane_names[i % number_of_lanes]).upper()} lane for player car")
+                except:
+                    pass
                 i += 1
             for lane_cars in lanes_raw:
                 lane_order_generators.append(RestartOrderManager(self.sdk, preset_order=lane_cars))
