@@ -15,6 +15,7 @@ While the original intention was to automate Cautions for The Beer League, this 
 - **Clear All Black Flags** - Every few seconds, if any driver is being shown a black flag, the bot will send the `!clearall` command to clear all black flags.
 - **Discord Integration** - Provides audio cues for Code 69 and Caution events. Bring your own Discord bot token and channel ID.
 - **Scheduled Messages** - Allows the Admin to schedule messages to be sent to the iRacing chat at specific times.
+- **Incident Limit Enforcement** - Give drivers a penalty after X incidents, then every Y until Z incidents. The incidents and penalties are configurable.
 - **Beer Goggles** - A very simple wrapper for exposing all the data provided by the API. Meant to be used for debugging and testing the bot.
 
 
@@ -30,7 +31,8 @@ While the original intention was to automate Cautions for The Beer League, this 
 ## Planned Features
 - ~~**Multiclass Restarts** to help with class separation during restarts.~~ DONE
 - ~~**Auto Black-Flag Clearing** to run `!clearall` on a loop for no-rules races or practice sessions~~ DONE
-- **Incident Limit Enforcement** to issue penalties to drivers who exceed a configurable number of incidents in a session.
+- ~~**Incident Limit Enforcement** to issue penalties to drivers who exceed a configurable number of incidents in a session.~~ DONE
+- **SDKGaming Integration** to notify broadcasting software of events and provide a better experience for viewers.
 
 ## Contributing
 If you would like to contribute to this project, please fork the repository and submit a pull request with your changes. If you have any questions or need help with the code, please open an issue on the repository and I will do my best to help you.
