@@ -7,6 +7,7 @@ from modules.events.audio_consumer_event import AudioConsumerEvent
 from modules.subprocess_manager import SubprocessManager
 from modules.events.scheduled_message_event import ScheduledMessageEvent
 from modules.events.scheduled_black_flag_event import SprintRaceDQEvent
+from modules.events.incident_penalty_event import IncidentPenaltyEvent
 import uuid
 from streamlit.errors import StreamlitAPIException
 
@@ -18,7 +19,8 @@ event_types = {
     "Clear Black Flag Event": ClearBlackFlagEvent,
     "Discord Bot": AudioConsumerEvent,
     "Scheduled Message": ScheduledMessageEvent,
-    "Sprint DQ": SprintRaceDQEvent
+    "Sprint DQ": SprintRaceDQEvent,
+    "Incident Penalty": IncidentPenaltyEvent
 }
 
 def touch_all_state():
@@ -105,6 +107,12 @@ def ui():
                     "event_time": 30,
                     "race_control": True
                 }
+            },
+            {
+                "type": "Incident Penalty",
+                "args": {
+                }
+
             }
         ]
         apply_preset(default_events)
