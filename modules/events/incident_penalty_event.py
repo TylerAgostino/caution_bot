@@ -53,7 +53,11 @@ class IncidentPenaltyEvent(BaseEvent):
             this_step = self.sdk['DriverInfo']['Drivers']
             for car in this_step:
                 car_no = car['CarNumber']
-                prev_inc = [x for x in last_step if x['CarNumber'] == car_no][0]['TeamIncidentCount']
+                try:
+                    prev_inc = [x for x in last_step if x['CarNumber'] == car_no][0]['TeamIncidentCount']
+                except IndexError:
+                    self.logger.debug(f'Car {car_no} not found in last step')
+                    continue
                 this_inc = car['TeamIncidentCount']
                 if this_inc > prev_inc:
                     self.logger.debug(f'Car {car_no} has {this_inc} incidents')
