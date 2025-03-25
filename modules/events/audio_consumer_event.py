@@ -38,6 +38,15 @@ class AudioConsumerEvent(BaseEvent):
 
         async def play(message=None):
             fname = os.path.join(module_path, 'audio', f'{message}.mp3')
+            # if it's a directory, grab a random file
+            if os.path.isdir(fname):
+                import random
+                files = os.listdir(fname)
+                fname = os.path.join(fname, random.choice(files))
+            if not os.path.exists(fname):
+                self.logger.error(f'File {fname} does not exist.')
+                return
+
             source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=self.volume)
             self.vc.play(source)
             while self.vc.is_playing():
