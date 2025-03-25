@@ -425,6 +425,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self.sleep(2)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
+        immediate_throw = False
         while True:
             self._chat(f'/{leader['CarNumber']} you control the field, go when ready')
             speed_km_per_hour = leader_speed_generator.__next__()
@@ -433,6 +434,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self.sleep(0.5)
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
+            immediate_throw = False
 
         for i in range(len(lane_order_generators)):
             lane_order_generators[i].update_order()
@@ -443,6 +445,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.audio_queue.put('green')
         self._chat('Green Flag!', race_control=True)
 
+        if immediate_throw:
+            self._chat(f'/{leader['CarNumber']} RESTART VIOLATION will be investigated after the race.')
 
         for i in range(len(lane_order_generators)):
             for car in lane_order_generators[i].out_of_place_cars:
