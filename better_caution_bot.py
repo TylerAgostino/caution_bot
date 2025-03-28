@@ -28,8 +28,9 @@ def main():
 
     # List of available pages for navigation
     page_list = [
-        pages.beer_goggles,
         pages.race_control,
+        pages.beer_goggles,
+        pages.f1_qualifying
     ]
 
     st.set_page_config(layout='wide')  # Set the page layout to wide
