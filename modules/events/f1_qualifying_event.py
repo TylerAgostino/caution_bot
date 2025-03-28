@@ -1,4 +1,5 @@
 from modules.events.base_event import BaseEvent
+from pandas import DataFrame
 
 class F1QualifyingEvent(BaseEvent):
     """
@@ -19,6 +20,7 @@ class F1QualifyingEvent(BaseEvent):
         self.leaderboard = {}
         for n in range(len(self.session_minutes)):
             self.leaderboard[f'Q{n+1}'] = {}
+        self.leaderboard_df = DataFrame(self.leaderboard)
 
     def event_sequence(self):
         # [(length, num_drivers_remain), ...]
@@ -47,10 +49,9 @@ class F1QualifyingEvent(BaseEvent):
                 self._chat(f"FASTEST LAP for car {carNumber}: {laptime}!", race_control=True)
             else:
                 self._chat(f"New personal best for car {carNumber}: {laptime}!", race_control=True)
-        # self.update_leaderboard(laps)
         return laps
 
-    def update_leaderboard(self, fastest_laps, session_number):
+    def update_leaderboard(self, fastest_laps, session_number, send_msg=True):
         """
         Updates the leaderboard with the fastest laps.
 
@@ -73,9 +74,15 @@ class F1QualifyingEvent(BaseEvent):
                 if 0 < elimination < len(sorted_laps):
                     gap_to_elim = lap - sorted_laps[elimination][1]
                     msg += f', Elim: {gap_to_elim:.3f}s'
-                self._chat(msg)
+                if send_msg:
+                    self._chat(msg)
             self.leaderboard[f'Q{session_number}'][car] = lap
 
+        self.leaderboard_df = DataFrame(self.leaderboard)
+        #sort the df by lap times, highest qualifying session first
+        sessions = [f'Q{n+1}' for n in range(len(self.session_minutes))]
+        sessions.reverse()
+        self.leaderboard_df = self.leaderboard_df.sort_values(by=sessions, ascending=True)
 
     def subsession(self, delay_start, length, num_drivers_remain, session_number, subset_of_drivers=None):
         """
@@ -138,7 +145,7 @@ class F1QualifyingEvent(BaseEvent):
             this_step = self.get_current_running_order()
             for car in this_step:
                 if car['CarNumber'] in remaining_cars:
-                    if car['CarNumber'] not in fastest_laps:
+                    if car['CarNumber'] not in fastest_laps: # todo: if you don't have a valid lap when time expires, you don't get the extra lap
                         remaining_cars.remove(car['CarNumber'])
                         self._chat(f'/{car['CarNumber']} The session is over.')
                     else:

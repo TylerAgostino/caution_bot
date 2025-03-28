@@ -21,7 +21,7 @@ def ui():
         st.session_state.refresh = True
 
     if 'event' in st.session_state:
-        st.dataframe(st.session_state.event.leaderboard)
+        st.dataframe(st.session_state.event.leaderboard_df)
 
     if st.session_state.get('refresh', False):
         st_autorefresh()
