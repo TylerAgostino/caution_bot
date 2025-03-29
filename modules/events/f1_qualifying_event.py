@@ -11,7 +11,7 @@ class F1QualifyingEvent(BaseEvent):
     - Tracking of lap times and position updates
     - Leaderboard management
     """
-    def __init__(self, session_minutes, session_advancing_cars, send_dq, *args, **kwargs):
+    def __init__(self, session_minutes, session_advancing_cars, send_dq, wait_between_sessions, *args, **kwargs):
         """
         Initialize the F1 qualifying event.
         
@@ -28,6 +28,7 @@ class F1QualifyingEvent(BaseEvent):
         num_drivers_remain = session_advancing_cars.split(',')
         self.session_minutes = [int(length) for length in lengths]
         self.session_advancing_cars = [int(num) for num in num_drivers_remain]
+        self.wait_between_sessions = wait_between_sessions
         
         # Ensure the final session properly terminates by adding a 0-advancing session if needed
         if self.session_advancing_cars[-1] != 0:
@@ -63,7 +64,7 @@ class F1QualifyingEvent(BaseEvent):
         # Run each qualifying session
         for session_number, details in enumerate(session_info, start=1):
             length, num_drivers_remain = details
-            advancing_drivers = self.subsession(5, length, num_drivers_remain, session_number, advancing_drivers)
+            advancing_drivers = self.subsession(self.wait_between_sessions, length, num_drivers_remain, session_number, advancing_drivers)
 
     def apply_new_laptime(self, laps, carNumber, laptime):
         """
