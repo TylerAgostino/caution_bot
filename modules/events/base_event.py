@@ -447,3 +447,16 @@ class BaseEvent:
                 if best_lap is None or best_laps[i] < best_lap:
                     best_lap = best_laps[i]
         return best_lap
+
+    def intermittent_boolean_generator(self, n: int = 1):
+        """
+        A generator that yields True every n seconds and False otherwise.
+        :return:
+        """
+        last_true = self.sdk['SessionTime']
+        while True:
+            if self.sdk['SessionTime'] - last_true > n:
+                yield True
+                last_true = self.sdk['SessionTime']
+            else:
+                yield False

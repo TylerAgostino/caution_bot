@@ -47,7 +47,7 @@ class AudioConsumerEvent(BaseEvent):
                 self.logger.error(f'File {fname} does not exist.')
                 return
 
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=self.volume)
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=float(self.volume))
             self.vc.play(source)
             while self.vc.is_playing():
                 await asyncio.sleep(1)
@@ -63,7 +63,7 @@ class AudioConsumerEvent(BaseEvent):
 
         @bot.event
         async def on_ready():
-            voice_channel = bot.get_channel(self.vc_id)
+            voice_channel = bot.get_channel(int(self.vc_id))
             if not voice_channel.guild.voice_client:
                 self.vc = await voice_channel.connect()
             else:
