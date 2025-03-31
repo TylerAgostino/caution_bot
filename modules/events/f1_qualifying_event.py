@@ -29,6 +29,7 @@ class F1QualifyingEvent(BaseEvent):
         self.session_minutes = [int(length) for length in lengths]
         self.session_advancing_cars = [int(num) for num in num_drivers_remain]
         self.wait_between_sessions = wait_between_sessions
+        self.subsession_time_remaining = 0
         
         # Ensure the final session properly terminates by adding a 0-advancing session if needed
         if self.session_advancing_cars[-1] != 0:
@@ -188,6 +189,8 @@ class F1QualifyingEvent(BaseEvent):
         this_step = self.get_current_running_order()
         sent_one_minute_warning = False
 
+        every_minute_update = self.intermittent_boolean_generator(60)
+
         # Main session loop
         while True:
             # Update sim data
@@ -200,7 +203,10 @@ class F1QualifyingEvent(BaseEvent):
 
             # Calculate elapsed time since session start
             session_elapsed_time = self.sdk['SessionTime'] - session_time_at_start
-            
+            self.subsession_time_remaining = length * 60 - session_elapsed_time
+            #format as time
+            self.subsession_time_remaining = f"{int(self.subsession_time_remaining // 60):02}:{int(self.subsession_time_remaining % 60):02}"
+
             # Process lap times for each car
             for car in this_step:
                 driver_info_record = [c for c in self.sdk['DriverInfo']['Drivers'] if c['CarNumber'] == car['CarNumber']]
@@ -224,6 +230,10 @@ class F1QualifyingEvent(BaseEvent):
                 self._chat(f"Checkered flag is out for Q{session_number}!", race_control=True)
                 self.sdk.unfreeze_var_buffer_latest()
                 break
+
+            if every_minute_update.__next__():
+                # Update leaderboard every minute
+                self.update_leaderboard(fastest_laps, session_number, send_msg=True)
 
             self.sleep(1)
 

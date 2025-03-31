@@ -8,7 +8,7 @@ def ui():
 
     session_lengths = st.text_input("Session Lengths (comma-separated)", "1, 1, 1")
     advancing_cars = st.text_input("Advancing Cars (comma-separated)", "8, 5, 0")
-    wait_between_sessions = st.text_input("Wait Between Sessions (seconds)", "120")
+    wait_between_sessions = st.number_input("Wait Between Sessions (seconds)", value=120)
     send_dq = st.checkbox("Send DQ", value=True)
 
     if st.button("Stop"):
@@ -23,6 +23,7 @@ def ui():
         st.session_state.refresh = True
 
     if 'event' in st.session_state:
+        st.header(st.session_state.event.subsession_time_remaining)
         st.dataframe(st.session_state.event.leaderboard_df)
 
     if st.session_state.get('refresh', False):
