@@ -242,8 +242,11 @@ class F1QualifyingEvent(BaseEvent):
 
         # Allow any cars on track to finish their in-progress lap
         remaining_cars = subset_of_drivers if subset_of_drivers else [car['CarNumber'] for car in this_step]
+
+        longest_lap_time = max(fastest_laps.values()) if fastest_laps else 120
+        wait_timeout = self.intermittent_boolean_generator(longest_lap_time*2)
         
-        while remaining_cars:
+        while remaining_cars and not wait_timeout.__next__():
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
             
@@ -252,30 +255,26 @@ class F1QualifyingEvent(BaseEvent):
             
             for car in this_step:
                 if car['CarNumber'] in remaining_cars:
-                    if car['CarNumber'] not in fastest_laps:
-                        remaining_cars.remove(car['CarNumber']) # todo: this is here to remove cars that never spawned in, and therefore don't show as being in pit lane. It's causing cars that are on track, but never got a valid lap in, to end their session prematurely
-                        self._chat(f'/{car["CarNumber"]} The session is over.')
-                    else:
-                        driver_info_record = [c for c in self.sdk['DriverInfo']['Drivers'] 
-                                            if c['CarNumber'] == car['CarNumber']]
-                        
-                        is_eligible = car['CarNumber'] in subset_of_drivers if subset_of_drivers else True
-                        
-                        if driver_info_record and is_eligible:
-                            # Check if car has completed a lap
-                            if self.car_has_completed_lap(car, last_step, this_step):
-                                car_idx = driver_info_record[0]['CarIdx']
-                                last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
-                                fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
-                                remaining_cars.remove(car['CarNumber'])
-                                self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
-                                continue
+                    driver_info_record = [c for c in self.sdk['DriverInfo']['Drivers']
+                                        if c['CarNumber'] == car['CarNumber']]
 
-                            # Check if car has returned to pits
-                            carIdx = driver_info_record[0]['CarIdx']
-                            if self.sdk['CarIdxOnPitRoad'][carIdx] == 1:
-                                remaining_cars.remove(car['CarNumber'])
-                                self._chat(f'/{car["CarNumber"]} The session is over.')
+                    is_eligible = car['CarNumber'] in subset_of_drivers if subset_of_drivers else True
+
+                    if driver_info_record and is_eligible:
+                        # Check if car has completed a lap
+                        if self.car_has_completed_lap(car, last_step, this_step):
+                            car_idx = driver_info_record[0]['CarIdx']
+                            last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
+                            fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
+                            remaining_cars.remove(car['CarNumber'])
+                            self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
+                            continue
+
+                        # Check if car has returned to pits
+                        carIdx = driver_info_record[0]['CarIdx']
+                        if self.sdk['CarIdxOnPitRoad'][carIdx] == 1:
+                            remaining_cars.remove(car['CarNumber'])
+                            self._chat(f'/{car["CarNumber"]} The session is over.')
 
             self.sleep(1)
 
