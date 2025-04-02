@@ -188,6 +188,7 @@ class F1QualifyingEvent(BaseEvent):
         every_minute_update = self.intermittent_boolean_generator(60)
 
         # Main session loop
+        out_of_time = False
         while True:
             # Update sim data
             self.sdk.unfreeze_var_buffer_latest()
@@ -202,6 +203,17 @@ class F1QualifyingEvent(BaseEvent):
             self.subsession_time_remaining = length * 60 - session_elapsed_time
             #format as time
             self.subsession_time_remaining = f"{int(self.subsession_time_remaining // 60):02}:{int(self.subsession_time_remaining % 60):02}"
+
+            # Session time expired - show checkered flag after this iteration of the loop
+            if session_elapsed_time > length * 60:
+                out_of_time = True
+
+            # if anyone has completed a lap, wait a few seconds to make sure the last lap data updates
+            # before we check for lap times
+            if any([self.car_has_completed_lap(c, last_step, this_step) for c in this_step]):
+                self.sleep(5)
+                self.sdk.unfreeze_var_buffer_latest()
+                self.sdk.freeze_var_buffer_latest()
 
             # Process lap times for each car
             for car in this_step:
@@ -221,16 +233,14 @@ class F1QualifyingEvent(BaseEvent):
                 self._chat(f"1 minute remaining in Q{session_number}!", race_control=True)
                 sent_one_minute_warning = True
 
-            # Session time expired - show checkered flag
-            if session_elapsed_time > length * 60:
-                self._chat(f"Checkered flag is out for Q{session_number}!", race_control=True)
-                self.sdk.unfreeze_var_buffer_latest()
-                break
-
             if every_minute_update.__next__():
                 # Update leaderboard every minute
                 self.update_leaderboard(fastest_laps, session_number, send_msg=True)
 
+            if out_of_time:
+                self._chat(f"Checkered flag is out for Q{session_number}!", race_control=True)
+                self.sdk.unfreeze_var_buffer_latest()
+                break
             self.sleep(1)
 
         # ----- FINAL LAP COMPLETION PHASE -----
@@ -240,14 +250,22 @@ class F1QualifyingEvent(BaseEvent):
         remaining_cars = subset_of_drivers if subset_of_drivers else [car['CarNumber'] for car in this_step]
 
         longest_lap_time = max(fastest_laps.values()) if fastest_laps else 120
-        wait_timeout = self.intermittent_boolean_generator(longest_lap_time*2)
+        wait_timeout = self.intermittent_boolean_generator(longest_lap_time*1.1)
         
-        while remaining_cars and not wait_timeout.__next__():
+        while remaining_cars:
+            out_of_time = wait_timeout.__next__()
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
             
             last_step = this_step
             this_step = self.get_current_running_order()
+
+            # if anyone has completed a lap, wait a few seconds to make sure the last lap data updates
+            # before we check for lap times
+            if any([self.car_has_completed_lap(c, last_step, this_step) for c in this_step]):
+                self.sleep(5)
+                self.sdk.unfreeze_var_buffer_latest()
+                self.sdk.freeze_var_buffer_latest()
             
             for car in this_step:
                 if car['CarNumber'] in remaining_cars:
@@ -273,6 +291,8 @@ class F1QualifyingEvent(BaseEvent):
                             self._chat(f'/{car["CarNumber"]} The session is over.')
 
             self.sleep(1)
+            if out_of_time:
+                break
 
         self.sdk.unfreeze_var_buffer_latest()
 
