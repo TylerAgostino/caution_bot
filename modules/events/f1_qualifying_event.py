@@ -11,14 +11,13 @@ class F1QualifyingEvent(BaseEvent):
     - Tracking of lap times and position updates
     - Leaderboard management
     """
-    def __init__(self, session_minutes, session_advancing_cars, send_dq, wait_between_sessions, *args, **kwargs):
+    def __init__(self, session_minutes, session_advancing_cars, wait_between_sessions, *args, **kwargs):
         """
         Initialize the F1 qualifying event.
         
         Args:
             session_minutes (str): Comma-separated string of session lengths in minutes (e.g. "18,15,12")
             session_advancing_cars (str): Comma-separated string of cars advancing from each session (e.g. "15,10,0"). If the last number is not 0, an additional final round is added automatically.
-            send_dq (bool): Whether to send disqualification commands after sessions
             *args, **kwargs: Additional arguments passed to BaseEvent
         """
         super().__init__(*args, **kwargs)
@@ -39,8 +38,6 @@ class F1QualifyingEvent(BaseEvent):
         # Validate configuration
         if len(self.session_minutes) != len(self.session_advancing_cars):
             raise ValueError("session_minutes and session_advancing_cars must have the same length.")
-            
-        self.send_dq = send_dq
         
         # Initialize leaderboard structure
         self.leaderboard = {}
@@ -163,7 +160,6 @@ class F1QualifyingEvent(BaseEvent):
         6. Allow cars to complete final laps
         7. Process results and determine advancing drivers
         8. Notify drivers of their status (advancing/eliminated)
-        9. Optionally apply disqualification commands to eliminated drivers
         
         Args:
             delay_start (int): Delay in seconds before starting the session.
@@ -290,7 +286,6 @@ class F1QualifyingEvent(BaseEvent):
             
             # Get eliminated drivers
             eliminated_drivers = [car for car in [c['CarNumber'] for c in last_step] if car not in advancing_drivers]
-            eliminated_drivers.reverse() # Reverse order so we apply DQs bottom to top
             
             # Notify eliminated drivers
             for car in eliminated_drivers:
@@ -299,8 +294,6 @@ class F1QualifyingEvent(BaseEvent):
                     flags = self.sdk['CarIdxSessionFlags'][car_idx[0]['CarIdx']]
                     if not flags & 0x020000:
                         self._chat(f'/{car} you have been eliminated from Q{session_number}!')
-                        if self.send_dq:
-                            self._chat(f'!dq {car}')
             
             # Notify advancing drivers
             for car in advancing_drivers:
@@ -312,11 +305,5 @@ class F1QualifyingEvent(BaseEvent):
             # Notify end of qualifying
             for car in advancing_drivers:
                 self._chat(f'/{car} Thats the end of Qualifying!')
-                
-            # Apply the final DQs if configured (in reverse order to preserve grid)
-            if self.send_dq:
-                advancing_drivers.reverse()
-                for car in advancing_drivers:
-                    self._chat(f'!dq {car}')
 
         return advancing_drivers

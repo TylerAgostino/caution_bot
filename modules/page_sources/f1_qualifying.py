@@ -9,7 +9,6 @@ def ui():
     session_lengths = st.text_input("Session Lengths (comma-separated)", "1, 1, 1")
     advancing_cars = st.text_input("Advancing Cars (comma-separated)", "8, 5, 0")
     wait_between_sessions = st.number_input("Wait Between Sessions (seconds)", value=120)
-    send_dq = st.checkbox("Send DQ", value=True)
 
     if st.button("Stop"):
         if 'f1_subprocess_manager' in st.session_state:
@@ -17,7 +16,7 @@ def ui():
         st.session_state.refresh = False
 
     if st.button("Start"):
-        st.session_state.event = F1QualifyingEvent(session_lengths, advancing_cars, send_dq=send_dq, wait_between_sessions=wait_between_sessions)
+        st.session_state.event = F1QualifyingEvent(session_lengths, advancing_cars, wait_between_sessions=wait_between_sessions)
         st.session_state.f1_subprocess_manager = SubprocessManager([st.session_state.event.run])
         st.session_state.f1_subprocess_manager.start()
         st.session_state.refresh = True
