@@ -55,38 +55,36 @@ class IncidentPenaltyEvent(BaseEvent):
             last_step = this_step
             this_step = self.sdk['DriverInfo']['Drivers']
             for car in this_step:
-                flags = self.sdk['CarIdxSessionFlags'][car['CarIdx']]
-                if not flags & 0x0001:
-                    car_no = car['CarNumber']
-                    try:
-                        prev_inc = [x for x in last_step if x['CarNumber'] == car_no][0]['TeamIncidentCount']
-                    except IndexError:
-                        self.logger.debug(f'Car {car_no} not found in last step')
-                        continue
-                    this_inc = car['TeamIncidentCount']
-                    if this_inc > prev_inc:
-                        self.logger.debug(f'Car {car_no} has {this_inc} incidents')
-                    if self.initial_penalty_incidents and prev_inc < self.initial_penalty_incidents <= this_inc:
-                        self._chat(f'!bl {car_no} {self.initial_penalty} ({self.initial_penalty_incidents}x)')
-                        if self.sound:
-                            self.audio_queue.put('penalty')
-                    if self.recurring_penalty_incidents and (this_inc>prev_inc) and (
-                            (this_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents <=
-                            (prev_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents
-                    ) and (
-                        self.end_recurring_incidents == 0 or this_inc < self.end_recurring_incidents
-                    ) and (
-                        this_inc > self.initial_penalty_incidents
-                    ):
-                        n = (this_inc - self.initial_penalty_incidents) // self.recurring_penalty_incidents
-                        x = self.initial_penalty_incidents + (n * self.recurring_penalty_incidents)
-                        self._chat(f'!bl {car_no} {self.recurring_penalty} ({x}x)')
-                        if self.sound:
-                            self.audio_queue.put('penalty')
+                car_no = car['CarNumber']
+                try:
+                    prev_inc = [x for x in last_step if x['CarNumber'] == car_no][0]['TeamIncidentCount']
+                except IndexError:
+                    self.logger.debug(f'Car {car_no} not found in last step')
+                    continue
+                this_inc = car['TeamIncidentCount']
+                if this_inc > prev_inc:
+                    self.logger.debug(f'Car {car_no} has {this_inc} incidents')
+                if self.initial_penalty_incidents and prev_inc < self.initial_penalty_incidents <= this_inc:
+                    self._chat(f'!bl {car_no} {self.initial_penalty} ({self.initial_penalty_incidents}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
+                if self.recurring_penalty_incidents and (this_inc>prev_inc) and (
+                        (this_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents <=
+                        (prev_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents
+                ) and (
+                    self.end_recurring_incidents == 0 or this_inc < self.end_recurring_incidents
+                ) and (
+                    this_inc > self.initial_penalty_incidents
+                ):
+                    n = (this_inc - self.initial_penalty_incidents) // self.recurring_penalty_incidents
+                    x = self.initial_penalty_incidents + (n * self.recurring_penalty_incidents)
+                    self._chat(f'!bl {car_no} {self.recurring_penalty} ({x}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
 
-                    if self.end_recurring_incidents and this_inc >= self.end_recurring_incidents > prev_inc:
-                        self._chat(f'!bl {car_no} {self.end_recurring_penalty} ({self.end_recurring_incidents}x)')
-                        if self.sound:
-                            self.audio_queue.put('penalty')
+                if self.end_recurring_incidents and this_inc >= self.end_recurring_incidents > prev_inc:
+                    self._chat(f'!bl {car_no} {self.end_recurring_penalty} ({self.end_recurring_incidents}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
             self.sdk.unfreeze_var_buffer_latest()
             self.sleep(5)
