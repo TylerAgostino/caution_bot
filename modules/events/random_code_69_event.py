@@ -221,7 +221,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         # if we're within 5 minutes of the start time, and there is another event processing, set the quickie flag
         if (total_session_time - time_remaining >= self.start_time - self.quickie_window) and (
-                self.is_caution_active() or self.busy_event.is_set()
+                self.is_caution_active() or self.busy_event.is_set() or (self.start_time <= self.quickie_window)
         ):
             self.logger.debug(f'{self} will be a quickie event.')
             self.quickie = True
