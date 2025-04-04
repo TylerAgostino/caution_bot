@@ -139,8 +139,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
                  lane_names=None, reminder_frequency=8, auto_restart_get_ready_position=1.85,
-                 auto_restart_form_lanes_position=1.5, extra_lanes=True,
-                 auto_class_separate_position=1.0, *args, **kwargs):
+                 auto_restart_form_lanes_position=1.5, extra_lanes=True, auto_class_separate_position=1.0,
+                 quickie_auto_restart_get_ready_position=0.85, quickie_auto_restart_form_lanes_position=0.5,
+                 quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -166,6 +167,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.auto_restart_get_ready_position = auto_restart_get_ready_position
         self.auto_restart_form_lanes_position = auto_restart_form_lanes_position
         self.lane_names = lane_names
+        self.quickie_auto_restart_get_ready_position = quickie_auto_restart_get_ready_position
+        self.quickie_auto_restart_form_lanes_position = quickie_auto_restart_form_lanes_position
+        self.quickie_auto_class_separate_position = quickie_auto_class_separate_position
+        self.quickie_invert_lanes = quickie_invert_lanes
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
 
@@ -182,7 +187,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
             'likelihood': col2.number_input(f'% Chance', key=f'{ident}likelihood', value=75, help="The likelihood of the event happening. 100% means it will happen every time."),
             'max_speed_km': aa_col2.number_input("Pace Speed (kph)", 69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
-            'notify_on_skipped_caution': aa_col3.checkbox(f'Notify on Skip', key=f'{ident}notify_on_skipped_caution', value=False, help='Send a message to the chat if the event is triggered and skipped while another event is in progress.'),
 
             'auto_class_separate_position': col3.number_input("Class Separation Position", value=1.0, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
             'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
@@ -192,6 +196,13 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
             'auto_restart_get_ready_position': col5.number_input("Restart Position", value=1.85, help='Laps of pacing before restarting. -1 to disable auto restart', key=f'{ident}auto_restart_get_ready_position'),
             'restart_speed_pct': aa_col2.number_input("Restart Speed %", value=125, help='After the leader receives the "You control the field" message, show the green flag when they reach this % of the pacing speed', key=f'{ident}restart_speed_pct'),
+            #quickie stuff
+            'quickie_window': aa_col1.number_input("Quickie Window", value=5, help='If within this many minutes of another event, make this a quickie 69. -1 to disable', key=f'{ident}quickie_window'),
+            'quickie_auto_class_separate_position': aa_col3.number_input("Quickie Class Separation Position", value=-1, help='Laps of pacing before separating classes (during Quickie 69)', key=f'{ident}quickie_auto_class_separate_position'),
+            'quickie_auto_restart_form_lanes_position': aa_col3.number_input("Quickie Lanes Form Position", value=0.5, help='Laps of pacing before forming the restart lanes (during Quickie 69)', key=f'{ident}quickie_auto_restart_form_lanes_position'),
+            'quickie_auto_restart_get_ready_position': aa_col3.number_input("Quickie Restart Position", value=0.85, help='Laps of pacing before restarting (during Quickie 69)', key=f'{ident}quickie_auto_restart_get_ready_position'),
+            'quickie_invert_lanes': aa_col1.checkbox(f'Invert Quickie Lanes', key=f'{ident}quickie_invert_lanes', value=False, help='Inverts the lane names for the quickie event.'),
+            'notify_on_skipped_caution': aa_col1.checkbox(f'Notify on Skip', key=f'{ident}notify_on_skipped_caution', value=False, help='Send a message to the chat if the event is triggered and skipped while another event is in progress.'),
         }
 
     def send_reminders(self, order_generator):
@@ -227,11 +238,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.busy_event.set()
         self.restart_ready.clear()
         # self._chat(self.reason, race_control=True)
-        self.audio_queue.put('code69beginsoon')
+        self.audio_queue.put('quickiesoon' if self.quickie else 'code69beginsoon')
 
-        if self.quickie:
-            # tweak our numbers to abbreviation the event
-            pass
 
         last_step = self.get_current_running_order()
         send_message_indicator = self.intermittent_boolean_generator(self.reminder_frequency)
@@ -239,7 +247,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         # wait for someone to start the next lap
         lead_lap = max([car['LapCompleted'] for car in last_step])
         this_step = last_step
-        msg = f'Code 69 will begin at the end of lap {lead_lap + 1}'
+        msg = f'{"Quickie" if self.quickie else "Code"} 69 will begin at the end of lap {lead_lap + 1}'
         self._chat(msg, race_control=True)
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
             self.sdk.unfreeze_var_buffer_latest()
@@ -257,6 +265,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         self._chat('Double Yellow Flags in Sector 1', race_control=True)
         self.audio_queue.put('code69begin')
+        if self.quickie:
+            self._chat('The sequence will be shortened')
+            self.audio_queue.put('quickiebegin')
 
         speed_km_per_hour = 0
         leader_speed_generator = None
@@ -339,9 +350,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
             if (self.class_separation
                     or (
-                            self.auto_class_separate_position > 0
-                            and len(restart_order_generator.order)>1 and restart_order_generator.order[0]['ActualPosition'] >= self.auto_class_separate_position
-                            and self.can_separate_classes
+                        0 < (
+                self.quickie_auto_class_separate_position if self.quickie else self.auto_class_separate_position) <=
+                        restart_order_generator.order[0]['ActualPosition']
+                        and len(restart_order_generator.order) > 1
+                        and self.can_separate_classes
                     )
             ) and len([i for i, v in restart_order_generator.class_lap_times.items() if v is not None]) > 1:
                 if self.can_separate_classes:
@@ -351,21 +364,28 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 self.logger.debug(restart_order_generator.order)
             last_step = this_step
 
-            if self.auto_restart_form_lanes_position > 0 and restart_order_generator.order and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_form_lanes_position:
+            if 0 < (
+            self.quickie_auto_restart_form_lanes_position if self.quickie else self.auto_restart_form_lanes_position) <= \
+                    restart_order_generator.order[0]['ActualPosition'] and restart_order_generator.order:
                 self.restart_ready.set()
-            elif self.auto_restart_get_ready_position > 0 and restart_order_generator.order and restart_order_generator.order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
+            elif 0 < (
+            self.quickie_auto_restart_get_ready_position if self.quickie else self.auto_restart_get_ready_position) <= \
+                    restart_order_generator.order[0]['ActualPosition'] and restart_order_generator.order:
                 self.restart_ready.set()
 
-        if self.lane_names is not None:
-            if isinstance(self.lane_names, str):
-                lane_names = self.lane_names.split(',')
+        ln = self.lane_names
+        if ln is not None:
+            if isinstance(ln, str):
+                lane_names = ln.split(',')
             else:
-                lane_names = self.lane_names
+                lane_names = ln
         else:
             lane_names = ['LEFT', 'RIGHT']
 
+        lane_names = lane_names[::-1] if self.quickie and self.quickie_invert_lanes else lane_names
+
         if self.extra_lanes:
-            number_of_lanes = len(self.lane_names)
+            number_of_lanes = len(lane_names)
             self.restart_ready.clear()
             self.audio_queue.put('lanes')
             self._chat(f'Forming {number_of_lanes} restart lanes.', race_control=True)
@@ -392,7 +412,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         less_frequent_messages = self.intermittent_boolean_generator(self.reminder_frequency * 2)
         while not self.restart_ready.is_set():
-            if lane_order_generators[0].order[0]['ActualPosition'] >= self.auto_restart_get_ready_position:
+            if lane_order_generators[0].order[0]['ActualPosition'] >= (self.quickie_auto_restart_get_ready_position if self.quickie else self.auto_restart_get_ready_position):
                 self.restart_ready.set()
 
             if send_message_indicator.__next__():
