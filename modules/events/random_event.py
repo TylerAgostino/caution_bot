@@ -16,7 +16,7 @@ class RandomEvent(BaseEvent):
         while not self.is_time_to_start():
             self.sleep(1)
 
-    def run(self, cancel_event=None, busy_event=None, audio_queue=None):
+    def run(self, cancel_event=None, busy_event=None, audio_queue=None, broadcast_text_queue=None):
         """
         Runs the event sequence.
 
@@ -24,10 +24,12 @@ class RandomEvent(BaseEvent):
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
+            broadcast_text_queue (queue.Queue, optional): Queue for text events. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.audio_queue = audio_queue or self.audio_queue
+        self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         self.wait_for_start()
 
         if random.randrange(0, 100) > float(self.likelihood):

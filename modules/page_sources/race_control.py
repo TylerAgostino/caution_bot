@@ -8,6 +8,7 @@ from modules.subprocess_manager import SubprocessManager
 from modules.events.scheduled_message_event import ScheduledMessageEvent
 from modules.events.scheduled_black_flag_event import SprintRaceDQEvent
 from modules.events.incident_penalty_event import IncidentPenaltyEvent
+from modules.events.text_consumer_event import TextConsumerEvent
 import uuid
 from streamlit.errors import StreamlitAPIException
 
@@ -20,7 +21,8 @@ event_types = {
     "Discord Bot": AudioConsumerEvent,
     "Scheduled Message": ScheduledMessageEvent,
     "Sprint DQ": SprintRaceDQEvent,
-    "Incident Penalty": IncidentPenaltyEvent
+    "Incident Penalty": IncidentPenaltyEvent,
+    "Broadcast Text": TextConsumerEvent,
 }
 
 def touch_all_state():
