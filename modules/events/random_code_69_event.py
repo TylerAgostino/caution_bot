@@ -215,17 +215,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
         for car in order_generator.displaced_cars:
             self._chat(f'/{car["CarNumber"]} Pass the {", ".join(car["IncorrectlyOvertakenBy"])} car{"s" if len(car["IncorrectlyOvertakenBy"]) > 1 else ""}.')
 
-    def check_and_set_quickie_flag(self):
-        total_session_time = self.sdk['SessionTimeTotal']
-        time_remaining = self.sdk['SessionTimeRemain']
-
-        # if we're within 5 minutes of the start time, and there is another event processing, set the quickie flag
-        if (total_session_time - time_remaining >= self.start_time - self.quickie_window) and (
-                self.is_caution_active() or self.busy_event.is_set() or (self.start_time <= self.quickie_window)
-        ):
-            self.logger.debug(f'{self} will be a quickie event.')
-            self.quickie = True
-
     def event_sequence(self):
         """
         Executes the event sequence for a random Code 69.

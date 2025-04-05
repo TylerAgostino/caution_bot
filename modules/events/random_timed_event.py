@@ -42,15 +42,20 @@ class RandomTimedEvent(RandomEvent):
         time_until_trigger = self.start_time - (total_session_time - time_remaining) + adjustment
         valid_session =  time_remaining > 1 and self.sdk['SessionState'] == 4
 
-        if valid_session and not time_until_trigger < 0:
+        if valid_session:
             self.check_and_set_quickie_flag()
         return time_until_trigger < 0 and valid_session
 
     def check_and_set_quickie_flag(self):
-        """
-        Flags the event as a quickie event.
-        """
-        self.quickie = False
+        total_session_time = self.sdk['SessionTimeTotal']
+        time_remaining = self.sdk['SessionTimeRemain']
+
+        # if we're within 5 minutes of the start time, and there is another event processing, set the quickie flag
+        if (total_session_time - time_remaining >= self.start_time - self.quickie_window*60) and (
+                self.is_caution_active() or self.busy_event.is_set() or (self.start_time <= self.quickie_window*60)
+        ):
+            self.logger.debug(f'{self} will be a quickie event.')
+            self.quickie = True
 
 
 class TimedEvent(RandomTimedEvent):
