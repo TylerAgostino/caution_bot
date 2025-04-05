@@ -227,6 +227,7 @@ class F1QualifyingEvent(BaseEvent):
                         car_idx = driver_info_record[0]['CarIdx']
                         last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
                         fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
+                        self.update_leaderboard(fastest_laps, session_number, send_msg=False)
 
             # One minute warning
             if length * 60 - session_elapsed_time < 60 and not sent_one_minute_warning:
@@ -247,7 +248,7 @@ class F1QualifyingEvent(BaseEvent):
         self.update_leaderboard(fastest_laps, session_number)
 
         # Allow any cars on track to finish their in-progress lap
-        remaining_cars = subset_of_drivers if subset_of_drivers else [car['CarNumber'] for car in this_step]
+        remaining_cars = subset_of_drivers.copy() if subset_of_drivers else [car['CarNumber'] for car in this_step]
 
         longest_lap_time = max(fastest_laps.values()) if fastest_laps else 120
         wait_timeout = self.intermittent_boolean_generator(longest_lap_time*1.1)
@@ -280,6 +281,7 @@ class F1QualifyingEvent(BaseEvent):
                             car_idx = driver_info_record[0]['CarIdx']
                             last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
                             fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
+                            self.update_leaderboard(fastest_laps, session_number, send_msg=False)
                             remaining_cars.remove(car['CarNumber'])
                             self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
                             continue
@@ -305,15 +307,11 @@ class F1QualifyingEvent(BaseEvent):
             advancing_drivers = [c for c, n in sorted(fastest_laps.items(), key=lambda x: x[1])[:num_drivers_remain]]
             
             # Get eliminated drivers
-            eliminated_drivers = [car for car in [c['CarNumber'] for c in last_step] if car not in advancing_drivers]
+            eliminated_drivers = [car for car in [c['CarNumber'] for c in last_step] if car not in advancing_drivers and (car in subset_of_drivers if subset_of_drivers else True)]
             
             # Notify eliminated drivers
             for car in eliminated_drivers:
-                car_idx = [c for c in self.sdk['DriverInfo']['Drivers'] if c['CarNumber'] == car]
-                if car_idx:
-                    flags = self.sdk['CarIdxSessionFlags'][car_idx[0]['CarIdx']]
-                    if not flags & 0x020000:
-                        self._chat(f'/{car} you have been eliminated from Q{session_number}!')
+                self._chat(f'/{car} you have been eliminated from Q{session_number}!')
             
             # Notify advancing drivers
             for car in advancing_drivers:
@@ -324,6 +322,6 @@ class F1QualifyingEvent(BaseEvent):
             
             # Notify end of qualifying
             for car in advancing_drivers:
-                self._chat(f'/{car} Thats the end of Qualifying!')
+                self._chat(f'/{car} Thats the end of Qualifying! You are P{advancing_drivers.index(car) + 1}!')
 
         return advancing_drivers
