@@ -1,3 +1,4 @@
+from math import isnan
 import streamlit as st
 from modules.subprocess_manager import SubprocessManager
 from modules.events.f1_qualifying_event import F1QualifyingEvent
@@ -23,7 +24,10 @@ def ui():
 
     if 'event' in st.session_state:
         st.header(st.session_state.event.subsession_time_remaining)
-        st.dataframe(st.session_state.event.leaderboard_df)
+        leaderboard = st.session_state.event.leaderboard_df
+        for col in leaderboard.columns:
+            leaderboard[col] = leaderboard[col].apply(lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
+        st.dataframe(leaderboard,width=600, height=1000, use_container_width=False)
 
     if st.session_state.get('refresh', False):
         st_autorefresh()
