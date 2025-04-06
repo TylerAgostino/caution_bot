@@ -25,11 +25,13 @@ def ui():
     if 'event' in st.session_state:
         st.header(st.session_state.event.subsession_time_remaining)
         leaderboard = st.session_state.event.leaderboard_df
-        for col in leaderboard.columns:
-            if col == 'DriverName':
-                continue
-            leaderboard[col] = leaderboard[col].apply(lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
-        st.dataframe(leaderboard,width=600, height=1000, use_container_width=False)
+        st.dataframe(
+            leaderboard.style\
+                .highlight_between(subset=leaderboard.columns[1:], color='yellow', axis=1, left=0, right=10000)\
+                .highlight_min(subset=leaderboard.columns[1:], color='green', axis=1)\
+                .highlight_min(subset=leaderboard.columns[1:], color='purple', axis=0)\
+                .format(subset=leaderboard.columns[1:], formatter=lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
+            ,width=600, height=1000, use_container_width=False)
 
     if st.session_state.get('refresh', False):
         st_autorefresh()
