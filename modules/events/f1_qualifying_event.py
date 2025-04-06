@@ -29,6 +29,7 @@ class F1QualifyingEvent(BaseEvent):
         self.session_advancing_cars = [int(num) for num in num_drivers_remain]
         self.wait_between_sessions = wait_between_sessions
         self.subsession_time_remaining = 0
+        self.subsession_time_remaining_raw = 0
         
         # Ensure the final session properly terminates by adding a 0-advancing session if needed
         if self.session_advancing_cars[-1] != 0:
@@ -62,7 +63,8 @@ class F1QualifyingEvent(BaseEvent):
         # Run each qualifying session
         for session_number, details in enumerate(session_info, start=1):
             length, num_drivers_remain = details
-            advancing_drivers = self.subsession(self.wait_between_sessions, length, num_drivers_remain, session_number, advancing_drivers)
+            session_wait = self.wait_between_sessions if session_number > 1 else 15
+            advancing_drivers = self.subsession(session_wait, length, num_drivers_remain, session_number, advancing_drivers)
 
     def apply_new_laptime(self, laps, carNumber, laptime):
         """
@@ -78,17 +80,16 @@ class F1QualifyingEvent(BaseEvent):
         """
         # Only update if the lap is valid (>1 sec) and faster than previous best
         if laptime > 1 and (carNumber not in laps or laptime < laps[carNumber]):
+            cars_previously_behind = [c for c, n in laps.items() if carNumber in laps and n > laps[carNumber]]
             laps[carNumber] = laptime
-            
-            # Format seconds to mm:ss.sss for display
-            formatted_time = f"{int(laptime // 60):02}:{int(laptime % 60):02}.{int((laptime % 1) * 1000):03}"
-            
-            # Check if it's the fastest lap of the session
-            if laptime == min(laps.values()):
-                self._chat(f"FASTEST LAP for car {carNumber}: {formatted_time}!", race_control=True)
-            else:
-                self._chat(f"New personal best for car {carNumber}: {formatted_time}!", race_control=True)
-                
+            cars_now_behind = [c for c, n in laps.items() if n > laps[carNumber]]
+            new_cars_behind = [x for x in cars_now_behind if x not in cars_previously_behind]
+            if new_cars_behind:
+                sorted_laps = sorted(laps.items(), key=lambda x: x[1])
+                for car in new_cars_behind:
+                    # Give them their new position
+                    self._chat(f'/{car} You are now P{sorted_laps.index((car, laps[car])) + 1}')
+                self._chat(f"/{carNumber} You are now P{sorted_laps.index((carNumber, laps[carNumber])) + 1}")
         return laps
 
     def update_leaderboard(self, fastest_laps, session_number, send_msg=True):
@@ -141,6 +142,10 @@ class F1QualifyingEvent(BaseEvent):
 
         # Update the dataframe representation of the leaderboard
         self.leaderboard_df = DataFrame(self.leaderboard)
+        driver_names = {c['CarNumber']: c['UserName'] for c in self.sdk['DriverInfo']['Drivers']}
+        self.leaderboard_df['DriverName'] = self.leaderboard_df.index.map(driver_names)
+        # sort df columns
+        self.leaderboard_df = self.leaderboard_df[['DriverName'] + [f'Q{n+1}' for n in range(len(self.session_minutes))]]
         
         # Sort the dataframe by lap times, prioritizing higher qualifying sessions
         sessions = [f'Q{n+1}' for n in range(len(self.session_minutes))]
@@ -201,19 +206,13 @@ class F1QualifyingEvent(BaseEvent):
             # Calculate elapsed time since session start
             session_elapsed_time = self.sdk['SessionTime'] - session_time_at_start
             self.subsession_time_remaining = length * 60 - session_elapsed_time
+            self.subsession_time_remaining_raw = self.subsession_time_remaining
             #format as time
             self.subsession_time_remaining = f"{int(self.subsession_time_remaining // 60):02}:{int(self.subsession_time_remaining % 60):02}"
 
             # Session time expired - show checkered flag after this iteration of the loop
             if session_elapsed_time > length * 60:
                 out_of_time = True
-
-            # if anyone has completed a lap, wait a few seconds to make sure the last lap data updates
-            # before we check for lap times
-            if any([self.car_has_completed_lap(c, last_step, this_step) for c in this_step]):
-                self.sleep(5)
-                self.sdk.unfreeze_var_buffer_latest()
-                self.sdk.freeze_var_buffer_latest()
 
             # Process lap times for each car
             for car in this_step:
@@ -223,20 +222,18 @@ class F1QualifyingEvent(BaseEvent):
                 is_eligible = car['CarNumber'] in subset_of_drivers if subset_of_drivers else True
                 
                 if driver_info_record and is_eligible:
-                    if self.car_has_completed_lap(car, last_step, this_step):
+                    if self.car_has_new_last_lap_time(car, last_step, this_step):
                         car_idx = driver_info_record[0]['CarIdx']
                         last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
                         fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
                         self.update_leaderboard(fastest_laps, session_number, send_msg=False)
 
-            # One minute warning
-            if length * 60 - session_elapsed_time < 60 and not sent_one_minute_warning:
-                self._chat(f"1 minute remaining in Q{session_number}!", race_control=True)
-                sent_one_minute_warning = True
-
             if every_minute_update.__next__():
                 # Update leaderboard every minute
                 self.update_leaderboard(fastest_laps, session_number, send_msg=True)
+                #time remaining
+                if self.subsession_time_remaining_raw > 10:
+                    self._chat(f'Time Remaining: {self.subsession_time_remaining}')
 
             if out_of_time:
                 self._chat(f"Checkered flag is out for Q{session_number}!", race_control=True)
@@ -252,7 +249,10 @@ class F1QualifyingEvent(BaseEvent):
 
         longest_lap_time = max(fastest_laps.values()) if fastest_laps else 120
         wait_timeout = self.intermittent_boolean_generator(longest_lap_time*1.1)
-        
+
+        delayed_finishers = {}
+        lap_still_valid_reminder = self.intermittent_boolean_generator(10)
+        first_car_to_take_checkered = None
         while remaining_cars:
             out_of_time = wait_timeout.__next__()
             self.sdk.unfreeze_var_buffer_latest()
@@ -261,12 +261,6 @@ class F1QualifyingEvent(BaseEvent):
             last_step = this_step
             this_step = self.get_current_running_order()
 
-            # if anyone has completed a lap, wait a few seconds to make sure the last lap data updates
-            # before we check for lap times
-            if any([self.car_has_completed_lap(c, last_step, this_step) for c in this_step]):
-                self.sleep(5)
-                self.sdk.unfreeze_var_buffer_latest()
-                self.sdk.freeze_var_buffer_latest()
             
             for car in this_step:
                 if car['CarNumber'] in remaining_cars:
@@ -278,12 +272,34 @@ class F1QualifyingEvent(BaseEvent):
                     if driver_info_record and is_eligible:
                         # Check if car has completed a lap
                         if self.car_has_completed_lap(car, last_step, this_step):
-                            car_idx = driver_info_record[0]['CarIdx']
-                            last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
-                            fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
-                            self.update_leaderboard(fastest_laps, session_number, send_msg=False)
-                            remaining_cars.remove(car['CarNumber'])
-                            self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
+                            if not self.car_has_new_last_lap_time(car,last_step,this_step):
+                                # The last lap data might be a bit late
+                                # Leave the data from last_step so we can check again the next time
+                                last_step_record = [c for c in last_step if c['CarNumber'] == car['CarNumber']]
+                                if last_step_record:
+                                    this_step_record = [c for c in this_step if c['CarNumber'] == car['CarNumber']]
+                                    this_step[this_step.index(this_step_record[0])] = last_step_record[0]
+
+                                # Keep track of how long we're waiting for this final lap data
+                                # If we wait too long, we can assume it's not coming
+                                if car['CarNumber'] not in delayed_finishers:
+                                    delayed_finishers[car['CarNumber']] = self.sdk['SessionTime']
+                                elif self.sdk['SessionTime'] - delayed_finishers[car['CarNumber']] > 30:
+                                    remaining_cars.remove(car['CarNumber'])
+                                    if first_car_to_take_checkered is None:
+                                        first_car_to_take_checkered = car['CarNumber']
+                                        self._chat(f'First car to take the checkered flag: {car["CarNumber"]}')
+                                    self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
+                            else:
+                                car_idx = driver_info_record[0]['CarIdx']
+                                last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
+                                fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
+                                self.update_leaderboard(fastest_laps, session_number, send_msg=False)
+                                remaining_cars.remove(car['CarNumber'])
+                                if first_car_to_take_checkered is None:
+                                    first_car_to_take_checkered = car['CarNumber']
+                                    self._chat(f'First car to take the checkered flag: {car["CarNumber"]}')
+                                self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
                             continue
 
                         # Check if car has returned to pits
@@ -291,6 +307,10 @@ class F1QualifyingEvent(BaseEvent):
                         if self.sdk['CarIdxOnPitRoad'][carIdx] == 1:
                             remaining_cars.remove(car['CarNumber'])
                             self._chat(f'/{car["CarNumber"]} The session is over.')
+
+            if lap_still_valid_reminder.__next__():
+                for car in remaining_cars:
+                    self._chat(f'/{car} The session will end after this lap')
 
             self.sleep(1)
             if out_of_time:

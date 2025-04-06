@@ -228,7 +228,8 @@ class BaseEvent:
             'LapCompleted': self.sdk['CarIdxLapCompleted'][car['CarIdx']],
             'LapDistPct': self.sdk['CarIdxLapDistPct'][car['CarIdx']],
             'InPits': self.sdk['CarIdxOnPitRoad'][car['CarIdx']],
-            'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']]
+            'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']],
+            'last_lap_time': self.sdk['CarIdxLastLapTime'][car['CarIdx']],
         } for car in self.sdk['DriverInfo']['Drivers'] if car['CarIsPaceCar'] != 1]
         running_order.sort(key=lambda x: x['total_completed'], reverse=True)
         return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader-1)]
@@ -276,6 +277,27 @@ class BaseEvent:
             self.logger.debug('Might be a replay')
             return False
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
+
+    def car_has_new_last_lap_time(self, car, last_step, this_step):
+        """
+        Checks if a car has a new lap time.
+
+        Args:
+            car (dict): The car to check.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
+
+        Returns:
+            bool: True if the car has a new lap time, False otherwise.
+        """
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['last_lap_time'] != last_step_record['last_lap_time']
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
     def car_has_completed_lap(self, car, last_step, this_step):
         """

@@ -26,6 +26,8 @@ def ui():
         st.header(st.session_state.event.subsession_time_remaining)
         leaderboard = st.session_state.event.leaderboard_df
         for col in leaderboard.columns:
+            if col == 'DriverName':
+                continue
             leaderboard[col] = leaderboard[col].apply(lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
         st.dataframe(leaderboard,width=600, height=1000, use_container_width=False)
 
