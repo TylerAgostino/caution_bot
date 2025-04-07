@@ -238,6 +238,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
         this_step = last_step
         msg = f'{"Quickie" if self.quickie else "Code"} 69 will begin at the end of lap {lead_lap + 1}'
         self._chat(msg, race_control=True)
+        broadcast_msg = {
+            'title': 'Race Control',
+            'text': f'Code 69 Beginning at the end of lap {lead_lap + 1}',
+        }
+        self.broadcast_text_queue.put(broadcast_msg)
         while not any([car['LapCompleted'] > lead_lap for car in this_step]):
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
@@ -360,6 +365,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             elif 0 < (
             self.quickie_auto_restart_get_ready_position if self.quickie else self.auto_restart_get_ready_position) <= \
                     restart_order_generator.order[0]['ActualPosition'] and restart_order_generator.order:
+                self.extra_lanes = False
                 self.restart_ready.set()
 
         ln = self.lane_names
@@ -424,6 +430,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self.sdk.freeze_var_buffer_latest()
 
             self.sleep(0.1)
+
+        broadcast_msg = {
+            'title': 'Race Control',
+            'text': 'Code 69 Ending Soon',
+        }
+        self.broadcast_text_queue.put(broadcast_msg)
 
 
         self.audio_queue.put('code69end')
