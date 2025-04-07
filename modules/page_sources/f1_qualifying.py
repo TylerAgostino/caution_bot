@@ -23,14 +23,27 @@ def ui():
         st.session_state.refresh = True
 
     if 'event' in st.session_state:
-        st.header(st.session_state.event.subsession_time_remaining)
-        leaderboard = st.session_state.event.leaderboard_df
+        c1, c2, _ = st.columns([1, 1, 2])
+        c1.header(st.session_state.event.subsession_time_remaining)
+        c2.header(st.session_state.event.subsession_name)
+        leaderboard = st.session_state.event.leaderboard_df.copy()
+        # convert index to column
+        leaderboard['#'] = leaderboard.index
+        leaderboard = leaderboard[['#'] + [col for col in leaderboard.columns if col != '#']]
+        leaderboard.reset_index(inplace=True, drop=True)
+        leaderboard.index += 1
+
+        subsession_index = int(st.session_state.event.subsession_name.split('Q')[1])-1
+        driver_at_risk = [int(i) for i in advancing_cars.split(',')][subsession_index]
+        driver_at_risk = [driver_at_risk-1] if 0<int(driver_at_risk)<=len(leaderboard) else []
+
         st.dataframe(
-            leaderboard.style\
-                .highlight_between(subset=leaderboard.columns[1:], color='yellow', axis=1, left=0, right=10000)\
-                .highlight_min(subset=leaderboard.columns[1:], color='green', axis=1)\
-                .highlight_min(subset=leaderboard.columns[1:], color='purple', axis=0)\
-                .format(subset=leaderboard.columns[1:], formatter=lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
+            leaderboard.style
+                .highlight_between(subset=leaderboard.columns[2:], color='yellow', axis=1, left=0, right=10000)
+                .map(lambda _: 'background-color: orange; color:black', subset=(leaderboard.index[driver_at_risk],))
+                .highlight_min(subset=leaderboard.columns[2:], color='green', axis=1)
+                .highlight_min(subset=leaderboard.columns[2:], color='purple', axis=0)
+                .format(subset=leaderboard.columns[2:], formatter=lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
             ,width=600, height=1000, use_container_width=False)
 
     if st.session_state.get('refresh', False):

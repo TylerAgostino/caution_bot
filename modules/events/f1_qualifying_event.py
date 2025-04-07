@@ -30,6 +30,7 @@ class F1QualifyingEvent(BaseEvent):
         self.wait_between_sessions = wait_between_sessions
         self.subsession_time_remaining = 0
         self.subsession_time_remaining_raw = 0
+        self.subsession_name = 'Pre-Qualifying'
         
         # Ensure the final session properly terminates by adding a 0-advancing session if needed
         if self.session_advancing_cars[-1] != 0:
@@ -62,9 +63,34 @@ class F1QualifyingEvent(BaseEvent):
         
         # Run each qualifying session
         for session_number, details in enumerate(session_info, start=1):
+            self.subsession_name = f'Q{session_number}'
             length, num_drivers_remain = details
             session_wait = self.wait_between_sessions if session_number > 1 else 15
-            advancing_drivers = self.subsession(session_wait, length, num_drivers_remain, session_number, advancing_drivers)
+            self.wait_before_next_session(session_wait, session_number)
+            advancing_drivers = self.subsession(length, num_drivers_remain, session_number, advancing_drivers)
+
+    def wait_before_next_session(self, seconds, session_number):
+        wait_start_time = self.sdk['SessionTime']
+        wait_end_time = wait_start_time + seconds
+        # ----- SESSION PREPARATION PHASE -----
+        self._chat(f'Q{session_number} will begin in {int(seconds // 60):02}:{int(seconds % 60):02}', race_control=True)
+        self._chat(f'Pit Exit is CLOSED.', race_control=True)
+
+        # Count down to session start
+        intervals = [i for i in [60, 30, 10, 5, 3, 2, 1] if i < seconds]
+        intervals.insert(0, seconds)
+        self.subsession_name = f'Pre-Q{session_number}'
+        for interval in intervals:
+            finished = self.intermittent_boolean_generator(seconds - interval)
+            self._chat(f'Q{session_number} will begin in {seconds} seconds.', race_control=True)
+            while not finished.__next__():
+                self.sdk.unfreeze_var_buffer_latest()
+                self.sdk.freeze_var_buffer_latest()
+                self.subsession_time_remaining_raw = wait_end_time - self.sdk['SessionTime']
+                self.subsession_time_remaining = wait_end_time - self.sdk['SessionTime']
+                self.subsession_time_remaining = f"{int(self.subsession_time_remaining // 60):02}:{int(self.subsession_time_remaining % 60):02}"
+                self.sleep(0.2)
+            seconds = interval
 
     def apply_new_laptime(self, laps, carNumber, laptime):
         """
@@ -143,31 +169,20 @@ class F1QualifyingEvent(BaseEvent):
         # Update the dataframe representation of the leaderboard
         self.leaderboard_df = DataFrame(self.leaderboard)
         driver_names = {c['CarNumber']: c['UserName'] for c in self.sdk['DriverInfo']['Drivers']}
-        self.leaderboard_df['DriverName'] = self.leaderboard_df.index.map(driver_names)
+        self.leaderboard_df['Driver'] = self.leaderboard_df.index.map(driver_names)
         # sort df columns
-        self.leaderboard_df = self.leaderboard_df[['DriverName'] + [f'Q{n+1}' for n in range(len(self.session_minutes))]]
+        self.leaderboard_df = self.leaderboard_df[['Driver'] + [f'Q{n+1}' for n in range(len(self.session_minutes))]]
         
         # Sort the dataframe by lap times, prioritizing higher qualifying sessions
         sessions = [f'Q{n+1}' for n in range(len(self.session_minutes))]
         sessions.reverse()
         self.leaderboard_df = self.leaderboard_df.sort_values(by=sessions, ascending=True)
 
-    def subsession(self, delay_start, length, num_drivers_remain, session_number, subset_of_drivers=None):
+    def subsession(self, length, num_drivers_remain, session_number, subset_of_drivers=None):
         """
         Runs a single qualifying subsession (Q1, Q2, Q3, etc.).
-        
-        Process flow:
-        1. Announce session start and close pit exit
-        2. Countdown to session start
-        3. Open pit exit and begin session timing
-        4. Track lap times during session
-        5. Announce checkered flag when session time expires
-        6. Allow cars to complete final laps
-        7. Process results and determine advancing drivers
-        8. Notify drivers of their status (advancing/eliminated)
-        
+
         Args:
-            delay_start (int): Delay in seconds before starting the session.
             length (int): Length of the session in minutes.
             num_drivers_remain (int): Number of drivers advancing to next session.
             session_number (int): Session number (1 for Q1, 2 for Q2, etc.)
@@ -176,12 +191,7 @@ class F1QualifyingEvent(BaseEvent):
         Returns:
             list: List of drivers advancing to the next session
         """
-        # ----- SESSION PREPARATION PHASE -----
-        self._chat(f'Q{session_number} will begin shortly.', race_control=True)
-        self._chat(f'Pit Exit is CLOSED.', race_control=True)
-
-        # Count down to session start
-        self.countdown(delay_start, f"Q{session_number} will begin in")
+        self.subsession_name = f'Q{session_number}'
         self._chat(f'Pit Exit is OPEN.', race_control=True)
 
         # ----- SESSION RUNNING PHASE -----
