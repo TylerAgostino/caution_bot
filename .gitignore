@@ -4,3 +4,5 @@
 /.idea/
 *.iml
 *.spec
+/venv/
+/bot_venv/
