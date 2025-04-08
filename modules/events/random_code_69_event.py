@@ -304,6 +304,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
                     gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader_in_pits else 0
                     gets_wave_around = 1 if (1 < distance_completed < class_leader_distance_completed-1) or (class_leader_in_pits and distance_completed + 0.5 < class_leader_distance_completed) else 0
+                    gets_wave_around = gets_wave_around if self.wave_arounds and not self.quickie else 0
                     if gets_wave_around:
                         self.logger.debug(f'Laps Completed: {distance_completed}')
                         self.logger.debug(f'Class Leader Laps Completed: {class_leader_distance_completed}')
