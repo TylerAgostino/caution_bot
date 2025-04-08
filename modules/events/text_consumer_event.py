@@ -19,7 +19,7 @@ class TextConsumerEvent(BaseEvent):
         import streamlit as st
         col1, col2 = st.columns(2)
         return {
-            'user': col1.text_input("Password", key=f'{ident}password', value=''),
+            'password': col1.text_input("Password", key=f'{ident}password', value=''),
             'room': col2.text_input("Room", key=f'{ident}room', value=''),
         }
 

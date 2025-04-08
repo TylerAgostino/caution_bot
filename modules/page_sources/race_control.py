@@ -93,18 +93,23 @@ def ui():
             },
             {
                 "type": "Random Timed Code69 Event",
-                "args": {}
+                "args": {
+                    'likelihood': 100,
+                }
             },
             {
                 "type": "Random Timed Code69 Event",
-                "args": {}
+                "args": {
+                    'likelihood': 56
+                }
             },
             {
                 "type": "Scheduled Message",
                 "args": {
                     "message": "The Code 69 Window is now open.",
                     "event_time": 5,
-                    "race_control": True
+                    "race_control": True,
+                    'broadcast': True
                 }
             },
             {
@@ -112,7 +117,8 @@ def ui():
                 "args": {
                     "message": "The Code 69 Window is now closed.",
                     "event_time": -15,
-                    "race_control": True
+                    "race_control": True,
+                    'broadcast': True
                 }
             },
             {
@@ -128,6 +134,13 @@ def ui():
                 "args": {
                 }
 
+            },
+            {
+                "type": "Broadcast Text",
+                "args": {
+                    'password': 'beerleague',
+                    'room': 'GREENFLAGTV',
+                }
             }
         ]
         apply_preset(default_events)
@@ -159,8 +172,8 @@ def ui():
             {
                 "type": "Random Timed Code69 Event",
                 "args": {
-                    'min': 7,
-                    'max': 8,
+                    'min': 5,
+                    'max': 6,
                     'likelihood': 100,
                     'auto_class_separate': False,
                     'auto_restart_form_lanes': True,
