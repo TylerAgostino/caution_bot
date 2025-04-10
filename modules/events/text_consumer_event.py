@@ -11,8 +11,11 @@ class TextConsumerEvent(BaseEvent):
     def __init__(self, password: str = '', room: str = '', sdk=None, *args, **kwargs):
         self.password = password
         self.room = room
-        self.text_queue = queue.Queue()
         super().__init__(sdk=sdk, *args, **kwargs)
+        self.broadcast_text_queue.put({
+            'title': 'Race Control',
+            'text': 'A'
+        })
 
     @staticmethod
     def ui(ident=''):
@@ -27,23 +30,36 @@ class TextConsumerEvent(BaseEvent):
         """
         Consumes text messages from the queue and sends them to the SDKGaming Websocket.
         """
-        self.sdk.freeze_var_buffer_latest()
         while True:
             try:
-                text = self.text_queue.get(False)
+                text = self.broadcast_text_queue.get(False)
                 self.send_message(text)
             except queue.Empty:
                 pass
             self.sleep(5)
 
+    class WSC(WebSocketClient):
+        """
+        WebSocket client for the SDKGaming Websocket.
+        """
+        def __init__(self, event, *args, **kwargs):
+            self.event = event
+            super().__init__(*args, **kwargs)
+        def opened(self):
+            self.send(json.dumps({'role': 'spotter', 'secret': self.event.room}))
+            self.event.logger.debug('WebSocket opened')
+
+        def closed(self, code, reason=None):
+            self.event.logger.debug("WebSocket closed")
+
+        def received_message(self, message):
+            self.event.logger.debug("Received message:", message)
+
     def send_message(self, text: dict):
         """
         Sends text to the queue.
         """
-        client = WebSocketClient('ws://livetiming.sdk-gaming.co.uk/ws')
-        client.connect()
-        client.send(json.dumps({'role': 'spotter', 'secret': self.room}))
-        client.daemon = False
+        client = self.WSC(self, 'wss://livetiming2.sdk-gaming.co.uk/ws')
         client.connect()
         time.sleep(1)
         message = {
