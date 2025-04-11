@@ -1,0 +1,60 @@
+[
+  {
+    "type": "Discord Bot",
+    "args": {
+      "vc_id": "1057329833278976160",
+      "volume": 2.0
+    }
+  },
+  {
+    "type": "Random Timed Code69 Event",
+    "args": {
+      "likelihood": 100
+    }
+  },
+  {
+    "type": "Random Timed Code69 Event",
+    "args": {
+      "likelihood": 56
+    }
+  },
+  {
+    "type": "Scheduled Message",
+    "args": {
+      "message": "The Code 69 Window is now open.",
+      "event_time": 5,
+      "race_control": true,
+      "broadcast": true
+    }
+  },
+  {
+    "type": "Scheduled Message",
+    "args": {
+      "message": "The Code 69 Window is now closed.",
+      "event_time": -15,
+      "race_control": true,
+      "broadcast": true
+    }
+  },
+  {
+    "type": "Scheduled Message",
+    "args": {
+      "message": "HALFWAY",
+      "event_time": 30,
+      "race_control": true
+    }
+  },
+  {
+    "type": "Incident Penalty",
+    "args": {
+    }
+
+  },
+  {
+    "type": "Broadcast Text",
+    "args": {
+      "password": "beerleague",
+      "room": "GREENFLAGTV"
+    }
+  }
+]

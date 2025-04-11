@@ -1,0 +1,23 @@
+[
+  {
+    "type": "Discord Bot",
+    "args": {
+      "vc_id": "1057329833278976160",
+      "volume": 1.5
+    }
+  },
+  {
+    "type": "Random Timed Code69 Event",
+    "args": {
+      "min": 5,
+      "max": 6,
+      "likelihood": 100,
+      "auto_class_separate": false,
+      "auto_restart_form_lanes": true,
+      "auto_restart_form_lanes_position": 0.80,
+      "auto_restart_get_ready": true,
+      "auto_restart_get_ready_position": 0.95,
+      "wave_arounds": true
+    }
+  }
+]

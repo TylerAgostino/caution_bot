@@ -11,6 +11,8 @@ from modules.events.incident_penalty_event import IncidentPenaltyEvent
 from modules.events.text_consumer_event import TextConsumerEvent
 import uuid
 from streamlit.errors import StreamlitAPIException
+import os
+import json
 
 event_types = {
     "Lap Caution Event": LapCautionEvent,
@@ -55,6 +57,19 @@ def update_events():
                 else:
                     pass
 
+def save_preset(name):
+    file = open(f"presets/{name}.json", "w")
+    file.write(json.dumps(st.session_state.get('configured_events', [])))
+    file.close()
+
+def load_presets():
+    presets = []
+    for file in os.listdir("presets"):
+        if file.endswith(".json"):
+            with open(f"presets/{file}", "r") as f:
+                presets.append((file[:-5], json.loads(f.read())))
+    return presets
+
 def start():
     st.session_state.event_classes = {event['guid']: event_types[event['type']](**event['args']) for event in st.session_state.get('configured_events', [])}
     event_run_methods = [
@@ -68,6 +83,7 @@ def stop():
     if 'subprocess_manager' in st.session_state:
         st.session_state.subprocess_manager.stop()
     st.session_state.refresh = False
+    st_autorefresh(limit=1)
 
 def apply_preset(default_events):
     st.session_state.events = [str(uuid.uuid4()) for _ in default_events]
@@ -81,121 +97,22 @@ def apply_preset(default_events):
 
 def ui():
     st.title("Event Configuration")
-    col1, col2, col3, col4 = st.columns(4)
-    if col1.button("Beer League Race"):
-        default_events = [
-            {
-                "type": "Discord Bot",
-                "args": {
-                    'vc_id': '1057329833278976160',
-                    'volume': 2.0
-                }
-            },
-            {
-                "type": "Random Timed Code69 Event",
-                "args": {
-                    'likelihood': 100,
-                }
-            },
-            {
-                "type": "Random Timed Code69 Event",
-                "args": {
-                    'likelihood': 56
-                }
-            },
-            {
-                "type": "Scheduled Message",
-                "args": {
-                    "message": "The Code 69 Window is now open.",
-                    "event_time": 5,
-                    "race_control": True,
-                    'broadcast': True
-                }
-            },
-            {
-                "type": "Scheduled Message",
-                "args": {
-                    "message": "The Code 69 Window is now closed.",
-                    "event_time": -15,
-                    "race_control": True,
-                    'broadcast': True
-                }
-            },
-            {
-                "type": "Scheduled Message",
-                "args": {
-                    "message": "HALFWAY",
-                    "event_time": 30,
-                    "race_control": True
-                }
-            },
-            {
-                "type": "Incident Penalty",
-                "args": {
-                }
-
-            },
-            {
-                "type": "Broadcast Text",
-                "args": {
-                    'password': 'beerleague',
-                    'room': 'GREENFLAGTV',
-                }
-            }
-        ]
-        apply_preset(default_events)
-    if col2.button("Beer League Sprint"):
-        default_events = [
-            {
-                "type": "Sprint DQ",
-                "args": {}
-            },
-            {
-                "type": "Scheduled Message",
-                "args": {
-                    "message": "HALFWAY",
-                    "event_time": 7.5,
-                    "race_control": True
-                }
-            }
-        ]
-        apply_preset(default_events)
-    if col3.button("Beer League Practice"):
-        default_events = [
-            {
-                "type": "Discord Bot",
-                "args": {
-                    'vc_id': '1057329833278976160',
-                    'volume': 1.5
-                }
-            },
-            {
-                "type": "Random Timed Code69 Event",
-                "args": {
-                    'min': 5,
-                    'max': 6,
-                    'likelihood': 100,
-                    'auto_class_separate': False,
-                    'auto_restart_form_lanes': True,
-                    'auto_restart_form_lanes_position': 0.80,
-                    'auto_restart_get_ready': True,
-                    'auto_restart_get_ready_position': 0.95,
-                    'wave_arounds': True
-                }
-            }
-        ]
-        apply_preset(default_events)
-    if col4.button("Test"):
-        default_events = [
-            {
-                "type": "Random Timed Code69 Event",
-                "args": {
-                    'min': 1,
-                    'max': 2
-                }
-            }
-        ]
-        apply_preset(default_events)
+    presets = load_presets()
+    columns = st.columns(min(len(presets)+2, 7))
+    for i, (name, preset) in enumerate(presets):
+        with columns[i%5]:
+            if st.button(name):
+                apply_preset(preset)
+    col1 = columns[-2]
+    col2 = columns[-1]
+    new_preset_name = col1.text_input("New Preset Name", "")
+    if col2.button("Save Preset"):
+        if new_preset_name:
+            save_preset(new_preset_name)
+            st.success(f"Preset {new_preset_name} saved!")
+        else:
+            st.error("Please enter a name for the preset.")
+    st.write('---')
 
     if 'events' not in st.session_state:
         st.session_state['events'] = []

@@ -1,0 +1,14 @@
+[
+  {
+    "type": "Sprint DQ",
+    "args": {}
+  },
+  {
+    "type": "Scheduled Message",
+    "args": {
+      "message": "HALFWAY",
+      "event_time": 7.5,
+      "race_control": true
+    }
+  }
+]
