@@ -2,8 +2,6 @@ from modules.events.random_timed_event import TimedEvent
 
 class SprintRaceDQEvent(TimedEvent):
     def __init__(self, cars, penalty, *args, **kwargs):
-        if isinstance(cars, str):
-            cars = cars.split(',')
         self.cars = cars
         self.penalty = penalty
         self.reason = self.generate_random_black_flag_reason()
@@ -11,8 +9,12 @@ class SprintRaceDQEvent(TimedEvent):
 
     def event_sequence(self):
         self._chat(f'Black Flag: {self.reason}', race_control=True)
-        for car in self.cars:
-            self._chat(f'!bl {car["car_number"]} {self.penalty}')
+        if isinstance(self.cars, str):
+            cars = self.cars.split(',')
+        else:
+            cars = self.cars
+        for car in cars:
+            self._chat(f'!bl {car} {self.penalty}')
 
     @staticmethod
     def ui(ident=''):

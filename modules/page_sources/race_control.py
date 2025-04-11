@@ -8,6 +8,7 @@ from modules.subprocess_manager import SubprocessManager
 from modules.events.scheduled_message_event import ScheduledMessageEvent
 from modules.events.scheduled_black_flag_event import SprintRaceDQEvent
 from modules.events.incident_penalty_event import IncidentPenaltyEvent
+from modules.events.text_consumer_event import TextConsumerEvent
 import uuid
 from streamlit.errors import StreamlitAPIException
 
@@ -20,7 +21,8 @@ event_types = {
     "Discord Bot": AudioConsumerEvent,
     "Scheduled Message": ScheduledMessageEvent,
     "Sprint DQ": SprintRaceDQEvent,
-    "Incident Penalty": IncidentPenaltyEvent
+    "Incident Penalty": IncidentPenaltyEvent,
+    "Broadcast Text": TextConsumerEvent,
 }
 
 def touch_all_state():
@@ -36,14 +38,27 @@ touch_all_state()
 
 def set_events(midway = True):
     configured_events = [{
+        "guid": i,
         "type": st.session_state[f'{i}_type'],
         "args": {key.split(f"{i}")[1]: st.session_state[key] for key in st.session_state.keys() if key.startswith(f"{i}") and key != f"{i}_type"}
     } for i in st.session_state.get('events', [])]
     st.session_state.configured_events = configured_events
 
+def update_events():
+    if 'event_classes' in st.session_state:
+        for guid, event in st.session_state['event_classes'].items():
+            properties = {key: st.session_state[key] for key in st.session_state.keys() if key.startswith(guid) and key != f"{guid}_type"}
+            for key, value in properties.items():
+                de_guid_key = key.split(guid)[1]
+                if hasattr(event, de_guid_key):
+                    setattr(event, de_guid_key, value)
+                else:
+                    pass
+
 def start():
+    st.session_state.event_classes = {event['guid']: event_types[event['type']](**event['args']) for event in st.session_state.get('configured_events', [])}
     event_run_methods = [
-        event_types[event['type']](**event['args']).run for event in st.session_state.get('configured_events', [])
+        event.run for guid, event in st.session_state.event_classes.items()
     ]
     st.session_state.subprocess_manager = SubprocessManager(event_run_methods)
     st.session_state.subprocess_manager.start()
@@ -78,18 +93,23 @@ def ui():
             },
             {
                 "type": "Random Timed Code69 Event",
-                "args": {}
+                "args": {
+                    'likelihood': 100,
+                }
             },
             {
                 "type": "Random Timed Code69 Event",
-                "args": {}
+                "args": {
+                    'likelihood': 56
+                }
             },
             {
                 "type": "Scheduled Message",
                 "args": {
                     "message": "The Code 69 Window is now open.",
                     "event_time": 5,
-                    "race_control": True
+                    "race_control": True,
+                    'broadcast': True
                 }
             },
             {
@@ -97,7 +117,8 @@ def ui():
                 "args": {
                     "message": "The Code 69 Window is now closed.",
                     "event_time": -15,
-                    "race_control": True
+                    "race_control": True,
+                    'broadcast': True
                 }
             },
             {
@@ -113,6 +134,13 @@ def ui():
                 "args": {
                 }
 
+            },
+            {
+                "type": "Broadcast Text",
+                "args": {
+                    'password': 'beerleague',
+                    'room': 'GREENFLAGTV',
+                }
             }
         ]
         apply_preset(default_events)
@@ -144,8 +172,8 @@ def ui():
             {
                 "type": "Random Timed Code69 Event",
                 "args": {
-                    'min': 7,
-                    'max': 8,
+                    'min': 5,
+                    'max': 6,
                     'likelihood': 100,
                     'auto_class_separate': False,
                     'auto_restart_form_lanes': True,
@@ -207,6 +235,7 @@ def ui():
                 st.write(f"UI for {event_type} not implemented yet.")
         st.write('---')
     set_events()
+    update_events()
     st.write("Configured Events:", st.session_state.get('configured_events', []))
 
 race_control = st.Page(ui, title='Race Control', url_path='race_control', icon='🏁')

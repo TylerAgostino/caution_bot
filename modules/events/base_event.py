@@ -24,7 +24,8 @@ class BaseEvent:
         max_laps_behind_leader (int): Maximum Laps Down for cars to be considered in the field.
     """
 
-    def __init__(self, sdk=irsdk.IRSDK(), pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(), audio_queue=queue.Queue(), max_laps_behind_leader=99):
+    def __init__(self, sdk=irsdk.IRSDK(), pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(),
+                 audio_queue=queue.Queue(), broadcast_text_queue=queue.Queue(), max_laps_behind_leader=99):
         """
         Initializes the BaseEvent class.
 
@@ -48,6 +49,7 @@ class BaseEvent:
         self.cancel_event = cancel_event
         self.busy_event = busy_event
         self.audio_queue = audio_queue
+        self.broadcast_text_queue = broadcast_text_queue
         self.max_laps_behind_leader = int(max_laps_behind_leader)
 
     def sleep(self, seconds):
@@ -65,7 +67,7 @@ class BaseEvent:
             self.logger.info('Event cancelled.')
             raise KeyboardInterrupt
 
-    def run(self, cancel_event=None, busy_event=None, audio_queue=None):
+    def run(self, cancel_event=None, busy_event=None, audio_queue=None, broadcast_text_queue=None):
         """
         Runs the event sequence.
 
@@ -73,10 +75,12 @@ class BaseEvent:
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio commands. Defaults to None.
+            broadcast_text_queue (queue.Queue, optional): Queue for broadcast text messages. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.audio_queue = audio_queue or self.audio_queue
+        self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         try:
             self.event_sequence()
         except Exception as e:
@@ -224,7 +228,8 @@ class BaseEvent:
             'LapCompleted': self.sdk['CarIdxLapCompleted'][car['CarIdx']],
             'LapDistPct': self.sdk['CarIdxLapDistPct'][car['CarIdx']],
             'InPits': self.sdk['CarIdxOnPitRoad'][car['CarIdx']],
-            'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']]
+            'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']],
+            'last_lap_time': self.sdk['CarIdxLastLapTime'][car['CarIdx']],
         } for car in self.sdk['DriverInfo']['Drivers'] if car['CarIsPaceCar'] != 1]
         running_order.sort(key=lambda x: x['total_completed'], reverse=True)
         return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader-1)]
@@ -272,6 +277,27 @@ class BaseEvent:
             self.logger.debug('Might be a replay')
             return False
         return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
+
+    def car_has_new_last_lap_time(self, car, last_step, this_step):
+        """
+        Checks if a car has a new lap time.
+
+        Args:
+            car (dict): The car to check.
+            last_step (list): The running order of the last step in time.
+            this_step (list): The running order of the current step in time.
+
+        Returns:
+            bool: True if the car has a new lap time, False otherwise.
+        """
+        try:
+            last_step_record = [record for record in last_step if record['CarIdx'] == car['CarIdx']][0]
+            this_step_record = [record for record in this_step if record['CarIdx'] == car['CarIdx']][0]
+            return this_step_record['last_lap_time'] != last_step_record['last_lap_time']
+        except IndexError as e:
+            self.logger.error(f'Car {car["CarNumber"]} not found in running order.')
+            self.logger.error(e)
+            return False
 
     def car_has_completed_lap(self, car, last_step, this_step):
         """
@@ -447,3 +473,16 @@ class BaseEvent:
                 if best_lap is None or best_laps[i] < best_lap:
                     best_lap = best_laps[i]
         return best_lap
+
+    def intermittent_boolean_generator(self, n: int = 1):
+        """
+        A generator that yields True every n seconds and False otherwise.
+        :return:
+        """
+        last_true = self.sdk['SessionTime']
+        while True:
+            if self.sdk['SessionTime'] - last_true > n:
+                yield True
+                last_true = self.sdk['SessionTime']
+            else:
+                yield False

@@ -10,7 +10,8 @@ class IncidentPenaltyEvent(BaseEvent):
                  end_recurring_incidents: int = 0,
                  initial_penalty: str = '',
                  recurring_penalty: str = '',
-                 end_recurring_penalty: str = ''
+                 end_recurring_penalty: str = '',
+                 sound: bool = False,
                  ):
         self.initial_penalty = initial_penalty
         self.recurring_penalty = recurring_penalty
@@ -18,6 +19,7 @@ class IncidentPenaltyEvent(BaseEvent):
         self.initial_penalty_incidents = initial_penalty_incidents
         self.recurring_penalty_incidents = recurring_peanlty_every_incidents
         self.end_recurring_incidents = end_recurring_incidents
+        self.sound = sound
         if not (self.initial_penalty_incidents or self.recurring_penalty_incidents or self.end_recurring_incidents):
             raise ValueError('You must set at least one of the penalty incidents')
         if self.initial_penalty_incidents and not self.initial_penalty:
@@ -38,7 +40,8 @@ class IncidentPenaltyEvent(BaseEvent):
             'recurring_peanlty_every_incidents': col3.number_input("Then Every", value=15, key=f'{ident}recurring_peanlty_every_incidents'),
             'recurring_penalty': col3.text_input('Recurring Penalty', key=f'{ident}recurring_penalty', value='0', placeholder='Incidents'),
             'end_recurring_incidents': col5.number_input("Final Penalty After", value=55, key=f'{ident}end_recurring_incidents'),
-            'end_recurring_penalty': col5.text_input('Final Penalty', key=f'{ident}end_recurring_penalty', value='0')
+            'end_recurring_penalty': col5.text_input('Final Penalty', key=f'{ident}end_recurring_penalty', value='0'),
+            'sound': col4.checkbox('Sound', key=f'{ident}sound', value=False),
         }
 
     def event_sequence(self):
@@ -63,6 +66,8 @@ class IncidentPenaltyEvent(BaseEvent):
                     self.logger.debug(f'Car {car_no} has {this_inc} incidents')
                 if self.initial_penalty_incidents and prev_inc < self.initial_penalty_incidents <= this_inc:
                     self._chat(f'!bl {car_no} {self.initial_penalty} ({self.initial_penalty_incidents}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
                 if self.recurring_penalty_incidents and (this_inc>prev_inc) and (
                         (this_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents <=
                         (prev_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents
@@ -74,8 +79,12 @@ class IncidentPenaltyEvent(BaseEvent):
                     n = (this_inc - self.initial_penalty_incidents) // self.recurring_penalty_incidents
                     x = self.initial_penalty_incidents + (n * self.recurring_penalty_incidents)
                     self._chat(f'!bl {car_no} {self.recurring_penalty} ({x}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
 
                 if self.end_recurring_incidents and this_inc >= self.end_recurring_incidents > prev_inc:
                     self._chat(f'!bl {car_no} {self.end_recurring_penalty} ({self.end_recurring_incidents}x)')
+                    if self.sound:
+                        self.audio_queue.put('penalty')
             self.sdk.unfreeze_var_buffer_latest()
             self.sleep(5)

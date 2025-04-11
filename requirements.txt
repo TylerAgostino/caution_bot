@@ -12,3 +12,4 @@ discord.py
 pynacl
 ffmpeg
 imageio-ffmpeg
+ws4py
