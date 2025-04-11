@@ -8,14 +8,15 @@ class TextConsumerEvent(BaseEvent):
     """
     Consumes text messages to be displayed on the Broadcast through the SDKGaming Websocket
     """
-    def __init__(self, password: str = '', room: str = '', sdk=None, *args, **kwargs):
+    def __init__(self, password: str = '', room: str = '', test=False, sdk=None, *args, **kwargs):
         self.password = password
         self.room = room
         super().__init__(sdk=sdk, *args, **kwargs)
-        self.broadcast_text_queue.put({
-            'title': 'Race Control',
-            'text': 'A'
-        })
+        if test:
+            self.broadcast_text_queue.put({
+                'title': 'Race Control',
+                'text': 'A'
+            })
 
     @staticmethod
     def ui(ident=''):
@@ -24,6 +25,7 @@ class TextConsumerEvent(BaseEvent):
         return {
             'password': col1.text_input("Password", key=f'{ident}password', value=''),
             'room': col2.text_input("Room", key=f'{ident}room', value=''),
+            'test': col1.checkbox("Test", key=f'{ident}test', value=False)
         }
 
     def event_sequence(self):
