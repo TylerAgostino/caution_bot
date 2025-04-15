@@ -252,7 +252,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 break
             for car in this_step:
                 if (self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']]) \
-                        or self.car_has_left_pits(car, last_step, this_step):
+                        or (self.car_has_left_pits(car, last_step, this_step) and self.sdk['CarIdxLapDistPct'][car['CarIdx']] < 0.5):
                     self._chat(f'/{car["CarNumber"]} YOU ARE STILL RACING FOR AN ADDITIONAL LAP')
             if send_message_indicator.__next__():
                 self._chat(msg, race_control=True)
@@ -289,7 +289,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
                 or (
-                    self.car_has_left_pits(car, last_step, this_step)
+                    self.car_has_left_pits(car, last_step, this_step) and self.sdk['CarIdxLapDistPct'][car['CarIdx']] < 0.5
                 )
                 or (car['CarIdx'] in [c['CarIdx'] for c in restart_order_generator.order] and
                       self.car_has_entered_pits(car, last_step, this_step)

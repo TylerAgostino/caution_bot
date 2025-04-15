@@ -108,7 +108,7 @@ class RandomCautionEvent(RandomTimedEvent):
                     args = [{'CarIdx': car}, last_step, this_step]
                     if int(hex(self.sdk['CarIdxPaceFlags'][car])[-1]) >= 4:
                         to_remove.append(car)
-                    if self.car_has_completed_lap(*args) or self.car_has_left_pits(*args):
+                    if self.car_has_completed_lap(*args) or (self.car_has_left_pits(*args) and self.sdk['CarIdxLapDistPct'][car] < 0.5):
                         if self.sdk['CarIdxOnPitRoad'][car]:
                             self.logger.debug(f'{car} is on pit road.')
                             continue
