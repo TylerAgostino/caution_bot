@@ -385,6 +385,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             lane_names = ['LEFT', 'RIGHT']
 
         lane_names = lane_names[::-1] if self.quickie and self.quickie_invert_lanes else lane_names
+        this_step = self.get_current_running_order()
 
         if self.extra_lanes:
             number_of_lanes = len(lane_names)
@@ -414,6 +415,17 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         less_frequent_messages = self.intermittent_boolean_generator(self.reminder_frequency * 2)
         while not self.restart_ready.is_set():
+            self.sdk.unfreeze_var_buffer_latest()
+            self.sdk.freeze_var_buffer_latest()
+            last_step = this_step
+            this_step = self.get_current_running_order()
+            for i in range(number_of_lanes):
+                for car in this_step:
+                    if (
+                            self.car_has_left_pits(car, last_step, this_step) or self.car_has_entered_pits(car, last_step, this_step)
+                    ) and car['CarIdx'] in [lane['CarIdx'] for lane in lane_order_generators[i].order]:
+                        lane_order_generators[i].add_car_to_order(car['CarIdx'])
+
             if lane_order_generators[0].order[0]['ActualPosition'] >= (self.quickie_auto_restart_get_ready_position if self.quickie else self.auto_restart_get_ready_position):
                 self.restart_ready.set()
 
@@ -425,7 +437,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
                 for i in range(number_of_lanes):
-                    # todo: fix ultra-late pitters
                     lane_order_generators[i].update_car_positions()
                     self.send_reminders(lane_order_generators[i])
                 if speed_km_per_hour > self.max_speed_km:
@@ -444,6 +455,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             'text': 'Code 69 Ending Soon',
         }
         self.broadcast_text_queue.put(broadcast_msg)
+        self.sdk.unfreeze_var_buffer_latest()
 
 
         self.audio_queue.put('code69end')
