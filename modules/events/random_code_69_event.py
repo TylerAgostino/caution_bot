@@ -240,6 +240,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         lead_lap = max([car['LapCompleted'] for car in last_step])
         max_total_completed = max([car['total_completed'] for car in last_step])
         if max_total_completed - lead_lap < self.end_of_lap_safety_margin:
+            self.logger.warn('Safety margin triggered, extending notification phase by 1 lap')
             lead_lap += 1
         this_step = last_step
         msg = f'{"Quickie" if self.quickie else "Code"} 69 will begin at the end of lap {lead_lap + 1}'
