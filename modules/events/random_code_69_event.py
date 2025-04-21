@@ -141,7 +141,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
                  lane_names=None, reminder_frequency=8, auto_restart_get_ready_position=1.85,
                  auto_restart_form_lanes_position=1.5, extra_lanes=True, auto_class_separate_position=1.0,
                  quickie_auto_restart_get_ready_position=0.85, quickie_auto_restart_form_lanes_position=0.5,
-                 quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, *args, **kwargs):
+                 quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, end_of_lap_safety_margin = 0.1,
+                 *args, **kwargs):
         """
         Initializes the RandomVSC class.
 
@@ -171,6 +172,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.quickie_auto_restart_form_lanes_position = quickie_auto_restart_form_lanes_position
         self.quickie_auto_class_separate_position = quickie_auto_class_separate_position
         self.quickie_invert_lanes = quickie_invert_lanes
+        self.end_of_lap_safety_margin = end_of_lap_safety_margin
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
 
@@ -203,6 +205,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             'quickie_auto_restart_get_ready_position': aa_col3.number_input("Quickie Restart Position", value=0.79, help='Laps of pacing before restarting (during Quickie 69)', key=f'{ident}quickie_auto_restart_get_ready_position'),
             'quickie_invert_lanes': aa_col1.checkbox(f'Invert Quickie Lanes', key=f'{ident}quickie_invert_lanes', value=False, help='Inverts the lane names for the quickie event.'),
             'notify_on_skipped_caution': aa_col1.checkbox(f'Notify on Skip', key=f'{ident}notify_on_skipped_caution', value=False, help='Send a message to the chat if the event is triggered and skipped while another event is in progress.'),
+            'end_of_lap_safety_margin': aa_col2.number_input("End of Lap Safety Margin", value=0.1, help='If the leader is within this lap percent of the S/F when the code69 is triggered, extend by another lap', key=f'{ident}end_of_lap_safety_margin'),
         }
 
     def send_reminders(self, order_generator):
@@ -235,6 +238,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
         # wait for someone to start the next lap
         lead_lap = max([car['LapCompleted'] for car in last_step])
+        max_total_completed = max([car['total_completed'] for car in last_step])
+        if max_total_completed - lead_lap < self.end_of_lap_safety_margin:
+            lead_lap += 1
         this_step = last_step
         msg = f'{"Quickie" if self.quickie else "Code"} 69 will begin at the end of lap {lead_lap + 1}'
         self._chat(msg, race_control=True)
@@ -419,6 +425,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 if leader_speed_generator is not None:
                     speed_km_per_hour = leader_speed_generator.__next__()
                 for i in range(number_of_lanes):
+                    # todo: fix ultra-late pitters
                     lane_order_generators[i].update_car_positions()
                     self.send_reminders(lane_order_generators[i])
                 if speed_km_per_hour > self.max_speed_km:
@@ -445,7 +452,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self._chat('Get Ready, Code 69 will end soon.', race_control=True)
         self.sleep(2)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
-        immediate_throw = False
+        immediate_throw = True
         while True:
             self._chat(f'/{leader['CarNumber']} you control the field, go when ready')
             speed_km_per_hour = leader_speed_generator.__next__()
