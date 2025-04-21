@@ -28,6 +28,7 @@ class IncidentPenaltyEvent(BaseEvent):
             raise ValueError('You must set the recurring penalty')
         super().__init__()
 
+    @staticmethod
     def ui(ident=''):
         """
         UI for the IncidentPenaltyEvent.
