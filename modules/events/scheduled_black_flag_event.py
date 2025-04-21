@@ -19,9 +19,8 @@ class SprintRaceDQEvent(TimedEvent):
     @staticmethod
     def ui(ident=''):
         import streamlit as st
-        import uuid
         return {
             'event_time': st.number_input("Event Time (min)", value=-1, key=f'{ident}event_time'),
-            'cars': st.text_input('Car # (comma separated)', key=f'{ident}dq_cars', value='19,99'),
-            'penalty': st.text_input('Penalty', key=f'{ident}dq_penalty', value='L2')
+            'cars': st.text_input('Car # (comma separated)', key=f'{ident}cars', value='19'),
+            'penalty': st.text_input('Penalty', key=f'{ident}penalty', value='L2')
         }
