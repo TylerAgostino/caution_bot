@@ -387,6 +387,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
         lane_names = lane_names[::-1] if self.quickie and self.quickie_invert_lanes else lane_names
         this_step = self.get_current_running_order()
 
+        broadcast_msg = {
+            'title': 'Race Control',
+            'text': 'Code 69 Ending Soon',
+        }
+        self.broadcast_text_queue.put(broadcast_msg)
+
         if self.extra_lanes:
             number_of_lanes = len(lane_names)
             self.restart_ready.clear()
@@ -449,12 +455,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self.sdk.freeze_var_buffer_latest()
 
             self.sleep(0.1)
-
-        broadcast_msg = {
-            'title': 'Race Control',
-            'text': 'Code 69 Ending Soon',
-        }
-        self.broadcast_text_queue.put(broadcast_msg)
         self.sdk.unfreeze_var_buffer_latest()
 
 
