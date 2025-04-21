@@ -65,9 +65,7 @@ class IncidentPenaltyEvent(BaseEvent):
                 if this_inc > prev_inc:
                     self.logger.debug(f'Car {car_no} has {this_inc} incidents')
                 if self.initial_penalty_incidents and prev_inc < self.initial_penalty_incidents <= this_inc:
-                    self._chat(f'!bl {car_no} {self.initial_penalty} ({self.initial_penalty_incidents}x)')
-                    if self.sound:
-                        self.audio_queue.put('penalty')
+                    self.penalize(car_no, self.initial_penalty, self.initial_penalty_incidents)
                 if self.recurring_penalty_incidents and (this_inc>prev_inc) and (
                         (this_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents <=
                         (prev_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents
@@ -78,13 +76,19 @@ class IncidentPenaltyEvent(BaseEvent):
                 ):
                     n = (this_inc - self.initial_penalty_incidents) // self.recurring_penalty_incidents
                     x = self.initial_penalty_incidents + (n * self.recurring_penalty_incidents)
-                    self._chat(f'!bl {car_no} {self.recurring_penalty} ({x}x)')
-                    if self.sound:
-                        self.audio_queue.put('penalty')
+                    self.penalize(car_no, self.recurring_penalty, x)
 
                 if self.end_recurring_incidents and this_inc >= self.end_recurring_incidents > prev_inc:
-                    self._chat(f'!bl {car_no} {self.end_recurring_penalty} ({self.end_recurring_incidents}x)')
-                    if self.sound:
-                        self.audio_queue.put('penalty')
+                    self.penalize(car_no, self.end_recurring_penalty, self.end_recurring_incidents)
             self.sdk.unfreeze_var_buffer_latest()
             self.sleep(5)
+
+    def penalize(self, car_no, penalty, threshold):
+        self._chat(f'!bl {car_no} {penalty} ({threshold}x)')
+        if self.sound:
+            self.audio_queue.put('penalty')
+        penalty = 'Drive Through' if penalty == 'd' else f'{penalty}s Hold'
+        self.broadcast_text_queue.put({
+            'title': 'Race Control',
+            'text': f'Car #{car_no} - {penalty} - {threshold}x Incident Limit',
+        })
