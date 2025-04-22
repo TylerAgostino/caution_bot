@@ -347,7 +347,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 self.send_reminders(restart_order_generator)
 
                 if speed_km_per_hour > self.max_speed_km:
-                    self._chat(f'/{leader['CarNumber']} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
+                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
             self.sleep(0.1)
 
             if (self.class_separation
@@ -406,7 +406,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 lanes_raw[i % number_of_lanes].append(car)
                 self._chat(f'/{car["CarNumber"]} Line up {number_of_lanes} wide in the {str(lane_names[i % number_of_lanes]).upper()} lane.')
                 try:
-                    if car['CarNumber'] == self.sdk['PlayerCarIdx']:
+                    if car['CarIdx'] == self.sdk['PlayerCarIdx']:
                         self.logger.warn(f"{str(lane_names[i % number_of_lanes]).upper()} lane for player car")
                 except:
                     pass
@@ -446,8 +446,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 for i in range(number_of_lanes):
                     lane_order_generators[i].update_car_positions()
                     self.send_reminders(lane_order_generators[i])
+                    if lane_order_generators[i].order[0]['ActualPosition'] > lane_order_generators[0].order[0]['ActualPosition']:
+                        self._chat(f'/{lane_order_generators[i].order[0]["CarNumber"]} DO NOT PASS THE {lane_order_generators[0].order[0]["CarNumber"]} CAR.')
                 if speed_km_per_hour > self.max_speed_km:
-                    self._chat(f'/{leader['CarNumber']} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
+                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
             if less_frequent_messages.__next__():
                 for i in range(number_of_lanes):
                     for car in lane_order_generators[i].order:
@@ -484,13 +486,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self._chat('Green Flag!', race_control=True)
         self.audio_queue.put('green')
         self._chat('Green Flag!', race_control=True)
-
+        violation_message = "RESTART VIOLATION will be investigated"
         if immediate_throw:
-            self._chat(f'/{leader['CarNumber']} RESTART VIOLATION will be investigated after the race.')
+            self._chat(f'/{leader["CarNumber"]} {violation_message} - Accelerated too early')
 
         for i in range(len(lane_order_generators)):
+            if lane_order_generators[i].order[0]['ActualPosition'] > lane_order_generators[0].order[0]['ActualPosition']:
+                self._chat(f'/{lane_order_generators[i].order[0]["CarNumber"]} {violation_message} - Passed the Leader')
+
             for car in lane_order_generators[i].out_of_place_cars:
-                self._chat(f'/{car["CarNumber"]} RESTART VIOLATION will be investigated after the race.')
+                self._chat(f'/{car["CarNumber"]} {violation_message} - Passed the {", ".join(car["IncorrectOvertakes"])} car{"s" if len(car["IncorrectOvertakes"]) > 1 else ""}.')
 
         self.sdk.unfreeze_var_buffer_latest()
         self.busy_event.clear()
