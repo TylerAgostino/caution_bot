@@ -41,13 +41,6 @@ class RestartOrderManager:
 
     def add_car_to_order(self, carIdx, wave_around=0, slower_class_catchup=0):
         began_pacing_distance = self.sdk['CarIdxLapDistPct'][carIdx]
-        if not self.order:
-            laps_lost = 0
-        else:
-            leader = self.leader()['CarIdx']
-            leader_position = self.sdk['CarIdxLapCompleted'][leader] + self.sdk['CarIdxLapDistPct'][leader] - self.leader()['BeganPacingLap']
-            laps_lost = leader_position - ((leader_position - began_pacing_distance)%1)
-
         if carIdx not in [car['CarIdx'] for car in self.order]:
             driver = [d for d in self.sdk['DriverInfo']['Drivers'] if d['CarIdx']==carIdx][0]
             car_number = driver['CarNumber']
@@ -65,8 +58,7 @@ class RestartOrderManager:
                 'LatePit': 0,
                 'IncorrectOvertakes': [],
                 'IncorrectlyOvertakenBy': [],
-                'WavesRemain': False,
-                'LapsLostDuringEvent': laps_lost
+                'WavesRemain': False
             }
         else:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
@@ -113,7 +105,7 @@ class RestartOrderManager:
                         not self.sdk['CarIdxLapDistPct'][car['CarIdx']] == -1):
                     self.order[i]['IncorrectlyOvertakenBy'].append(car_behind['CarNumber'])
 
-            self.order[i]['WavesRemain'] = car['ActualPosition'] - (car['WaveAround'] + car['SlowerClassCatchup'] - car['LapsLostDuringEvent']) < self.leader()['ActualPosition'] - 1
+            self.order[i]['WavesRemain'] = car['ActualPosition'] - (car['WaveAround'] + car['SlowerClassCatchup']) < self.leader()['ActualPosition'] - 1
 
         if self.order:
             self.out_of_place_cars = []
