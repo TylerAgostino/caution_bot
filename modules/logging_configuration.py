@@ -13,7 +13,7 @@ def init_logging(level='INFO'):
         'version': 1,
         'formatters': {
             'default': {
-                'format': '%(asctime)s - %(levelname)s - %(message)s \f'
+                'format': '%(asctime)s - %(event)s - %(levelname)s - %(message)s \f'
             }
         },
         'handlers': {
@@ -42,7 +42,7 @@ def init_logging(level='INFO'):
         }
     })
     logger = logging.getLogger()
-    logger.debug(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
+    logging.LoggerAdapter(logger, {'event': 'init'}).debug(f'Logging to {LOGFILE} and {DEBUG_LOGFILE}')
     return logger, LOGFILE
 
 

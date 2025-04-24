@@ -45,7 +45,7 @@ class BaseEvent:
         self.thread = None
         self.killed = False
         self.task = None
-        self.logger = st.session_state.get('logger', logging.getLogger(__name__))
+        self.logger = logging.LoggerAdapter(st.session_state.get('logger', logging.getLogger(__name__)), {'event': self.__class__.__name__})
         self.cancel_event = cancel_event
         self.busy_event = busy_event
         self.audio_queue = audio_queue

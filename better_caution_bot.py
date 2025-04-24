@@ -1,3 +1,4 @@
+import logging
 import streamlit as st
 from modules.logging_configuration import init_logging
 from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
@@ -15,8 +16,9 @@ if 'logger' not in st.session_state:
     st.session_state.logger, st.session_state.logfile = init_logging()
     for handler in st.session_state.logger.handlers:
         handler.doRollover()
-    st.session_state.logger.info(STARTUP_LOGO)
-    st.session_state.logger.info('---')
+    st.session_state.base_logger = logging.LoggerAdapter(st.session_state.logger, {'event': 'base'})
+    st.session_state.base_logger.info(STARTUP_LOGO)
+    st.session_state.base_logger.info('---')
 
 
 def main():

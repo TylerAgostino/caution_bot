@@ -52,7 +52,7 @@ class RandomLapEvent(RandomEvent):
         # if we're within 5 minutes of the start time, and there is another event processing, set the quickie flag
         if (lap >= self.start_lap - self.quickie_window) and (
                 self.is_caution_active() or self.busy_event.is_set() or (self.start_lap <= self.quickie_window)
-        ):
+        ) and not self.quickie:
             self.logger.debug(f'{self} will be a quickie event.')
             self.quickie = True
 
