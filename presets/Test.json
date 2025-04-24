@@ -3,7 +3,11 @@
     "type": "Random Timed Code69 Event",
     "args": {
       "min": 1,
-      "max": 2
+      "max": 2,
+      "likelihood": 100,
+      "auto_restart_form_lanes_position": 1.58,
+      "quickie_auto_restart_get_ready_position": 1.85,
+      "quickie_window": -1
     }
   }
 ]
