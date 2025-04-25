@@ -118,7 +118,7 @@ class BaseEvent:
         pyperclip.copy(message)
         self.logger.debug(f'Sending chat message: {message}')
         self.sdk.chat_command(3)
-        self.sleep(0.1)
+        self.sleep(0.03)
         self.sdk.chat_command(1)
         keys = ['^v']
         if enter:
@@ -128,7 +128,7 @@ class BaseEvent:
         except Exception as e:
             self.logger.critical('Error sending chat message.')
             self.logger.critical(e)
-        self.sleep(0.1)
+        self.sleep(0.03)
 
     def wave_and_eol(self, car):
         """
