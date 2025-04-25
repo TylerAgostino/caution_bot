@@ -3,6 +3,13 @@ import threading
 
 class RestartOrderManager:
     def __init__(self, sdk, preset_order=None):
+        """
+        Initialize the RestartOrderManager.
+        
+        Args:
+            sdk: The iRacing SDK instance.
+            preset_order (list, optional): A preset order of cars. Defaults to None.
+        """
         if preset_order is not None:
             self.order = preset_order
         else:
@@ -37,6 +44,14 @@ class RestartOrderManager:
         print(self.class_lap_times)
 
     def add_car_to_order(self, carIdx, wave_around=0, slower_class_catchup=0):
+        """
+        Add a car to the restart order.
+        
+        Args:
+            carIdx (int): The index of the car to add.
+            wave_around (int, optional): Whether this car gets a wave around. Defaults to 0.
+            slower_class_catchup (int, optional): Whether this car gets a waved around to not be split from the rest of their class. Defaults to 0.
+        """
         began_pacing_distance = self.sdk['CarIdxLapDistPct'][carIdx]
         if carIdx not in [car['CarIdx'] for car in self.order]:
             driver = [d for d in self.sdk['DriverInfo']['Drivers'] if d['CarIdx']==carIdx][0]
@@ -67,6 +82,12 @@ class RestartOrderManager:
         self.update_order()
 
     def update_order(self):
+        """
+        Sort the order of cars based on current rules and parameters.
+        
+        Returns:
+            list: A list of car numbers in the correct order.
+        """
         # check if we've separated classes
         if self.class_separation:
             self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick'], -x['BeganPacingDistance']))
@@ -76,6 +97,12 @@ class RestartOrderManager:
         return [car['CarNumber'] for car in self.order]
 
     def update_car_positions(self):
+        """
+        Update the actual and expected positions of cars in the order.
+        
+        This method checks for cars that are out of position, have been overtaken incorrectly,
+        or need to perform wave arounds.
+        """
         # First update all the actual positions
         self.sdk.freeze_var_buffer_latest()
         for i, car in enumerate(self.order):
@@ -120,6 +147,12 @@ class RestartOrderManager:
                     self.displaced_cars.append(car)
 
     def leader(self):
+        """
+        Get the current leader car.
+        
+        Returns:
+            dict: The car data for the current leader, or None if no leader is found.
+        """
         return next((car for car in self.order if self.sdk['CarIdxLapDistPct'][car['CarIdx']] != -1), None)
 
 
@@ -196,7 +229,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.max_laps_behind_leader = 99999
 
     @staticmethod
-    def ui(ident = '', default_values=None):
+    def ui(ident = ''):
+        """
+        Create a Streamlit UI for configuring the Code69 event parameters.
+        
+        Args:
+            ident (str, optional): Identifier prefix for UI elements. Defaults to ''.
+            
+        Returns:
+            dict: A dictionary containing the user-configured parameters.
+        """
         import streamlit as st
         col1, col2, col3, col4, col5 = st.columns(5)
         advanced_options = st.expander("Advanced Options", expanded=False)
@@ -228,6 +270,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
         }
 
     def send_reminders(self, order_generator):
+        """
+        Send reminder messages to cars that are out of position.
+        
+        Args:
+            order_generator (RestartOrderManager): The restart order manager instance.
+        """
         self.logger.debug(order_generator.order)
         # Instructions to cars that are out of place
         for car in order_generator.wave_around_cars:
