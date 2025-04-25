@@ -494,6 +494,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             last_step = this_step
             this_step = self.get_current_running_order()
             for i in range(number_of_lanes):
+                lane_order_generators[i].update_order()
                 for car in this_step:
                     if (
                             self.car_has_left_pits(car, last_step, this_step) or self.car_has_entered_pits(car, last_step, this_step)
