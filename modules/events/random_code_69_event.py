@@ -129,32 +129,51 @@ class RestartOrderManager:
 
 class RandomTimedCode69Event(RandomTimedEvent):
     """
-    A class to represent a random Virtual Safety Car (VSC) event in the iRacing simulator.
+    A class to represent a random Code 69 event in the iRacing simulator.
+    
+    This event slows down the field to a specific speed (default 69 kph) and coordinates
+    an organized restart with options for wave arounds, class separation, and lane formation.
 
     Attributes:
-        restart_proximity (int): Proximity threshold for restarting the race.
-        max_vsc_duration (int): Maximum duration for the VSC.
-        max_laps_behind_leader (int): Maximum laps a car can be behind the leader.
         wave_arounds (bool): Flag to indicate if wave arounds are allowed.
         notify_on_skipped_caution (bool): Flag to indicate if notifications should be sent when a caution is skipped.
-        reason (str): The reason for the VSC.
+        restart_ready (Event): Threading event to signal when restart is ready.
+        max_speed_km (int): Maximum speed in kilometers per hour for pacing.
+        extra_lanes (bool): Flag to indicate if multiple restart lanes should be used.
+        class_separation (bool): Flag indicating if classes are currently separated.
+        can_separate_classes (bool): Flag indicating if class separation is permitted.
+        can_separate_lanes (bool): Flag indicating if lane separation is permitted.
+        reminder_frequency (int): How often to send reminder messages in chat.
+        restart_speed_pct (int): Speed percentage threshold for restart.
+        lane_names (list): Names of restart lanes (e.g. 'Left', 'Right').
+        max_laps_behind_leader (int): Maximum laps a car can be behind the leader.
     """
 
-    def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km = 69, restart_speed_pct=125,
+    def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km=69, restart_speed_pct=125,
                  lane_names=None, reminder_frequency=8, auto_restart_get_ready_position=1.85,
                  auto_restart_form_lanes_position=1.5, extra_lanes=True, auto_class_separate_position=1.0,
                  quickie_auto_restart_get_ready_position=0.85, quickie_auto_restart_form_lanes_position=0.5,
-                 quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, end_of_lap_safety_margin = 0.1,
+                 quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, end_of_lap_safety_margin=0.1,
                  *args, **kwargs):
         """
-        Initializes the RandomVSC class.
+        Initializes the RandomTimedCode69Event class.
 
         Args:
-            restart_proximity (int, optional): Proximity threshold for restarting the race. Defaults to None.
-            max_vsc_duration (int, optional): Maximum duration for the VSC. Defaults to None.
-            max_laps_behind_leader (int, optional): Maximum laps a car can be behind the leader. Defaults to 3.
             wave_arounds (bool, optional): Flag to indicate if wave arounds are allowed. Defaults to False.
             notify_on_skipped_caution (bool, optional): Flag to indicate if notifications should be sent when a caution is skipped. Defaults to False.
+            max_speed_km (int, optional): Maximum speed in kilometers per hour for pacing. Defaults to 69.
+            restart_speed_pct (int, optional): Speed percentage threshold for restart. Defaults to 125.
+            lane_names (list, optional): Names of restart lanes. Defaults to None.
+            reminder_frequency (int, optional): How often to send reminder messages in chat. Defaults to 8.
+            auto_restart_get_ready_position (float, optional): Laps of pacing before restarting. Defaults to 1.85.
+            auto_restart_form_lanes_position (float, optional): Laps of pacing before forming lanes. Defaults to 1.5.
+            extra_lanes (bool, optional): Flag to indicate if multiple restart lanes should be used. Defaults to True.
+            auto_class_separate_position (float, optional): Laps of pacing before separating classes. Defaults to 1.0.
+            quickie_auto_restart_get_ready_position (float, optional): Quickie laps before restarting. Defaults to 0.85.
+            quickie_auto_restart_form_lanes_position (float, optional): Quickie laps before forming lanes. Defaults to 0.5.
+            quickie_auto_class_separate_position (float, optional): Quickie laps before separating classes. Defaults to -1.
+            quickie_invert_lanes (bool, optional): Whether to invert lanes in quickie events. Defaults to False.
+            end_of_lap_safety_margin (float, optional): Safety margin at end of lap. Defaults to 0.1.
         """
         self.wave_arounds = wave_arounds
         self.notify_on_skipped_caution = notify_on_skipped_caution
@@ -507,7 +526,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
 from modules.events.random_lap_event import RandomLapEvent
 class RandomLapCode69Event(RandomLapEvent, RandomTimedCode69Event):
     """
-    A class to represent a lap caution event in the iRacing simulator.
+    A class to represent a lap-based Code 69 event in the iRacing simulator.
+    
+    This class combines the lap-based triggering mechanism of RandomLapEvent
+    with the Code 69 functionality of RandomTimedCode69Event. It allows for
+    Code 69 events that are triggered at specific lap milestones rather than
+    time-based intervals.
     """
     def __init__(self, *args, **kwargs):
         """
