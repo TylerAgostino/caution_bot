@@ -578,14 +578,4 @@ class RandomLapCode69Event(RandomLapEvent, RandomTimedCode69Event):
     Code 69 events that are triggered at specific lap milestones rather than
     time-based intervals.
     """
-    def __init__(self, *args, **kwargs):
-        """
-        Initializes the LapCautionEvent class.
-        """
-        super().__init__(*args, **kwargs)
-
-    def event_sequence(self):
-        """
-        Executes the event sequence for a lap caution.
-        """
-        super().event_sequence()
+    pass
