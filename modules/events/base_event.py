@@ -253,7 +253,7 @@ class BaseEvent:
         while any(self.sdk['CarIdxLapCompleted'][car['CarIdx']] >= max(self.sdk['CarIdxLapCompleted']) - self.max_laps_behind_leader for car in self.get_cars_on_pit_lane())\
                 and self.sdk['SessionTimeRemain'] > end_time:
             self.sleep(1)
-        self.logger.debug(f'Finished waiting for cars to clear pit lane after {end_time + max_time - self.sdk['SessionTimeRemain']} seconds.')
+        self.logger.debug(f'Finished waiting for cars to clear pit lane after {end_time + max_time - self.sdk["SessionTimeRemain"]} seconds.')
 
     def get_wave_around_cars(self):
         """

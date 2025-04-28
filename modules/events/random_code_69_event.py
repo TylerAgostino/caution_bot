@@ -281,7 +281,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         for car in order_generator.wave_around_cars:
             self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
         for car in order_generator.out_of_place_cars:
-            self._chat(f'/{car["CarNumber"]} Let the {", ".join(car['IncorrectOvertakes'])} car{"s" if len(car['IncorrectOvertakes']) > 1 else ""} by.')
+            self._chat(f'/{car["CarNumber"]} Let the {", ".join(car["IncorrectOvertakes"])} car{"s" if len(car["IncorrectOvertakes"]) > 1 else ""} by.')
         for car in order_generator.displaced_cars:
             self._chat(f'/{car["CarNumber"]} Pass the {", ".join(car["IncorrectlyOvertakenBy"])} car{"s" if len(car["IncorrectlyOvertakenBy"]) > 1 else ""}.')
 
@@ -537,7 +537,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         immediate_throw = True
         while True:
-            self._chat(f'/{leader['CarNumber']} you control the field, go when ready')
+            self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
             speed_km_per_hour = leader_speed_generator.__next__()
             if speed_km_per_hour > self.max_speed_km * (int(self.restart_speed_pct) / 100):
                 break
