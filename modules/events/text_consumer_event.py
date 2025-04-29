@@ -3,6 +3,8 @@ from modules.events.base_event import BaseEvent
 from ws4py.client.threadedclient import WebSocketClient
 import json
 import time
+import discord
+import os
 
 class TextConsumerEvent(BaseEvent):
     """
@@ -15,7 +17,7 @@ class TextConsumerEvent(BaseEvent):
         if test:
             self.broadcast_text_queue.put({
                 'title': 'Race Control',
-                'text': 'A'
+                'text': 'A test message from Race Control'
             })
 
     @staticmethod
@@ -76,3 +78,41 @@ class TextConsumerEvent(BaseEvent):
         client.send(json.dumps(message))
         time.sleep(1)
         client.close()
+
+
+class DiscordTextConsumerEvent(TextConsumerEvent):
+    """
+    Consumes text messages to be displayed in a text channel in Discord.
+    """
+    def send_message(self, text: dict):
+        # Create a discord client
+        intents = discord.Intents.default()
+        client = discord.Client(intents=intents)
+
+        # Send a message to the channel
+        @client.event
+        async def on_ready():
+            try:
+                self.logger.debug(f'Logged on as {client.user}')
+                channel = client.get_channel(int(self.room))
+                message = f"# {text['title']}\n\n {text['text']}"
+                await channel.send(message)
+                self.logger.debug('Message sent')
+            except Exception as e:
+                self.logger.exception(e)
+            finally:
+                await client.close()
+                self.logger.debug('Client closed')
+
+        token = self.password if self.password and self.password!='' else os.getenv('BOT_TOKEN')
+        client.run(token)
+
+    @staticmethod
+    def ui(ident=''):
+        import streamlit as st
+        col1, col2 = st.columns(2)
+        return {
+            'Token': col1.text_input("Token", key=f'{ident}password', value=''),
+            'Text Channel ID': col2.text_input("Text Channel ID", key=f'{ident}room', value=''),
+            'test': col1.checkbox("Test", key=f'{ident}test', value=False)
+        }
