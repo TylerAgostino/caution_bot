@@ -67,6 +67,7 @@ class IncidentPenaltyEvent(BaseEvent):
                     self.logger.debug(f'Car {car_no} has {this_inc} incidents')
                 if self.initial_penalty_incidents and prev_inc < self.initial_penalty_incidents <= this_inc:
                     self.penalize(car_no, self.initial_penalty, self.initial_penalty_incidents)
+                    continue
                 if self.recurring_penalty_incidents and (this_inc>prev_inc) and (
                         (this_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents <=
                         (prev_inc - self.initial_penalty_incidents) % self.recurring_penalty_incidents
@@ -78,6 +79,7 @@ class IncidentPenaltyEvent(BaseEvent):
                     n = (this_inc - self.initial_penalty_incidents) // self.recurring_penalty_incidents
                     x = self.initial_penalty_incidents + (n * self.recurring_penalty_incidents)
                     self.penalize(car_no, self.recurring_penalty, x)
+                    continue
 
                 if self.end_recurring_incidents and this_inc >= self.end_recurring_incidents > prev_inc:
                     self.penalize(car_no, self.end_recurring_penalty, self.end_recurring_incidents)
