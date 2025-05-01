@@ -398,6 +398,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     continue
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
+            if not restart_order_generator.leader():
+                continue
 
             correct_order = restart_order_generator.update_order()
 
