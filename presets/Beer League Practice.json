@@ -12,12 +12,11 @@
       "min": 5,
       "max": 6,
       "likelihood": 100,
-      "auto_class_separate": false,
-      "auto_restart_form_lanes": true,
       "auto_restart_form_lanes_position": 0.80,
-      "auto_restart_get_ready": true,
       "auto_restart_get_ready_position": 0.95,
-      "wave_arounds": true
+      "wave_arounds": true,
+      "quickie_window": -1,
+      "end_of_lap_safety_margin": 0
     }
   }
 ]
