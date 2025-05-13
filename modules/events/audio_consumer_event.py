@@ -11,10 +11,11 @@ module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(_
 FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
-    def __init__(self, vc_id, volume=1, sdk=None, *args, **kwargs):
+    def __init__(self, vc_id, volume=1, token='', sdk=None, *args, **kwargs):
         self.vc_id = int(vc_id)
         self.vc = None
         self.volume = volume
+        self.token = token
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f'Voice Channel ID: {self.vc_id}')
 
@@ -24,7 +25,8 @@ class AudioConsumerEvent(BaseEvent):
         col1, col2 = st.columns(2)
         return {
             'vc_id': col1.text_input("Discord Voice Channel ID", key=f'{ident}vc_id', value='420037391882125313'),
-            'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume')
+            'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume'),
+            'token': st.text_input("Bot Token (optional)", key=f'{ident}token', value='')
         }
 
     def event_sequence(self):
@@ -76,4 +78,5 @@ class AudioConsumerEvent(BaseEvent):
 
         self.logger.debug('Running bot.')
 
-        bot.run(os.getenv('BOT_TOKEN'))
+        token = self.token if self.token and self.token != '' else os.getenv('BOT_TOKEN')
+        bot.run(token)
