@@ -369,6 +369,14 @@ class RandomTimedCode69Event(RandomTimedEvent):
                       self.car_has_entered_pits(car, last_step, this_step)
                         )
                 ):
+                    try:
+                        last_step_record = [c for c in last_step if c['CarIdx'] == car['CarIdx']][0]
+                        if last_step_record['LapCompleted'] == car['LapCompleted'] + 1 and last_step_record['LapDistPct'] <= car['LapDistPct']:
+                            # fix issue where lap completed increments before the lap distance percentage resets to 0
+                            car['LapDistPct'] = 0
+                    except IndexError:
+                        pass
+
                     car_class = self.get_car_class(carIdx=car['CarIdx'])
                     class_leader = leaders[car_class]
 
