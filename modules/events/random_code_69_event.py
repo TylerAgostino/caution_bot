@@ -76,7 +76,7 @@ class RestartOrderManager:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
             self.order.remove(car_restart_record)
             car_restart_record['BeganPacingTick'] = int(self.sdk['SessionTick'])
-            car_restart_record['LatePit'] = 1
+            car_restart_record['LatePit'] = 1 if car_restart_record['ActualPosition'] >= 0.25 else 0
 
         self.order.append(car_restart_record)
         self.update_order()
