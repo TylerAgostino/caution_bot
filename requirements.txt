@@ -13,3 +13,4 @@ pynacl
 ffmpeg
 imageio-ffmpeg
 ws4py
+signalr-client
