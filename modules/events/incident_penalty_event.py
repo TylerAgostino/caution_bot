@@ -51,11 +51,28 @@ class IncidentPenaltyEvent(BaseEvent):
         """
         self.sdk.freeze_var_buffer_latest()
         this_step = self.sdk['DriverInfo']['Drivers']
+        this_driver_positions = self.get_current_running_order()
+        cars_taken_checkers = []
         while True:
             self.sdk.freeze_var_buffer_latest()
             last_step = this_step
             this_step = self.sdk['DriverInfo']['Drivers']
+            last_driver_positions = this_driver_positions
+            this_driver_positions = self.get_current_running_order()
             for car in this_step:
+                try:
+                    if self.sdk['SessionState'] == 5:
+                        c = [c for c in this_driver_positions if c['CarNumber']==car['CarNumber']]
+                        if c:
+                            c = c[0]
+                            if self.car_has_completed_lap(c, last_driver_positions, this_driver_positions) and car['CarNumber'] not in cars_taken_checkers:
+                                self.logger.debug(f'Car {car["CarNumber"]} Checkered Flag')
+                                cars_taken_checkers.append(car['CarNumber'])
+                            if car['CarNumber'] in cars_taken_checkers:
+                                continue
+                except Exception as e:
+                    self.logger.exception(f'Error in post race detection: {e}')
+
                 car_no = car['CarNumber']
                 try:
                     prev_inc = [x for x in last_step if x['CarNumber'] == car_no][0]['TeamIncidentCount']
