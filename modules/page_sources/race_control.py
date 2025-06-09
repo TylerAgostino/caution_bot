@@ -61,7 +61,7 @@ def update_events():
 
 def save_preset(name):
     file = open(f"presets/{name}.json", "w")
-    file.write(json.dumps(st.session_state.get('configured_events', [])))
+    file.write(json.dumps(st.session_state.get('configured_events', []), indent=4, sort_keys=True))
     file.close()
 
 def load_presets():
