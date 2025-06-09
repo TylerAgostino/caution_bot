@@ -396,7 +396,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     class_leader_in_pits = class_leader['InPits']
 
                     gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader_in_pits else 0
-                    gets_wave_around = 1 if (1 < distance_completed < class_leader_distance_completed-1) or (class_leader_in_pits and distance_completed + 0.5 < class_leader_distance_completed) else 0
+                    gets_wave_around = 1 if car['LapCompleted'] <= lead_lap else 0 # todo: this won't work for multiclass... I think?
                     gets_wave_around = gets_wave_around if self.wave_arounds and not self.quickie else 0
                     if gets_wave_around:
                         self.logger.debug(f'Laps Completed: {distance_completed}')
