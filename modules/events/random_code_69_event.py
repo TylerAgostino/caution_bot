@@ -279,7 +279,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.logger.debug(order_generator.order)
         # Instructions to cars that are out of place
         for car in order_generator.wave_around_cars:
-            self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
+            if self.wave_arounds:
+                self._chat(f'/{car["CarNumber"]} Safely overtake the leader and join at the back of the pack.')
         for car in order_generator.out_of_place_cars:
             self._chat(f'/{car["CarNumber"]} Let the {", ".join(car["IncorrectOvertakes"])} car{"s" if len(car["IncorrectOvertakes"]) > 1 else ""} by.')
         for car in order_generator.displaced_cars:
@@ -506,7 +507,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         else:
             number_of_lanes = 1
             lane_order_generators = [restart_order_generator]
-
+        self.wave_arounds = False  # no wave arounds during lane formation
         less_frequent_messages = self.intermittent_boolean_generator(self.reminder_frequency * 2)
         while not self.restart_ready.is_set():
             self.sdk.unfreeze_var_buffer_latest()
