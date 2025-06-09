@@ -76,7 +76,7 @@ class RestartOrderManager:
             car_restart_record = [car for car in self.order if car['CarIdx'] == carIdx][0]
             self.order.remove(car_restart_record)
             car_restart_record['BeganPacingTick'] = int(self.sdk['SessionTick'])
-            car_restart_record['LatePit'] = 1 if car_restart_record['ActualPosition'] >= 0.25 else 0
+            car_restart_record['LatePit'] = 1 #if car_restart_record['ActualPosition'] >= 0.25 else 0
 
         self.order.append(car_restart_record)
         self.update_order()
@@ -360,6 +360,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     leaders[class_] = leader_for_class
 
             for car in this_step:
+                existing_restart_record = [c for c in restart_order_generator.order if c['CarIdx'] == car['CarIdx']]
+                if ( existing_restart_record
+                         and
+                        self.car_has_entered_pits(car, last_step, this_step) and
+                        existing_restart_record[0]['ActualPosition'] < 0.5
+                ):
+                    # welcome to Bathurst
+                    self.logger.debug(f'Car {car["CarNumber"]} has entered pits immediately after S/F, removing from order')
+                    restart_order_generator.order = [c for c in restart_order_generator.order if c['CarIdx'] != car['CarIdx']]
+
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
                 or (
