@@ -96,6 +96,10 @@ def apply_preset(default_events):
     set_events()
     st.rerun()
 
+def onchange(i):
+    for key in st.session_state.keys():
+        if key.startswith(f"{i}") and key != f"{i}_type":
+            del st.session_state[key]
 
 def ui():
     st.title("Event Configuration")
@@ -146,7 +150,7 @@ def ui():
                 st.rerun()
         with left:
             st.subheader(f"Event {n}")
-            st.selectbox(f"Select Event Type for Event {i}", list(event_types.keys()), key=f"{i}_type", index= list(event_types.keys()).index(st.session_state.get(f'{i}_type', 'Lap Caution Event')))
+            st.selectbox(f"Select Event Type for Event {i}", list(event_types.keys()), key=f"{i}_type", on_change=onchange, args=[i], index= list(event_types.keys()).index(st.session_state.get(f'{i}_type', 'Lap Caution Event')))
             event_type = st.session_state[f'{i}_type']
             try:
                 event_types[event_type].ui(i)
