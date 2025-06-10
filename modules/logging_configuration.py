@@ -27,13 +27,17 @@ def init_logging(level='INFO'):
             'default': {
                 'format': '%(asctime)s - %(event)s - %(levelname)s - %(message)s \f',
                 'class': 'modules.logging_configuration.CustomFormatter',
+            },
+            'minimal': {
+                'format': '%(message)s',
+                'class': 'modules.logging_configuration.CustomFormatter',
             }
         },
         'handlers': {
             'file': {
                 'class': 'logging.handlers.RotatingFileHandler',
                 'filename': LOGFILE,
-                'formatter': 'default',
+                'formatter': 'minimal',
                 'level': level,
                 # 'when': 'D',
                 'backupCount': 7,
