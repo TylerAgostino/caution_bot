@@ -3,13 +3,60 @@ import streamlit as st
 from modules import SubprocessManager
 from modules.events import F1QualifyingEvent
 from streamlit_autorefresh import st_autorefresh
+from pandas import IndexSlice
 
 def ui():
     st.title("F1 Qualifying")
+    if 'elim_sessions' not in st.session_state:
+        st.session_state.elim_sessions = [
+            {
+                'duration': '12',
+                'advancing_cars': '15'
+            }, {
+                'duration': '10',
+                'advancing_cars': '10'
+            }
+        ]
+    if 'final_session' not in st.session_state:
+        st.session_state.final_session = {
+            'duration': '8',
+            'advancing_cars': '0'
+        }
 
-    session_lengths = st.text_input("Session Lengths (comma-separated)", "1, 1, 1")
-    advancing_cars = st.text_input("Advancing Cars (comma-separated)", "8, 5, 0")
-    wait_between_sessions = st.number_input("Wait Between Sessions (seconds)", value=120)
+    with st.container():
+        col1, col2, col3, col4 = st.columns((1,1,1,4))
+        col2.subheader("Duration (Mins)")
+        col3.subheader("Advancing Cars")
+        n=1
+        for i, session in enumerate(st.session_state.elim_sessions):
+            col1, col2, col3, col4 = st.columns((1,1,1,4))
+            col1.subheader(f'Q{n}')
+            st.session_state.elim_sessions[i]['duration'] = col2.text_input("Duration (Mins)", label_visibility='hidden', key=f"{i}_duration", value=session['duration'])
+            st.session_state.elim_sessions[i]['advancing_cars'] = col3.text_input("Advancing Cars", label_visibility='hidden', key=f"{i}_advancing_cars", value=session['advancing_cars'])
+            if col4.button("Remove", key=f"remove_{i}"):
+                st.session_state.elim_sessions.remove(session)
+                st.rerun()
+            st.write('---')
+            n += 1
+
+        col1, col2, col3, col4 = st.columns((1,1,1,4))
+        col1.subheader(f'Q{n}')
+        st.session_state.final_session = {
+            'duration': col2.text_input("Duration (Mins)", key=f"final_duration", label_visibility='hidden', value=st.session_state.final_session['duration']),
+            'advancing_cars': col3.text_input("Advancing Cars", key=f"final_advancing_cars", label_visibility='hidden', disabled=True, value='0')
+        }
+        if col4.button("Add Session"):
+            st.session_state.elim_sessions.append({
+                'duration': '',
+                'advancing_cars': ''
+            })
+            st.rerun()
+
+
+    all_sessions = [*st.session_state.elim_sessions, st.session_state.final_session]
+    session_lengths = ", ".join([s['duration'] for s in all_sessions]) #st.text_input("Session Lengths (comma-separated)", "1, 1, 1")
+    advancing_cars = ", ".join([s['advancing_cars'] for s in all_sessions])  # st.text_input("Advancing Cars (comma-separated)", "8, 5, 0")
+    wait_between_sessions = col1.number_input("Wait Between Sessions (seconds)", value=120)
 
     if st.button("Stop"):
         if 'f1_subprocess_manager' in st.session_state:
@@ -44,6 +91,7 @@ def ui():
                 .highlight_min(subset=leaderboard.columns[2:], color='green', axis=1)
                 .highlight_min(subset=leaderboard.columns[2:], color='purple', axis=0)
                 .format(subset=leaderboard.columns[2:], formatter=lambda x: f"{int(x // 60):02}:{int(x % 60):02}.{int((x % 1) * 1000):03}" if isinstance(x, (int, float)) and not isnan(x) else x)
+                .map(lambda x: 'background-color: grey; color:black' if st.session_state.event.waiting_on and x in st.session_state.event.waiting_on else '')
             ,width=600, height=1000, use_container_width=False)
 
     if st.session_state.get('refresh', False):

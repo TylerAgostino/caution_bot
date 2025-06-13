@@ -31,7 +31,8 @@ class F1QualifyingEvent(BaseEvent):
         self.subsession_time_remaining = 0
         self.subsession_time_remaining_raw = 0
         self.subsession_name = 'Pre-Qualifying'
-        
+        self.waiting_on = None
+
         # Ensure the final session properly terminates by adding a 0-advancing session if needed
         if self.session_advancing_cars[-1] != 0:
             self.session_advancing_cars.append(0)
@@ -193,6 +194,7 @@ class F1QualifyingEvent(BaseEvent):
         """
         self.subsession_name = f'Q{session_number}'
         self._chat(f'Pit Exit is OPEN.', race_control=True)
+        self.waiting_on = None
 
         # ----- SESSION RUNNING PHASE -----
         session_time_at_start = self.sdk['SessionTime']
@@ -264,6 +266,8 @@ class F1QualifyingEvent(BaseEvent):
         lap_still_valid_reminder = self.intermittent_boolean_generator(10)
         first_car_to_take_checkered = None
         while remaining_cars:
+            self.waiting_on = [c['UserName'] for c in self.sdk['DriverInfo']['Drivers']
+                                           if c['CarNumber'] not in remaining_cars]
             out_of_time = wait_timeout.__next__()
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
