@@ -232,7 +232,7 @@ class F1QualifyingEvent(BaseEvent):
                 is_eligible = car['CarNumber'] in subset_of_drivers if subset_of_drivers else True
                 
                 if driver_info_record and is_eligible:
-                    if self.car_has_new_last_lap_time(car, last_step, this_step):
+                    if self.car_has_new_last_lap_time(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][driver_info_record[0]['CarIdx']]:
                         car_idx = driver_info_record[0]['CarIdx']
                         last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
                         fastest_laps = self.apply_new_laptime(fastest_laps, car['CarNumber'], last_lap)
@@ -282,7 +282,7 @@ class F1QualifyingEvent(BaseEvent):
                     if driver_info_record and is_eligible:
                         # Check if car has completed a lap
                         if self.car_has_completed_lap(car, last_step, this_step):
-                            if not self.car_has_new_last_lap_time(car,last_step,this_step):
+                            if not self.car_has_new_last_lap_time(car,last_step,this_step) and not self.sdk['CarIdxOnPitRoad'][driver_info_record[0]['CarIdx']]:
                                 # The last lap data might be a bit late
                                 # Leave the data from last_step so we can check again the next time
                                 last_step_record = [c for c in last_step if c['CarNumber'] == car['CarNumber']]
