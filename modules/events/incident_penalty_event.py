@@ -1,4 +1,4 @@
-from modules.events.base_event import BaseEvent
+from modules.events import BaseEvent
 
 class IncidentPenaltyEvent(BaseEvent):
     """

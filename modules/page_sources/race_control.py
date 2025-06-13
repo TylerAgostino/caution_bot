@@ -1,32 +1,24 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from modules.events.random_caution_event import RandomCautionEvent, LapCautionEvent
-from modules.events.random_code_69_event import RandomTimedCode69Event, RandomLapCode69Event
-from modules.events.clear_black_flag_event import ClearBlackFlagEvent
-from modules.events.audio_consumer_event import AudioConsumerEvent
-from modules.subprocess_manager import SubprocessManager
-from modules.events.scheduled_message_event import ScheduledMessageEvent
-from modules.events.scheduled_black_flag_event import SprintRaceDQEvent
-from modules.events.incident_penalty_event import IncidentPenaltyEvent
-from modules.events.text_consumer_event import TextConsumerEvent, DiscordTextConsumerEvent, ATVOTextConsumerEvent
+from modules import SubprocessManager, events
 import uuid
 from streamlit.errors import StreamlitAPIException
 import os
 import json
 
 event_types = {
-    "Lap Caution Event": LapCautionEvent,
-    "Random Caution Event": RandomCautionEvent,
-    "Random Lap Code69 Event": RandomLapCode69Event,
-    "Random Timed Code69 Event": RandomTimedCode69Event,
-    "Clear Black Flag Event": ClearBlackFlagEvent,
-    "Discord Bot": AudioConsumerEvent,
-    "Scheduled Message": ScheduledMessageEvent,
-    "Sprint DQ": SprintRaceDQEvent,
-    "Incident Penalty": IncidentPenaltyEvent,
-    "Broadcast Text": TextConsumerEvent,
-    "Discord Text": DiscordTextConsumerEvent,
-    "ATVO Text": ATVOTextConsumerEvent,
+    "Lap Caution Event": events.LapCautionEvent,
+    "Random Caution Event": events.RandomCautionEvent,
+    "Random Lap Code69 Event": events.RandomLapCode69Event,
+    "Random Timed Code69 Event": events.RandomTimedCode69Event,
+    "Clear Black Flag Event": events.ClearBlackFlagEvent,
+    "Discord Bot": events.AudioConsumerEvent,
+    "Scheduled Message": events.ScheduledMessageEvent,
+    "Sprint DQ": events.SprintRaceDQEvent,
+    "Incident Penalty": events.IncidentPenaltyEvent,
+    "Broadcast Text": events.TextConsumerEvent,
+    "Discord Text": events.DiscordTextConsumerEvent,
+    "ATVO Text": events.ATVOTextConsumerEvent,
 }
 
 def touch_all_state():

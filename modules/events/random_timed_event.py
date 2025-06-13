@@ -1,5 +1,5 @@
 import random
-from modules.events.random_event import RandomEvent
+from modules.events import RandomEvent
 import time
 
 class RandomTimedEvent(RandomEvent):

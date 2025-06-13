@@ -1,4 +1,4 @@
-from modules.events.random_timed_event import RandomTimedEvent
+from modules.events import RandomTimedEvent
 
 class RandomCautionEvent(RandomTimedEvent):
     """
@@ -134,6 +134,6 @@ class RandomCautionEvent(RandomTimedEvent):
 
         self.busy_event.clear()
 
-from modules.events.random_lap_event import RandomLapEvent
+from modules.events import RandomLapEvent
 class LapCautionEvent(RandomLapEvent, RandomCautionEvent):
     pass

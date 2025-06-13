@@ -1,8 +1,7 @@
 import logging
 import streamlit as st
-from modules.logging_configuration import init_logging
+from modules import init_logging, STARTUP_LOGO
 from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
-from modules.art import STARTUP_LOGO
 
 levels = {
     INFO: 'INFO',
@@ -26,13 +25,13 @@ def main():
     Main function to set up the Streamlit page configuration, handle page navigation,
     display log content, and provide a log level selection box.
     """
-    from modules import pages
+    from modules.page_sources import race_control, beer_goggles, f1_qualifying
 
     # List of available pages for navigation
     page_list = [
-        pages.race_control,
-        pages.beer_goggles,
-        pages.f1_qualifying
+        race_control,
+        beer_goggles,
+        f1_qualifying
     ]
 
     st.set_page_config(layout='wide')  # Set the page layout to wide

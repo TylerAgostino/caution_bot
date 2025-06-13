@@ -1,4 +1,4 @@
-from modules.events.random_timed_event import RandomTimedEvent
+from modules.events import RandomTimedEvent
 import threading
 
 class RestartOrderManager:
@@ -591,7 +591,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.busy_event.clear()
 
 
-from modules.events.random_lap_event import RandomLapEvent
+from modules.events import RandomLapEvent
 class RandomLapCode69Event(RandomLapEvent, RandomTimedCode69Event):
     """
     A class to represent a lap-based Code 69 event in the iRacing simulator.

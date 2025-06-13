@@ -6,7 +6,7 @@ import time
 import logging
 import threading
 import queue
-from modules.llm import generate_caution_reason, generate_black_flag_reason
+from modules import generate_caution_reason, generate_black_flag_reason
 
 class BaseEvent:
     """

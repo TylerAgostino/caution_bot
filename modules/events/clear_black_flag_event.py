@@ -1,4 +1,4 @@
-from modules.events.base_event import BaseEvent
+from modules.events import BaseEvent
 
 class ClearBlackFlagEvent(BaseEvent):
     def __init__(self, interval: int = 5, audio: bool = False):

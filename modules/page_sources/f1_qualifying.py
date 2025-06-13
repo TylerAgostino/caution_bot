@@ -1,7 +1,7 @@
 from math import isnan
 import streamlit as st
-from modules.subprocess_manager import SubprocessManager
-from modules.events.f1_qualifying_event import F1QualifyingEvent
+from modules import SubprocessManager
+from modules.events import F1QualifyingEvent
 from streamlit_autorefresh import st_autorefresh
 
 def ui():

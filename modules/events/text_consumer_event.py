@@ -1,7 +1,7 @@
 from signalr import Connection
 from requests import Session
 import queue
-from modules.events.base_event import BaseEvent
+from modules.events import BaseEvent
 from ws4py.client.threadedclient import WebSocketClient
 import json
 import time

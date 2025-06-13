@@ -1,5 +1,5 @@
 import queue
-from modules.events.base_event import BaseEvent
+from modules.events import BaseEvent
 import discord
 from discord.ext import tasks
 import os

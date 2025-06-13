@@ -1,4 +1,4 @@
-from modules.events.random_timed_event import TimedEvent
+from modules.events import TimedEvent
 
 class SprintRaceDQEvent(TimedEvent):
     def __init__(self, cars, penalty, *args, **kwargs):

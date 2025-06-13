@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from modules.events.base_event import BaseEvent
+from modules.events import BaseEvent
 import pandas as pd
 
 logger = st.session_state.logger
