@@ -25,11 +25,11 @@ def init_logging(level='INFO'):
         'version': 1,
         'formatters': {
             'default': {
-                'format': '%(asctime)s - %(event)s - %(levelname)s - %(message)s \f',
+                'format': '%(asctime)s - %(event)s - %(levelname)s - %(message)s',
                 'class': 'modules.logging_configuration.CustomFormatter',
             },
             'minimal': {
-                'format': '%(message)s',
+                'format': '%(message)s\f',
                 'class': 'modules.logging_configuration.CustomFormatter',
             }
         },
