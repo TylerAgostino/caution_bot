@@ -303,7 +303,7 @@ class F1QualifyingEvent(BaseEvent):
                                     if first_car_to_take_checkered is None:
                                         first_car_to_take_checkered = car['CarNumber']
                                         self._chat(f'First car to take the checkered flag: {car["CarNumber"]}')
-                                    self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
+                                    self._chat(f'/{car["CarNumber"]} Checkered Flag, please return to the pits.')
                             else:
                                 car_idx = driver_info_record[0]['CarIdx']
                                 last_lap = self.sdk['CarIdxLastLapTime'][car_idx]
@@ -313,18 +313,18 @@ class F1QualifyingEvent(BaseEvent):
                                 if first_car_to_take_checkered is None:
                                     first_car_to_take_checkered = car['CarNumber']
                                     self._chat(f'First car to take the checkered flag: {car["CarNumber"]}')
-                                self._chat(f'/{car["CarNumber"]} The session is over, please return to the pits.')
+                                self._chat(f'/{car["CarNumber"]} Checkered Flag, please return to the pits.')
                             continue
 
                         # Check if car has returned to pits
                         carIdx = driver_info_record[0]['CarIdx']
                         if self.sdk['CarIdxOnPitRoad'][carIdx] == 1:
                             remaining_cars.remove(car['CarNumber'])
-                            self._chat(f'/{car["CarNumber"]} The session is over.')
+                            self._chat(f'/{car["CarNumber"]} Checkered Flag.')
 
             if lap_still_valid_reminder.__next__():
                 for car in remaining_cars:
-                    self._chat(f'/{car} The session will end after this lap')
+                    self._chat(f'/{car} This is your final lap')
 
             self.sleep(1)
             if out_of_time:
