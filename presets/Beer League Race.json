@@ -51,10 +51,11 @@
 
   },
   {
-    "type": "Broadcast Text",
+    "type": "Discord Text",
     "args": {
-      "password": "beerleague",
-      "room": "GREENFLAGTV"
+      "password": "",
+      "room": "1099675906735353948",
+      "test": false
     }
   }
 ]
