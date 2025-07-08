@@ -250,24 +250,24 @@ class RandomTimedCode69Event(RandomTimedEvent):
             'reminder_frequency': aa_col1.number_input("Reminder Frequency", value=8, help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
 
             'likelihood': col2.number_input(f'% Chance', key=f'{ident}likelihood', value=75, help="The likelihood of the event happening. 100% means it will happen every time."),
-            'max_speed_km': aa_col2.number_input("Pace Speed (kph)", 69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
+            'max_speed_km': aa_col2.number_input("Pace Speed (kph)", 100, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
 
-            'auto_class_separate_position': col3.number_input("Class Separation Position", value=-1.0, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
+            'auto_class_separate_position': col3.number_input("Class Separation Position", value=-1.00, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
             'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
 
-            'auto_restart_form_lanes_position': col4.number_input("Lanes Form Position", value=1.63, help='Laps of pacing before forming the restart lanes. -1 to disable auto lane forming', key=f'{ident}auto_restart_form_lanes_position'),
-            'lane_names': col4.text_input("Lane Names", "Right,Left", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.", key=f'{ident}lane_names').split(','),
+            'auto_restart_form_lanes_position': col4.number_input("Lanes Form Position", value=-1.00, help='Laps of pacing before forming the restart lanes. -1 to disable auto lane forming', key=f'{ident}auto_restart_form_lanes_position'),
+            'lane_names': col4.text_input("Lane Names", "Only", help="A comma-separated list of lane names. Length must be equal to the number of restart lanes. Primary/Lead lane is the first in the list.", key=f'{ident}lane_names').split(','),
 
             'auto_restart_get_ready_position': col5.number_input("Restart Position", value=1.79, help='Laps of pacing before restarting. -1 to disable auto restart', key=f'{ident}auto_restart_get_ready_position'),
             'restart_speed_pct': aa_col2.number_input("Restart Speed %", value=125, help='After the leader receives the "You control the field" message, show the green flag when they reach this % of the pacing speed', key=f'{ident}restart_speed_pct'),
             #quickie stuff
-            'quickie_window': aa_col1.number_input("Quickie Window", value=5, help='If within this many minutes of another event, make this a quickie 69. -1 to disable', key=f'{ident}quickie_window'),
-            'quickie_auto_class_separate_position': aa_col3.number_input("Quickie Class Separation Position", value=-1, help='Laps of pacing before separating classes (during Quickie 69)', key=f'{ident}quickie_auto_class_separate_position'),
-            'quickie_auto_restart_form_lanes_position': aa_col3.number_input("Quickie Lanes Form Position", value=0.63, help='Laps of pacing before forming the restart lanes (during Quickie 69)', key=f'{ident}quickie_auto_restart_form_lanes_position'),
+            'quickie_window': aa_col1.number_input("Quickie Window", value=7, help='If within this many minutes of another event, make this a quickie 69. -1 to disable', key=f'{ident}quickie_window'),
+            'quickie_auto_class_separate_position': aa_col3.number_input("Quickie Class Separation Position", value=-1.00, help='Laps of pacing before separating classes (during Quickie 69)', key=f'{ident}quickie_auto_class_separate_position'),
+            'quickie_auto_restart_form_lanes_position': aa_col3.number_input("Quickie Lanes Form Position", value=-1.00, help='Laps of pacing before forming the restart lanes (during Quickie 69)', key=f'{ident}quickie_auto_restart_form_lanes_position'),
             'quickie_auto_restart_get_ready_position': aa_col3.number_input("Quickie Restart Position", value=0.79, help='Laps of pacing before restarting (during Quickie 69)', key=f'{ident}quickie_auto_restart_get_ready_position'),
             'quickie_invert_lanes': aa_col1.checkbox(f'Invert Quickie Lanes', key=f'{ident}quickie_invert_lanes', value=False, help='Inverts the lane names for the quickie event.'),
             'notify_on_skipped_caution': aa_col1.checkbox(f'Notify on Skip', key=f'{ident}notify_on_skipped_caution', value=False, help='Send a message to the chat if the event is triggered and skipped while another event is in progress.'),
-            'end_of_lap_safety_margin': aa_col2.number_input("End of Lap Safety Margin", value=0.1, help='If the leader is within this lap percent of the S/F when the code69 is triggered, extend by another lap', key=f'{ident}end_of_lap_safety_margin'),
+            'end_of_lap_safety_margin': aa_col2.number_input("End of Lap Safety Margin", value=0.10, help='If the leader is within this lap percent of the S/F when the code69 is triggered, extend by another lap', key=f'{ident}end_of_lap_safety_margin'),
         }
 
     def send_reminders(self, order_generator):
