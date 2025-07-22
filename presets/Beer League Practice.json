@@ -13,6 +13,8 @@
       "max": 6,
       "likelihood": 100,
       "auto_restart_get_ready_position": 0.95,
+      "auto_restart_form_lanes_position": 0.80,
+      "lane_names": "left,bitch,right",
       "wave_arounds": true,
       "quickie_window": -1,
       "end_of_lap_safety_margin": 0
