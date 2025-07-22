@@ -250,7 +250,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
             'reminder_frequency': aa_col1.number_input("Reminder Frequency", value=8, help='How often to send reminders in chat. If this is too low, the bot may spam the chat and be unresponsive.', key=f'{ident}reminder_frequency'),
 
             'likelihood': col2.number_input(f'% Chance', key=f'{ident}likelihood', value=75, help="The likelihood of the event happening. 100% means it will happen every time."),
-            'max_speed_km': aa_col2.number_input("Pace Speed (kph)", 69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
+            'max_speed_km': aa_col2.number_input("Pace Speed (kph)", value=69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
 
             'auto_class_separate_position': col3.number_input("Class Separation Position", value=-1.0, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
             'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
