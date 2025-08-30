@@ -8,7 +8,7 @@ langchain
 langchain-core
 langgraph
 langsmith
-discord.py @ https://github.com/DA-344/d.py/archive/refs/heads/fix/voice-issues.zip
+discord.py>=2.6.0
 pynacl
 ffmpeg
 imageio-ffmpeg
