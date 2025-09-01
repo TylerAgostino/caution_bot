@@ -1,0 +1,111 @@
+[
+    {
+        "args": {
+            "token": "",
+            "vc_id": "1057329833278976160",
+            "volume": 2.0
+        },
+        "guid": "bddab31a-6fef-4d20-a88d-38e85b91a9ad",
+        "type": "Discord Bot"
+    },
+    {
+        "args": {
+            "auto_class_separate_position": -1.0,
+            "auto_restart_form_lanes_position": -1.0,
+            "auto_restart_get_ready_position": 2.84,
+            "end_of_lap_safety_margin": 0.24,
+            "lane_names": "Only",
+            "likelihood": 75,
+            "max": -15,
+            "max_speed_km": 100,
+            "min": 5,
+            "notify_on_skipped_caution": false,
+            "quickie_auto_class_separate_position": -1.0,
+            "quickie_auto_restart_form_lanes_position": -1.0,
+            "quickie_auto_restart_get_ready_position": 1.84,
+            "quickie_invert_lanes": false,
+            "quickie_window": 7,
+            "reminder_frequency": 8,
+            "restart_speed_pct": 125,
+            "wave_arounds": true
+        },
+        "guid": "fc0c32f2-5f5f-4da9-8727-f1e2e82eb36d",
+        "type": "Random Timed Code69 Event"
+    },
+    {
+        "args": {
+            "auto_class_separate_position": -1.0,
+            "auto_restart_form_lanes_position": -1.0,
+            "auto_restart_get_ready_position": 2.84,
+            "end_of_lap_safety_margin": 0.24,
+            "lane_names": "Only",
+            "likelihood": 75,
+            "max": -15,
+            "max_speed_km": 100,
+            "min": 5,
+            "notify_on_skipped_caution": false,
+            "quickie_auto_class_separate_position": -1.0,
+            "quickie_auto_restart_form_lanes_position": -1.0,
+            "quickie_auto_restart_get_ready_position": 1.84,
+            "quickie_invert_lanes": false,
+            "quickie_window": 7,
+            "reminder_frequency": 8,
+            "restart_speed_pct": 125,
+            "wave_arounds": true
+        },
+        "guid": "39a5f48e-ce3b-4ad4-a328-bc7d9fbe5626",
+        "type": "Random Timed Code69 Event"
+    },
+    {
+        "args": {
+            "broadcast": true,
+            "event_time": 5.0,
+            "message": "The Code 69 Window is now open.",
+            "race_control": true
+        },
+        "guid": "6863de64-724e-4cdf-8009-5a9d4f2d3acd",
+        "type": "Scheduled Message"
+    },
+    {
+        "args": {
+            "broadcast": true,
+            "event_time": -15.0,
+            "message": "The Code 69 Window is now closed.",
+            "race_control": true
+        },
+        "guid": "0e9bc89e-e491-49e7-93e6-91ddd27a32df",
+        "type": "Scheduled Message"
+    },
+    {
+        "args": {
+            "broadcast": false,
+            "event_time": 30.0,
+            "message": "HALFWAY",
+            "race_control": true
+        },
+        "guid": "1abccfef-949b-4a93-9ed1-bc666587cb36",
+        "type": "Scheduled Message"
+    },
+    {
+        "args": {
+            "end_recurring_incidents": 55,
+            "end_recurring_penalty": "0",
+            "initial_penalty": "d",
+            "initial_penalty_incidents": 40,
+            "recurring_peanlty_every_incidents": 15,
+            "recurring_penalty": "0",
+            "sound": true
+        },
+        "guid": "6fffea37-fdc5-42ca-91c9-249045b35ab0",
+        "type": "Incident Penalty"
+    },
+    {
+        "args": {
+            "password": "",
+            "room": "1099675906735353948",
+            "test": false
+        },
+        "guid": "fbec55ff-1b73-4a36-a347-d7de8572eedb",
+        "type": "Discord Text"
+    }
+]
