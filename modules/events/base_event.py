@@ -230,6 +230,7 @@ class BaseEvent:
             'InPits': self.sdk['CarIdxOnPitRoad'][car['CarIdx']],
             'total_completed': self.sdk['CarIdxLapCompleted'][car['CarIdx']] + self.sdk['CarIdxLapDistPct'][car['CarIdx']],
             'last_lap_time': self.sdk['CarIdxLastLapTime'][car['CarIdx']],
+            'f2time': self.sdk['CarIdxF2Time'][car['CarIdx']],
         } for car in self.sdk['DriverInfo']['Drivers'] if car['CarIsPaceCar'] != 1]
         running_order.sort(key=lambda x: x['total_completed'], reverse=True)
         return [runner for runner in running_order if runner['total_completed'] >= (running_order[0]['total_completed'] - self.max_laps_behind_leader-1)]

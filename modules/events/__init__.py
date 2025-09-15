@@ -9,7 +9,7 @@ from modules.events.random_code_69_event import (
     RandomTimedCode69Event,
 )
 
-
+from modules.events.gap_to_leader_penalty_event import GapToLeaderPenaltyEvent
 from modules.events.clear_black_flag_event import ClearBlackFlagEvent
 from modules.events.incident_penalty_event import IncidentPenaltyEvent
 from modules.events.collision_penalty_event import CollisionPenaltyEvent

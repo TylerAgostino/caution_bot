@@ -17,6 +17,7 @@ event_types = {
     "Sprint DQ": events.SprintRaceDQEvent,
     "Incident Penalty": events.IncidentPenaltyEvent,
     "Collision Penalty": events.CollisionPenaltyEvent,
+    "Gap to Leader Penalty": events.GapToLeaderPenaltyEvent,
     "Broadcast Text": events.TextConsumerEvent,
     "Discord Text": events.DiscordTextConsumerEvent,
     "ATVO Text": events.ATVOTextConsumerEvent,
