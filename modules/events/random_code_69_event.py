@@ -180,7 +180,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
     """
 
     def __init__(self, wave_arounds=False, notify_on_skipped_caution=False, max_speed_km=69, restart_speed_pct=125,
-                 lane_names=None, reminder_frequency=8, auto_restart_get_ready_position=1.85,
+                 lane_names=None, reminder_frequency=8, auto_restart_get_ready_position=1.85, wet_speed_km=69,
                  auto_restart_form_lanes_position=1.5, extra_lanes=True, auto_class_separate_position=1.0,
                  quickie_auto_restart_get_ready_position=0.85, quickie_auto_restart_form_lanes_position=0.5,
                  quickie_auto_class_separate_position=-1, quickie_invert_lanes=False, end_of_lap_safety_margin=0.1,
@@ -210,6 +210,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.notify_on_skipped_caution = notify_on_skipped_caution
         self.restart_ready = threading.Event()
         self.max_speed_km = max_speed_km
+        self.wet_speed_km = wet_speed_km
         self.extra_lanes = extra_lanes
         self.class_separation = False
         self.can_separate_classes = True
@@ -228,6 +229,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.end_of_lap_safety_margin = end_of_lap_safety_margin
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
+        self.pacing_speed_km = lambda: self.wet_speed_km if self.sdk['WeatherDeclaredWet'] else self.max_speed_km
 
     @staticmethod
     def ui(ident = ''):
@@ -251,8 +253,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
             'likelihood': col2.number_input(f'% Chance', key=f'{ident}likelihood', value=75, help="The likelihood of the event happening. 100% means it will happen every time."),
             'max_speed_km': aa_col2.number_input("Pace Speed (kph)", value=69, help='Pesters the leader to stay below this speed.', key=f'{ident}max_speed_km'),
+            'wet_speed_km': aa_col3.number_input("Wet Pace Speed (kph)", value=69, help='Pesters the leader to stay below this speed when the track is wet.', key=f'{ident}wet_speed_km'),
 
-            'auto_class_separate_position': col3.number_input("Class Separation Position", value=-1.0, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
+            'auto_class_separate_position': col3.number_input("Class Separation Position", value=-1.00, help='Laps of pacing before separating classes. -1 to disable auto class separation', key=f'{ident}auto_class_separate_position'),
             'wave_arounds': col3.checkbox(f'Wave Arounds', key=f'{ident}wave_arounds', value=True),
 
             'auto_restart_form_lanes_position': col4.number_input("Lanes Form Position", value=1.63, help='Laps of pacing before forming the restart lanes. -1 to disable auto lane forming', key=f'{ident}auto_restart_form_lanes_position'),
@@ -435,8 +438,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
                 self.send_reminders(restart_order_generator)
 
-                if speed_km_per_hour > self.max_speed_km:
-                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
+                if speed_km_per_hour > self.pacing_speed_km():
+                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.pacing_speed_km()} kph / {int(self.pacing_speed_km()*0.621371)} mph.')
             self.sleep(0.1)
 
             if (self.class_separation
@@ -538,8 +541,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     self.send_reminders(lane_order_generators[i])
                     if lane_order_generators[i].leader()['ActualPosition'] > lane_order_generators[0].leader()['ActualPosition']:
                         self._chat(f'/{lane_order_generators[i].leader()["CarNumber"]} DO NOT PASS THE {lane_order_generators[0].leader()["CarNumber"]} CAR.')
-                if speed_km_per_hour > self.max_speed_km:
-                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.max_speed_km} kph / {int(self.max_speed_km*0.621371)} mph.')
+                if speed_km_per_hour > self.pacing_speed_km():
+                    self._chat(f'/{leader["CarNumber"]} Slow down to {self.pacing_speed_km()} kph / {int(self.pacing_speed_km()*0.621371)} mph.')
             if less_frequent_messages.__next__():
                 for i in range(number_of_lanes):
                     for car in lane_order_generators[i].order:
@@ -558,10 +561,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.sleep(2)
         throwaway_speed = leader_speed_generator.__next__() # Make sure we aren't using an average from a while ago
         immediate_throw = True
+        restart_speed = self.pacing_speed_km() * (int(self.restart_speed_pct) / 100)
         while True:
             self._chat(f'/{leader["CarNumber"]} you control the field, go when ready')
             speed_km_per_hour = leader_speed_generator.__next__()
-            if speed_km_per_hour > self.max_speed_km * (int(self.restart_speed_pct) / 100):
+            if speed_km_per_hour > restart_speed:
                 break
             self.sleep(0.5)
             self.sdk.unfreeze_var_buffer_latest()
