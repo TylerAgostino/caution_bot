@@ -57,11 +57,22 @@ class GapToLeaderPenaltyEvent(BaseEvent):
         """
         Monitors cars' gaps to the leader and applies penalties to any car that exceeds the threshold.
         """
+        next_tone = None
+        laps_complete = 0
         while True:
             for car in self.get_current_running_order():
+                if car['f2time'] == 0 and car['LapCompleted'] > laps_complete:
+                    laps_complete = car['LapCompleted']
+                    self.audio_queue.put("pacer1") if self.sound else None
+                    next_tone = self.sdk['SessionTime'] + self.gap_to_leader
+
                 if car['f2time'] > self.gap_to_leader and car['CarIdx'] not in self.penalized:
                     self.penalized.append(car['CarIdx'])
                     self._chat(f'!bl {car["CarNumber"]} {self.penalty}')
-                    if self.sound:
-                        self.audio_queue.put('penalty')
-            self.sleep(3)
+                    self.audio_queue.put('penalty')  if self.sound else None
+
+            if next_tone and next_tone <= self.sdk['SessionTime']:
+                self.audio_queue.put("pacer2") if self.sound else None
+                next_tone = None
+
+            self.sleep(0.1)

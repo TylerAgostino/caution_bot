@@ -52,16 +52,16 @@ class AudioConsumerEvent(BaseEvent):
             source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=float(self.volume))
             self.vc.play(source)
             while self.vc.is_playing():
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01)
 
-        @tasks.loop(seconds=1)
+        @tasks.loop(seconds=0.1)
         async def auto_play():
             try:
                 text = self.audio_queue.get(False)
                 await play(text)
             except queue.Empty:
                 pass
-            self.sleep(0.1)
+            self.sleep(0)
 
         @bot.event
         async def on_ready():
