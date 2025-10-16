@@ -101,10 +101,15 @@ class CollisionPenaltyEvent(BaseEvent):
         )
         self.driver_collision_counts = {}
 
+        this_step = self.get_current_running_order()
+        cars_taken_checkers = []
+
         while not self.cancel_event.is_set():
             try:
                 # Freeze the SDK buffer to get a consistent view of the data
                 self.sdk.freeze_var_buffer_latest()
+                last_step = this_step
+                this_step = self.get_current_running_order()
 
                 # Get current timestamp
                 current_time = time.time()
@@ -115,6 +120,25 @@ class CollisionPenaltyEvent(BaseEvent):
 
                 # Process each driver
                 for driver in drivers:
+                    if self.sdk["SessionState"] == 5:
+                        c = [
+                            c
+                            for c in this_step
+                            if c["CarNumber"] == driver["CarNumber"]
+                        ]
+                        if c:
+                            c = c[0]
+                            if (
+                                self.car_has_completed_lap(c, last_step, this_step)
+                                and driver["CarNumber"] not in cars_taken_checkers
+                            ):
+                                self.logger.debug(
+                                    f'Car {driver["CarNumber"]} Checkered Flag'
+                                )
+                                cars_taken_checkers.append(driver["CarNumber"])
+                            if driver["CarNumber"] in cars_taken_checkers:
+                                continue
+
                     car_number = driver["CarNumber"]
                     incident_count = driver["TeamIncidentCount"]
 
