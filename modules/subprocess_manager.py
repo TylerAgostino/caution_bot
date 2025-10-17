@@ -2,6 +2,7 @@ import threading
 import queue
 from streamlit.runtime.scriptrunner import add_script_run_ctx
 
+
 class SubprocessManager:
     """
     Manages subprocesses using threading.
@@ -20,16 +21,27 @@ class SubprocessManager:
         Args:
             coros (list): List of coroutine functions to be run in threads.
         """
-        self.stopped = False
+        self.running = False
         self.cancel_event = threading.Event()
         self.busy_event = threading.Event()
         self.audio_queue = queue.Queue()
-        self.threads = [threading.Thread(target=coro, kwargs={'cancel_event': self.cancel_event, 'busy_event': self.busy_event, 'audio_queue': self.audio_queue}) for coro in coros]
+        self.threads = [
+            threading.Thread(
+                target=coro,
+                kwargs={
+                    "cancel_event": self.cancel_event,
+                    "busy_event": self.busy_event,
+                    "audio_queue": self.audio_queue,
+                },
+            )
+            for coro in coros
+        ]
 
     def start(self):
         """
         Starts all threads and adds them to the Streamlit script run context.
         """
+        self.running = True
         self.cancel_event.clear()
         for thread in self.threads:
             thread.start()
@@ -40,3 +52,4 @@ class SubprocessManager:
         Sets the cancel event to stop all threads.
         """
         self.cancel_event.set()
+        self.running = False

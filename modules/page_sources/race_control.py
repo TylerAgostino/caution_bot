@@ -185,10 +185,17 @@ def ui():
                 ),
             )
             event_type = st.session_state[f"{i}_type"]
-            try:
-                event_types[event_type].ui(i)
-            except NotImplementedError:
-                st.write(f"UI for {event_type} not implemented yet.")
+            if (
+                "subprocess_manager" in st.session_state
+                and st.session_state.subprocess_manager.running
+            ):
+                event = st.session_state["event_classes"][i]
+                event.running_ui(i)
+            else:
+                try:
+                    event_types[event_type].ui(i)
+                except NotImplementedError:
+                    st.write(f"UI for {event_type} not implemented yet.")
         st.write("---")
     set_events()
     update_events()
