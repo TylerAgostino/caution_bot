@@ -57,5 +57,14 @@
       "room": "1099675906735353948",
       "test": false
     }
+  },
+  {
+    "type": "Collision Penalty",
+    "args": {
+      "collisions_per_penalty": 7,
+      "incident_threshold": 4,
+      "penalty": "d",
+      "tracking_window_seconds": 10
+    }
   }
 ]
