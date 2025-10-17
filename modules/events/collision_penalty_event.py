@@ -209,22 +209,24 @@ class CollisionPenaltyEvent(BaseEvent):
 
                 # Add a collision
                 self.driver_collision_counts[car_number] += 1
+
+                # Clear the data for this car to prevent counting the same collision multiple times
+                self.driver_incidents_df = self.driver_incidents_df[
+                    self.driver_incidents_df["car_number"] != car_number
+                    ]
+
                 collision_count = self.driver_collision_counts[car_number]
                 # Log the collision
                 self.logger.info(
                     f"Collision detected for car #{car_number}. Total: {collision_count}"
                 )
 
-                self.taunt(car_number, collision_count)
-
                 # Check if penalty should be applied
                 if collision_count % self.collisions_per_penalty == 0:
                     self.apply_penalty(car_number, collision_count)
+                else:
+                    self.taunt(car_number, collision_count)
 
-                # Clear the data for this car to prevent counting the same collision multiple times
-                self.driver_incidents_df = self.driver_incidents_df[
-                    self.driver_incidents_df["car_number"] != car_number
-                ]
 
     def apply_penalty(self, car_number, collision_count):
         """
@@ -266,22 +268,6 @@ class CollisionPenaltyEvent(BaseEvent):
             (collision_count // self.collisions_per_penalty) + 1
         ) * self.collisions_per_penalty
 
-        options = [
-            "Way to go, bozo!",
-            "Smooth. Real subtle. Nobody saw that.",
-            "Don’t worry, insurance will totally cover that.",
-            "What a gentle love tap. True sportsmanship.",
-            "Wow, didn’t know demolition derby was part of the schedule.",
-            "Well, at least you aimed at something.",
-            "Subtle as a sledgehammer, my guy.",
-            "Elegant. Graceful. Catastrophic.",
-            "Real NASCAR highlight reel material right there.",
-            "Look at you, single-handedly funding the body shop industry.",
-            "Well, you sure made an impression — literally.",
-        ]
-        random_option = options[
-            hash(car_number + str(collision_count) + str(time.time())) % len(options)
-        ]
         self._chat(
-            f"/{car_number} {random_option} ({collision_count}/{next_penalty_threshold} collisions)"
+            f"/{car_number} {collision_count}/{next_penalty_threshold} collisions before penalty."
         )
