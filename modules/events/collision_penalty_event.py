@@ -187,6 +187,8 @@ class CollisionPenaltyEvent(BaseEvent):
         # Get unique car numbers in the current data
         car_numbers = list(set(self.driver_incidents_df["car_number"]))
 
+        has_quacked = False
+
         for car_number in car_numbers:
             # Get incidents for this car within the tracking window
             car_data = self.driver_incidents_df[
@@ -210,10 +212,15 @@ class CollisionPenaltyEvent(BaseEvent):
                 # Add a collision
                 self.driver_collision_counts[car_number] += 1
 
+                # Quack
+                if not has_quacked:
+                    self.audio_queue.put("quack")
+                    has_quacked = True
+
                 # Clear the data for this car to prevent counting the same collision multiple times
                 self.driver_incidents_df = self.driver_incidents_df[
                     self.driver_incidents_df["car_number"] != car_number
-                    ]
+                ]
 
                 collision_count = self.driver_collision_counts[car_number]
                 # Log the collision
@@ -227,7 +234,6 @@ class CollisionPenaltyEvent(BaseEvent):
                 else:
                     self.taunt(car_number, collision_count)
 
-
     def apply_penalty(self, car_number, collision_count):
         """
         Applies the configured penalty to the specified car number.
@@ -239,6 +245,8 @@ class CollisionPenaltyEvent(BaseEvent):
         self.logger.info(
             f"Applying penalty to car #{car_number} after {collision_count} collisions"
         )
+
+        self.audio_queue.put("penalty")
 
         # Send the penalty command to the race
         self._chat(f"!bl {car_number} {self.penalty} ({collision_count} collisions)")
