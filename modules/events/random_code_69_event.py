@@ -366,6 +366,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
 
             for car in this_step:
                 existing_restart_record = [c for c in restart_order_generator.order if c['CarIdx'] == car['CarIdx']]
+                car_flags = self.sdk['CarIdxSessionFlags'][car['CarIdx']]
                 if ( existing_restart_record
                          and
                         self.car_has_entered_pits(car, last_step, this_step) and
@@ -381,7 +382,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     self.car_has_left_pits(car, last_step, this_step) and self.sdk['CarIdxLapDistPct'][car['CarIdx']] < 0.5
                 )
                 or (car['CarIdx'] in [c['CarIdx'] for c in restart_order_generator.order] and
-                      self.car_has_entered_pits(car, last_step, this_step)
+                    (self.car_has_entered_pits(car, last_step, this_step) or car_flags & self.Flags.black)
                         )
                 ):
                     try:
@@ -389,6 +390,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         if last_step_record['LapCompleted'] == car['LapCompleted'] + 1 and last_step_record['LapDistPct'] <= car['LapDistPct']:
                             # fix issue where lap completed increments before the lap distance percentage resets to 0
                             car['LapDistPct'] = 0
+                        # if the car has a slowdown, delay adding them to the order until they are clear
+                        if car_flags & self.Flags.furled:
+                            # overwrite the this_step record with the last step record to prevent re-adding them
+                            self.logger.debug(f'Car {car["CarNumber"]} has a furled flag, delaying adding to order until clear')
+                            this_step = [last_step_record if c['CarIdx'] == car['CarIdx'] else c for c in this_step]
+                            continue
+                        if car['CarIdx'] in [c['CarIdx'] for c in restart_order_generator.order] and car_flags & self.Flags.black:
+                            self.logger.debug(f'Car {car["CarNumber"]} has a black flag, converting to EOL')
+                            self._chat(f'!clear {car["CarNumber"]} Converted to EOL')
+
                     except IndexError:
                         pass
 

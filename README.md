@@ -16,7 +16,9 @@ While the original intention was to automate Cautions for The Beer League, this 
 - **Discord Integration** - Provides audio cues for Code 69 and Caution events. Bring your own Discord bot token and channel ID.
 - **Scheduled Messages** - Allows the Admin to schedule messages to be sent to the iRacing chat at specific times.
 - **Incident Limit Enforcement** - Give drivers a penalty after X incidents, then every Y until Z incidents. The incidents and penalties are configurable.
+- **Car Contact Limit** - Give drivers a penalty after a certain number of 4x incidents. Also quacks. 
 - **Beer Goggles** - A very simple wrapper for exposing all the data provided by the API. Meant to be used for debugging and testing the bot.
+- **F1-style Qualifying** - Uses text chat to organize a knockout-style qualifying. Use this with iRacing's custom grid to simulate an F1 style qualifying session. Configurable number of rounds and number of cars advancing from each round. UI displays a timing board that can be screen-shared in discord, but position updates are also sent directly to drivers via in game chat.
 
 
 ## Installation
@@ -29,10 +31,7 @@ While the original intention was to automate Cautions for The Beer League, this 
     - The first time you start Streamlit, you may be prompted to enter an email address for sharing usage data with Streamlit. This is optional and can be skipped by pressing the 'Enter' key in the terminal window.
 
 ## Planned Features
-- ~~**Multiclass Restarts** to help with class separation during restarts.~~ DONE
-- ~~**Auto Black-Flag Clearing** to run `!clearall` on a loop for no-rules races or practice sessions~~ DONE
-- ~~**Incident Limit Enforcement** to issue penalties to drivers who exceed a configurable number of incidents in a session.~~ DONE
-- **SDKGaming Integration** to notify broadcasting software of events and provide a better experience for viewers.
+- The next major bit of work will be moving this off of streamlit. It's been great for getting this far, but as I try to share this project it will become a source of confusion. It makes it possible to have multiple copies of the bot running at once without knowing it, and complicates packaging and distributing this project. It's just not meant for desktop apps like this. But before we can move it (back) to something like tkinter/pyqt, there's a lot more async-ing to be done so we don't lock up the UI, and maybe then we can get rid of the subprocess manager bit. 
 
 ## Contributing
 If you would like to contribute to this project, please fork the repository and submit a pull request with your changes. If you have any questions or need help with the code, please open an issue on the repository and I will do my best to help you.
