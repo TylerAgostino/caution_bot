@@ -11,10 +11,11 @@ module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(_
 FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
-    def __init__(self, vc_id, volume=1, token='', sdk=None, *args, **kwargs):
+    def __init__(self, vc_id, volume=1, token='', hello=True, sdk=None, *args, **kwargs):
         self.vc_id = int(vc_id)
         self.vc = None
         self.volume = volume
+        self.hello = hello
         self.token = token
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f'Voice Channel ID: {self.vc_id}')
@@ -26,7 +27,8 @@ class AudioConsumerEvent(BaseEvent):
         return {
             'vc_id': col1.text_input("Discord Voice Channel ID", key=f'{ident}vc_id', value='420037391882125313'),
             'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume'),
-            'token': st.text_input("Bot Token (optional)", key=f'{ident}token', value='')
+            'token': col1.text_input("Bot Token (optional)", key=f'{ident}token', value=''),
+            'hello': col2.checkbox("Play Hello on Connect", key=f'{ident}hello', value=True),
         }
 
     def event_sequence(self):
@@ -72,7 +74,8 @@ class AudioConsumerEvent(BaseEvent):
                 self.vc = voice_channel.guild.voice_client
             print(f"Logged in as {bot.user}")
 
-            await play('hello')
+            if self.hello:
+                await play('hello')
 
             auto_play.start()
 
