@@ -106,7 +106,7 @@ class RandomCautionEvent(RandomTimedEvent):
                 to_remove = []
                 for car in current_positions:
                     args = [{'CarIdx': car}, last_step, this_step]
-                    if int(hex(self.sdk['CarIdxPaceFlags'][car])[-1]) >= 4:
+                    if self.sdk['CarIdxPaceFlags'][car] & self.PaceFlags.waved_around:
                         to_remove.append(car)
                     if self.car_has_completed_lap(*args) or (self.car_has_left_pits(*args) and self.sdk['CarIdxLapDistPct'][car] < 0.5):
                         if self.sdk['CarIdxOnPitRoad'][car]:

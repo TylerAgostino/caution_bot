@@ -23,6 +23,8 @@ class BaseEvent:
         busy_event (threading.Event): Event to signal busy state.
         max_laps_behind_leader (int): Maximum Laps Down for cars to be considered in the field.
     """
+    Flags = irsdk.Flags
+    PaceFlags = irsdk.PaceFlags
 
     def __init__(self, sdk=irsdk.IRSDK(), pwa=None, cancel_event=threading.Event(), busy_event=threading.Event(),
                  audio_queue=queue.Queue(), broadcast_text_queue=queue.Queue(), max_laps_behind_leader=99):
@@ -277,7 +279,7 @@ class BaseEvent:
         if self.sdk['SessionFlags'] == 0:
             self.logger.debug('Might be a replay')
             return False
-        return hex(self.sdk['SessionFlags'])[-4] in ['4', '8']
+        return any(self.sdk['SessionFlags'] & x for x in [irsdk.Flags.caution, irsdk.Flags.caution_waving])
 
     def car_has_new_last_lap_time(self, car, last_step, this_step):
         """
