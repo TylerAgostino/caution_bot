@@ -115,6 +115,8 @@ class BaseEvent:
             enter (bool, optional): Whether to press enter after the message. Defaults to True.
             race_control (bool, optional): Whether the message is from race control. Defaults to False.
         """
+        while self.sdk['IsGarageVisible']:
+            self.sleep(1)
         if race_control:
             message = f'/all {message}'
         pyperclip.copy(message)
