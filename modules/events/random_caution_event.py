@@ -102,6 +102,8 @@ class RandomCautionEvent(RandomTimedEvent):
 
             overridden = False
             while current_positions:
+                self.sdk.unfreeze_var_buffer_latest()
+                self.sdk.freeze_var_buffer_latest()
                 this_step = self.get_current_running_order()
                 to_remove = []
                 for car in current_positions:
@@ -125,6 +127,7 @@ class RandomCautionEvent(RandomTimedEvent):
                 self._chat('!p 3')
                 self.audio_queue.put('wavecomplete')
                 self.logger.info('Wave arounds complete.')
+            self.sdk.unfreeze_var_buffer_latest()
 
         while not self.sdk['SessionFlags'] & self.Flags.green:
             self.sleep(1)
