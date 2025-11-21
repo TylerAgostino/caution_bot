@@ -7,6 +7,7 @@ import logging
 import threading
 import queue
 from modules import generate_caution_reason, generate_black_flag_reason
+from pandas import DataFrame, concat
 
 class BaseEvent:
     """
@@ -491,3 +492,103 @@ class BaseEvent:
                 last_true = self.sdk['SessionTime']
             else:
                 yield False
+                
+    def driver_4x_generator(self, window: int = 10):
+        # Initialize tracking variables
+        driver_incidents_df = DataFrame(
+            data=[], columns=["timestamp", "car_number", "incidents"]
+        )
+
+        this_step = self.get_current_running_order()
+        cars_taken_checkers = []
+        while True:
+            y = []
+            # Freeze the SDK buffer to get a consistent view of the data
+            self.sdk.freeze_var_buffer_latest()
+            last_step = this_step
+            this_step = self.get_current_running_order()
+
+            # Get current timestamp
+            current_time = time.time()
+
+            # The SDK allows dictionary-like access
+            driver_info = self.sdk["DriverInfo"]
+            drivers = driver_info["Drivers"]
+
+            # Process each driver
+            for driver in drivers:
+                if self.sdk["SessionState"] == 5:
+                    c = [
+                        c
+                        for c in this_step
+                        if c["CarNumber"] == driver["CarNumber"]
+                    ]
+                    if c:
+                        c = c[0]
+                        if (
+                                self.car_has_completed_lap(c, last_step, this_step)
+                                and driver["CarNumber"] not in cars_taken_checkers
+                        ):
+                            self.logger.debug(
+                                f'Car {driver["CarNumber"]} Checkered Flag'
+                            )
+                            cars_taken_checkers.append(driver["CarNumber"])
+                        if driver["CarNumber"] in cars_taken_checkers:
+                            continue
+
+                car_number = driver["CarNumber"]
+                incident_count = driver["TeamIncidentCount"]
+
+                # Add the current incident count to the dataframe
+                new_row = DataFrame(
+                    {
+                        "timestamp": [current_time],
+                        "car_number": [car_number],
+                        "incidents": [incident_count],
+                    }
+                )
+                # Append to dataframe (using pandas v1.x style)
+                driver_incidents_df = concat(
+                    [driver_incidents_df, new_row], ignore_index=True
+                )
+
+            # Remove old data outside the tracking window
+            cutoff_time = current_time - window
+            driver_incidents_df = driver_incidents_df[
+                driver_incidents_df["timestamp"] >= cutoff_time
+                ]
+
+            # Process the data for collisions
+            # Get unique car numbers in the current data
+            car_numbers = list(set(driver_incidents_df["car_number"]))
+
+            for car_number in car_numbers:
+                # Get incidents for this car within the tracking window
+                car_data = driver_incidents_df[
+                    driver_incidents_df["car_number"] == car_number
+                    ]
+    
+                if len(car_data) < 2:
+                    continue  # Need at least two data points to check for a spread
+    
+                # Calculate the incident spread
+                min_incidents = car_data["incidents"].min()
+                max_incidents = car_data["incidents"].max()
+                incident_spread = max_incidents - min_incidents
+    
+                # If the spread exceeds the threshold, count it as a collision
+                if incident_spread >= 4:
+                    # Clear the data for this car to prevent counting the same collision multiple times
+                    driver_incidents_df = driver_incidents_df[
+                        driver_incidents_df["car_number"] != car_number
+                        ]
+                    # Log the collision
+                    self.logger.info(
+                        f"Collision detected for car #{car_number}."
+                    )
+    
+                    y.append(car_number)
+
+            # Release the SDK buffer
+            self.sdk.unfreeze_var_buffer_latest()
+            yield y

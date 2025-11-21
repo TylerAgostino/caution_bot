@@ -80,59 +80,31 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         self.wait_for_start()
 
-        self.sdk.freeze_var_buffer_latest()
-        this_step = self.sdk["DriverInfo"]["Drivers"]
         while not self.is_time_to_end():
-            self.sdk.freeze_var_buffer_latest()
-            last_step = this_step
-            this_step = self.sdk["DriverInfo"]["Drivers"]
+            iterator = self.driver_4x_generator(self.incident_window_seconds)
 
             current_time = time.time()
-            triggered_drivers = []
-            for car in this_step:
-                car_no = car["CarNumber"]
-                try:
-                    prev_inc = [x for x in last_step if x["CarNumber"] == car_no][0][
-                        "TeamIncidentCount"
-                    ]
-                except IndexError:
-                    self.logger.debug(f"Car {car_no} not found in last step")
-                    continue
-
-                this_inc = car["TeamIncidentCount"]
-                if this_inc - prev_inc >= 4:  # Detect a 4x incident
-                    self.logger.debug(f"Car {car_no} earned a 4x incident")
-                    if car_no not in self.driver_incident_timestamps:
-                        self.driver_incident_timestamps[car_no] = []
-                    self.driver_incident_timestamps[car_no].append(current_time)
+            for car in iterator.__next__():
+                if car not in self.driver_incident_timestamps:
+                    self.driver_incident_timestamps[car] = []
+                self.driver_incident_timestamps[car].append(current_time)
 
             # Clean up old timestamps outside the individual 4x window
             for car_no, timestamps in list(self.driver_incident_timestamps.items()):
                 self.driver_incident_timestamps[car_no] = [
                     t
                     for t in timestamps
-                    if current_time - t <= self.incident_window_seconds
+                    if current_time - t <= self.overall_driver_window
                 ]
                 if not self.driver_incident_timestamps[car_no]:
                     del self.driver_incident_timestamps[car_no]
 
-            # Count drivers with recent 4x incidents within the overall driver window
-            triggered_drivers = [
-                car_no
-                for car_no, timestamps in self.driver_incident_timestamps.items()
-                if any(
-                    current_time - t <= self.overall_driver_window for t in timestamps
-                )
-            ]
-
-            if len(triggered_drivers) >= self.drivers_threshold:
+            if len(self.driver_incident_timestamps) >= self.drivers_threshold:
                 self.logger.info(
-                    f"Throwing caution: {len(triggered_drivers)} drivers triggered a 4x"
+                    f"Throwing caution: {len(self.driver_incident_timestamps)} drivers triggered a 4x"
                 )
                 self.event_sequence()
                 self.driver_incident_timestamps.clear()  # Reset after caution
-
-            self.sdk.unfreeze_var_buffer_latest()
             self.sleep(1)
 
     def is_time_to_end(self):
