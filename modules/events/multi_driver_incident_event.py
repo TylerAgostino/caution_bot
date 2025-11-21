@@ -79,10 +79,9 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         self.wait_for_start()
+        iterator = self.driver_4x_generator(self.incident_window_seconds)
 
         while not self.is_time_to_end():
-            iterator = self.driver_4x_generator(self.incident_window_seconds)
-
             current_time = time.time()
             for car in iterator.__next__():
                 if car not in self.driver_incident_timestamps:
