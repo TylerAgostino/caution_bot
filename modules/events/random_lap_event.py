@@ -26,7 +26,7 @@ class RandomLapEvent(RandomEvent):
         self.start_lap = random.randint(min if min >= 0 else int(self.sdk['SessionLapsRemain']) + min,
                                         max if max >= 0 else int(self.sdk['SessionLapsRemain']) + max)
 
-    def is_time_to_start(self, adjustment=-0.5):
+    def is_time_to_start(self, adjustment=0):
         """
         Checks if it is lap to start the event.
 

@@ -80,11 +80,15 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         self.wait_for_start()
+        self.logger.debug("Starting MultiDriverTimedIncidentEvent run loop.")
         iterator = self.driver_4x_generator(self.incident_window_seconds)
 
         while not self.is_time_to_end():
             current_time = time.time()
-            for car in iterator.__next__():
+            cars_with_4x = iterator.__next__()
+            for car in cars_with_4x:
+                self.logger.debug(f"Driver {car} triggered a 4x incident.")
+                self.logger.debug(self.driver_incident_timestamps)
                 if car not in self.driver_incident_timestamps:
                     self.driver_incident_timestamps[car] = []
                 self.driver_incident_timestamps[car].append(current_time)
@@ -116,8 +120,8 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         time_until_end = end_time - (total_session_time - time_remaining)
         return time_until_end < 0
 
-from modules.events import LapCautionEvent
-class MultiDriverLapIncidentEvent(LapCautionEvent, MultiDriverTimedIncidentEvent):
+from modules.events import RandomLapEvent
+class MultiDriverLapIncidentEvent(RandomLapEvent, MultiDriverTimedIncidentEvent):
     @override
     def is_time_to_end(self):
         order = self.get_current_running_order()
