@@ -149,6 +149,6 @@ class MultiDriverLapIncidentEvent(LapCautionEvent, MultiDriverTimedIncidentEvent
     @override
     def is_time_to_end(self):
         order = self.get_current_running_order()
-        lap = max([car['total_completed'] for car in order])
+        lap = max([car['total_completed'] for car in order]) + 1
         end_lap = self.end_time if self.end_time > 0 else self.sdk['SessionLapsTotal'] + self.end_time
         return lap >= end_lap
