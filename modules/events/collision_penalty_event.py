@@ -108,6 +108,10 @@ class CollisionPenaltyEvent(BaseEvent):
                     else:
                         self.taunt(car, collision_count)
 
+                if cars:
+                    self.audio_queue.put('quack')
+                self.sleep(1)
+
             except Exception as e:
                 self.logger.exception(f"Error in collision monitoring: {e}")
                 self.sleep(5)  # Sleep longer after an error
