@@ -87,6 +87,39 @@ def ui():
                   'CarIdxQualTireCompoundLocked', 'CarIdxFastRepairsUsed', 'CarIdxSessionFlags','CarIdxPaceLine',
                   'CarIdxPaceRow', 'CarIdxPaceFlags', 'CarIdxSteer', 'CarIdxRPM', 'CarIdxGear', 'CarIdxP2P_Status', 'CarIdxP2P_Count']
 
+        with st.expander("test"):
+            session_flags = st.session_state.goggle_event.sdk['SessionFlags']
+            all_flags = BaseEvent.Flags
+            flags = [(all_flags.checkered, 'checkered'),
+                    (all_flags.white, 'white'),
+                    (all_flags.green, 'green'),
+                    (all_flags.yellow, 'yellow'),
+                    (all_flags.red, 'red'),
+                    (all_flags.blue, 'blue'),
+                    (all_flags.debris, 'debris'),
+                    (all_flags.crossed, 'crossed'),
+                    (all_flags.yellow_waving, 'yellow waving'),
+                    (all_flags.one_lap_to_green, 'one to green'),
+                    (all_flags.green_held, 'green held'),
+                    (all_flags.ten_to_go, 'ten to go'),
+                    (all_flags.five_to_go, 'five to go'),
+                    (all_flags.random_waving, 'random waving'),
+                    (all_flags.caution, 'caution'),
+                    (all_flags.caution_waving, 'caution waving'),
+                    (all_flags.black, 'black'),
+                    (all_flags.disqualify, 'dq'),
+                    (all_flags.servicible, 'serviceable'),
+                    (all_flags.furled, 'furled'),
+                    (all_flags.repair, 'repair'),
+                    (all_flags.start_hidden, 'start hidden'),
+                    (all_flags.start_ready, 'start ready'),
+                    (all_flags.start_set, 'start set'),
+                    (all_flags.start_go, 'start go'),
+            ]
+            for (flag, fname) in flags:
+                if session_flags & flag:
+                    st.title(fname)
+
         with st.expander("Live Telemetry"):
             tabs = st.tabs(global_field_sections.keys())
             for i, (section, fields) in enumerate(global_field_sections.items()):
