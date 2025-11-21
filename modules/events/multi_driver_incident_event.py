@@ -98,7 +98,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                 if not self.driver_incident_timestamps[car_no]:
                     del self.driver_incident_timestamps[car_no]
 
-            if len(self.driver_incident_timestamps) >= self.drivers_threshold:
+            if len(list(self.driver_incident_timestamps.items())) >= self.drivers_threshold:
                 self.logger.info(
                     f"Throwing caution: {len(self.driver_incident_timestamps)} drivers triggered a 4x"
                 )
