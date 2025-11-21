@@ -54,7 +54,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                 value=30,
                 key=f"{ident}overall_driver_window",
             ),
-            **super(MultiDriverIncidentEvent, MultiDriverIncidentEvent).ui(ident),
+            **super(MultiDriverTimedIncidentEvent, MultiDriverTimedIncidentEvent).ui(ident),
         }
 
     @override
