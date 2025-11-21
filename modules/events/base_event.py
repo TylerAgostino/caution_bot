@@ -281,7 +281,7 @@ class BaseEvent:
         if self.sdk['SessionFlags'] == 0:
             self.logger.debug('Might be a replay')
             return False
-        return any(self.sdk['SessionFlags'] & x for x in [irsdk.Flags.caution, irsdk.Flags.caution_waving])
+        return any(self.sdk['SessionFlags'] & x for x in [irsdk.Flags.caution, irsdk.Flags.caution_waving, irsdk.Flags.one_lap_to_green])
 
     def car_has_new_last_lap_time(self, car, last_step, this_step):
         """
