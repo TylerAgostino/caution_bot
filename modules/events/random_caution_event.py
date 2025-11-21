@@ -117,7 +117,7 @@ class RandomCautionEvent(RandomTimedEvent):
                     current_positions.pop(current_positions.index(car))
                 last_step = this_step
                 self.sleep(1)
-                if not self.is_caution_active():
+                if self.sdk['SessionFlags'] & self.Flags.green:
                     self.logger.warn('Caution ended during wave arounds.')
                     overridden = True
                     break
@@ -126,7 +126,7 @@ class RandomCautionEvent(RandomTimedEvent):
                 self.audio_queue.put('wavecomplete')
                 self.logger.info('Wave arounds complete.')
 
-        while self.is_caution_active():
+        while not self.sdk['SessionFlags'] & self.Flags.green:
             self.sleep(1)
 
         self.logger.debug('Caution has ended.')
