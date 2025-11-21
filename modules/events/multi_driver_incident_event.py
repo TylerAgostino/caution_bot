@@ -32,6 +32,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.driver_incident_timestamps = {}
         super().__init__(*args, **kwargs)
         self.start_time = kwargs.get('min', 0)
+        self.start_lap = kwargs.get('min', 0)
         self.end_time = kwargs.get('max', 0)
 
     @staticmethod
