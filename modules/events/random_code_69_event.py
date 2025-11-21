@@ -550,6 +550,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 for i in range(number_of_lanes):
                     lane_order_generators[i].update_car_positions()
                     self.send_reminders(lane_order_generators[i])
+                    if lane_order_generators[i].leader() is None:
+                        continue
                     if lane_order_generators[i].leader()['ActualPosition'] > lane_order_generators[0].leader()['ActualPosition']:
                         self._chat(f'/{lane_order_generators[i].leader()["CarNumber"]} DO NOT PASS THE {lane_order_generators[0].leader()["CarNumber"]} CAR.')
                 if speed_km_per_hour > self.pacing_speed_km():
@@ -596,6 +598,8 @@ class RandomTimedCode69Event(RandomTimedEvent):
             self._chat(f'/{leader["CarNumber"]} {violation_message} - Accelerated too early')
 
         for i in range(len(lane_order_generators)):
+            if lane_order_generators[i].leader() is None:
+                continue
             if lane_order_generators[i].leader()['ActualPosition'] > lane_order_generators[0].leader()['ActualPosition']:
                 self._chat(f'/{lane_order_generators[i].leader()["CarNumber"]} {violation_message} - Passed the Leader')
 
