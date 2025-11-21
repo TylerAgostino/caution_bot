@@ -1,5 +1,6 @@
-from typing_extensions import override
 import time
+
+from typing_extensions import override
 
 from modules.events.random_caution_event import RandomCautionEvent
 
@@ -31,9 +32,9 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.overall_driver_window = overall_driver_window
         self.driver_incident_timestamps = {}
         super().__init__(*args, **kwargs)
-        self.start_time = kwargs.get('min', 0)
-        self.start_lap = kwargs.get('min', 0)
-        self.end_time = kwargs.get('max', 0)
+        self.start_time = kwargs.get("min", 0)
+        self.start_lap = kwargs.get("min", 0)
+        self.end_time = kwargs.get("max", 0)
 
     @staticmethod
     def ui(ident=""):
@@ -55,7 +56,9 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                 value=30,
                 key=f"{ident}overall_driver_window",
             ),
-            **super(MultiDriverTimedIncidentEvent, MultiDriverTimedIncidentEvent).ui(ident),
+            **super(MultiDriverTimedIncidentEvent, MultiDriverTimedIncidentEvent).ui(
+                ident
+            ),
         }
 
     @override
@@ -63,6 +66,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self,
         cancel_event=None,
         busy_event=None,
+        chat_lock=None,
         audio_queue=None,
         broadcast_text_queue=None,
     ):
@@ -72,11 +76,13 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         Args:
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
+            chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
             broadcast_text_queue (queue.Queue, optional): Queue for text events. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
+        self.chat_lock = chat_lock or self.chat_lock
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
         self.wait_for_start()
@@ -103,7 +109,10 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                 if not self.driver_incident_timestamps[car_no]:
                     del self.driver_incident_timestamps[car_no]
 
-            if len(list(self.driver_incident_timestamps.items())) >= self.drivers_threshold:
+            if (
+                len(list(self.driver_incident_timestamps.items()))
+                >= self.drivers_threshold
+            ):
                 self.logger.info(
                     f"Throwing caution: {len(self.driver_incident_timestamps)} drivers triggered a 4x"
                 )
@@ -112,19 +121,26 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
             self.sleep(1)
 
     def is_time_to_end(self):
-        total_session_time = self.sdk['SessionTimeTotal']
-        time_remaining = self.sdk['SessionTimeRemain']
+        total_session_time = self.sdk["SessionTimeTotal"]
+        time_remaining = self.sdk["SessionTimeRemain"]
         end_time = self.end_time * 60
         end_time = end_time if end_time > 0 else int(total_session_time) + end_time
 
         time_until_end = end_time - (total_session_time - time_remaining)
         return time_until_end < 0
 
+
 from modules.events import RandomLapEvent
+
+
 class MultiDriverLapIncidentEvent(RandomLapEvent, MultiDriverTimedIncidentEvent):
     @override
     def is_time_to_end(self):
         order = self.get_current_running_order()
-        lap = max([car['total_completed'] for car in order]) + 1
-        end_lap = self.end_time if self.end_time > 0 else self.sdk['SessionLapsTotal'] + self.end_time
+        lap = max([car["total_completed"] for car in order]) + 1
+        end_lap = (
+            self.end_time
+            if self.end_time > 0
+            else self.sdk["SessionLapsTotal"] + self.end_time
+        )
         return lap >= end_lap

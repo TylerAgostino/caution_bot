@@ -1,9 +1,11 @@
-from modules.events import BaseEvent
-import pandas as pd
-import time
-import threading
 import queue
+import threading
+import time
+
 import irsdk
+import pandas as pd
+
+from modules.events import BaseEvent
 
 
 class CollisionPenaltyEvent(BaseEvent):
@@ -26,6 +28,7 @@ class CollisionPenaltyEvent(BaseEvent):
         pwa=None,
         cancel_event=threading.Event(),
         busy_event=threading.Event(),
+        chat_lock=threading.Lock(),
         audio_queue=queue.Queue(),
         broadcast_text_queue=queue.Queue(),
         max_laps_behind_leader=99,
@@ -49,6 +52,7 @@ class CollisionPenaltyEvent(BaseEvent):
             pwa=pwa,
             cancel_event=cancel_event,
             busy_event=busy_event,
+            chat_lock=chat_lock,
             audio_queue=audio_queue,
             broadcast_text_queue=broadcast_text_queue,
             max_laps_behind_leader=max_laps_behind_leader,
@@ -109,7 +113,7 @@ class CollisionPenaltyEvent(BaseEvent):
                         self.taunt(car, collision_count)
 
                 if cars:
-                    self.audio_queue.put('quack')
+                    self.audio_queue.put("quack")
                 self.sleep(1)
 
             except Exception as e:

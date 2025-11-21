@@ -1,6 +1,8 @@
-import threading
 import queue
+import threading
+
 from streamlit.runtime.scriptrunner import add_script_run_ctx
+
 
 class SubprocessManager:
     """
@@ -10,6 +12,7 @@ class SubprocessManager:
         stopped (bool): Indicates if the subprocess manager is stopped.
         cancel_event (threading.Event): Event to signal cancellation.
         busy_event (threading.Event): Event to signal busy state.
+        chat_lock (threading.Lock): Lock to ensure thread-safe access to chat method.
         threads (list): List of threads for the subprocesses.
     """
 
@@ -23,8 +26,20 @@ class SubprocessManager:
         self.stopped = False
         self.cancel_event = threading.Event()
         self.busy_event = threading.Event()
+        self.chat_lock = threading.Lock()
         self.audio_queue = queue.Queue()
-        self.threads = [threading.Thread(target=coro, kwargs={'cancel_event': self.cancel_event, 'busy_event': self.busy_event, 'audio_queue': self.audio_queue}) for coro in coros]
+        self.threads = [
+            threading.Thread(
+                target=coro,
+                kwargs={
+                    "cancel_event": self.cancel_event,
+                    "busy_event": self.busy_event,
+                    "chat_lock": self.chat_lock,
+                    "audio_queue": self.audio_queue,
+                },
+            )
+            for coro in coros
+        ]
 
     def start(self):
         """
