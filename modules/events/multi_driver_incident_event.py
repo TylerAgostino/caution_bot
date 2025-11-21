@@ -88,7 +88,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
             this_step = self.sdk["DriverInfo"]["Drivers"]
 
             current_time = time.time()
-
+            triggered_drivers = []
             for car in this_step:
                 car_no = car["CarNumber"]
                 try:
