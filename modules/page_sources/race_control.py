@@ -1,10 +1,12 @@
-import streamlit as st
-from streamlit_autorefresh import st_autorefresh
-from modules import SubprocessManager, events
-import uuid
-from streamlit.errors import StreamlitAPIException
-import os
 import json
+import os
+import uuid
+
+import streamlit as st
+from streamlit.errors import StreamlitAPIException
+from streamlit_autorefresh import st_autorefresh
+
+from modules import SubprocessManager, events
 
 event_types = {
     "Lap Caution Event": events.LapCautionEvent,
@@ -21,6 +23,8 @@ event_types = {
     "Broadcast Text": events.TextConsumerEvent,
     "Discord Text": events.DiscordTextConsumerEvent,
     "ATVO Text": events.ATVOTextConsumerEvent,
+    "Multi Driver Timed Incident Caution": events.MultiDriverTimedIncidentEvent,
+    "Multi Driver Lap Incident Caution": events.MultiDriverLapIncidentEvent,
 }
 
 
