@@ -145,7 +145,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         return time_until_end < 0
 
 from modules.events import LapCautionEvent
-class MultiDriverLapIncidentEvent(LapCautionEvent, MultiDriverIncidentEvent):
+class MultiDriverLapIncidentEvent(LapCautionEvent, MultiDriverTimedIncidentEvent):
     @override
     def is_time_to_end(self):
         order = self.get_current_running_order()
