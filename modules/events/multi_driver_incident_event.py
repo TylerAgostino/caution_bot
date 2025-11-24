@@ -16,6 +16,8 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         drivers_threshold: int = 3,
         incident_window_seconds: int = 10,
         overall_driver_window: int = 30,
+        auto_increase: bool = False,
+        increase_by: int = 1,
         *args,
         **kwargs,
     ):
@@ -25,11 +27,15 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         :param drivers_threshold: Number of drivers required to trigger a caution.
         :param individual_4x_window: Time window (in seconds) to monitor individual driver 4x incidents.
         :param overall_driver_window: Time window (in seconds) to count drivers with recent 4x incidents.
+        :param auto_increase: Whether to automatically increase the drivers threshold after each caution.
+        :param increase_by: Amount to increase the drivers threshold by when auto_increase is enabled.
         :param sound: Whether to play a sound when the caution is triggered.
         """
         self.drivers_threshold = drivers_threshold
         self.incident_window_seconds = incident_window_seconds
         self.overall_driver_window = overall_driver_window
+        self.auto_increase = auto_increase
+        self.increase_by = increase_by
         self.driver_incident_timestamps = {}
         super().__init__(*args, **kwargs)
         self.start_time = kwargs.get("min", 0)
@@ -43,18 +49,32 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         """
         import streamlit as st
 
-        col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
         return {
             "drivers_threshold": col1.number_input(
-                "Drivers Threshold", value=3, key=f"{ident}drivers_threshold"
+                "Drivers Threshold",
+                value=3,
+                key=f"{ident}drivers_threshold",
+                help="Number of cars receiving 4x in the window to trigger a caution",
             ),
-            "incident_window_seconds": col2.number_input(
-                "Incident Window (s)", value=10, key=f"{ident}incident_window_seconds"
-            ),
-            "overall_driver_window": col3.number_input(
-                "Overall Driver Window (s)",
+            "overall_driver_window": col2.number_input(
+                "Incident Window (s)",
                 value=30,
                 key=f"{ident}overall_driver_window",
+                help="Number of seconds between drivers' 4xs counted as the same incident",
+            ),
+            "auto_increase": col3.checkbox(
+                "Auto Raise Threshold",
+                value=False,
+                key=f"{ident}auto_increase",
+                help="Raise the threshold after every caution",
+            ),
+            "increase_by": col4.number_input(
+                "Increase By",
+                value=1,
+                min_value=1,
+                key=f"{ident}increase_by",
+                help="Raises the threshold by this number of drivers after every caution",
             ),
             **super(MultiDriverTimedIncidentEvent, MultiDriverTimedIncidentEvent).ui(
                 ident
@@ -88,6 +108,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.wait_for_start()
         self.logger.debug("Starting MultiDriverTimedIncidentEvent run loop.")
         iterator = self.driver_4x_generator(self.incident_window_seconds)
+        threshold = self.drivers_threshold
 
         while not self.is_time_to_end():
             current_time = time.time()
@@ -109,15 +130,19 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                 if not self.driver_incident_timestamps[car_no]:
                     del self.driver_incident_timestamps[car_no]
 
-            if (
-                len(list(self.driver_incident_timestamps.items()))
-                >= self.drivers_threshold
-            ):
+            if len(list(self.driver_incident_timestamps.items())) >= threshold:
                 self.logger.info(
                     f"Throwing caution: {len(self.driver_incident_timestamps)} drivers triggered a 4x"
                 )
                 self.event_sequence()
                 self.driver_incident_timestamps.clear()  # Reset after caution
+
+                # Auto-increase the drivers threshold if enabled
+                if self.auto_increase:
+                    threshold += self.increase_by
+                    self.logger.info(
+                        f"Auto-increase enabled: drivers threshold increased to {threshold}"
+                    )
             self.sleep(1)
 
     def is_time_to_end(self):
