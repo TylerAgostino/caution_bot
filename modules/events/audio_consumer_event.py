@@ -11,7 +11,9 @@ module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(_
 FFMPEG_PATH = get_ffmpeg_exe()
 
 class AudioConsumerEvent(BaseEvent):
-    def __init__(self, vc_id, volume=1, token='', hello=True, sdk=None, *args, **kwargs):
+    def __init__(
+        self, vc_id, volume=1, token="", hello=True, sdk=False, *args, **kwargs
+    ):
         self.vc_id = int(vc_id)
         self.vc = None
         self.volume = volume

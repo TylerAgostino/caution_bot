@@ -24,13 +24,8 @@ class CollisionPenaltyEvent(BaseEvent):
         collisions_per_penalty: int = 3,
         penalty: str = "d",
         tracking_window_seconds: int = 10,
-        sdk=irsdk.IRSDK(),
+        sdk=None,
         pwa=None,
-        cancel_event=threading.Event(),
-        busy_event=threading.Event(),
-        chat_lock=threading.Lock(),
-        audio_queue=queue.Queue(),
-        broadcast_text_queue=queue.Queue(),
         max_laps_behind_leader=99,
     ):
         """
@@ -48,13 +43,8 @@ class CollisionPenaltyEvent(BaseEvent):
         self.driver_collision_counts = {}
 
         super().__init__(
-            sdk=sdk,
+            sdk=sdk or irsdk.IRSDK(),
             pwa=pwa,
-            cancel_event=cancel_event,
-            busy_event=busy_event,
-            chat_lock=chat_lock,
-            audio_queue=audio_queue,
-            broadcast_text_queue=broadcast_text_queue,
             max_laps_behind_leader=max_laps_behind_leader,
         )
 

@@ -34,13 +34,13 @@ class BaseEvent:
 
     def __init__(
         self,
-        sdk=irsdk.IRSDK(),
+        sdk=None,
         pwa=None,
-        cancel_event=threading.Event(),
-        busy_event=threading.Event(),
-        chat_lock=threading.Lock(),
-        audio_queue=queue.Queue(),
-        broadcast_text_queue=queue.Queue(),
+        cancel_event=None,
+        busy_event=None,
+        chat_lock=None,
+        audio_queue=None,
+        broadcast_text_queue=None,
         max_laps_behind_leader=99,
     ):
         """
@@ -54,7 +54,7 @@ class BaseEvent:
             chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
             max_laps_behind_leader (int, optional): Maximum Laps Down for cars to be considered in the field. Defaults to 99.
         """
-        self.sdk = sdk
+        self.sdk = irsdk.IRSDK() if sdk is None else sdk
         if self.sdk:
             self.pwa = pwa or pywinauto.Application()
             self.sdk.shutdown()
@@ -67,12 +67,17 @@ class BaseEvent:
             st.session_state.get("logger", logging.getLogger(__name__)),
             {"event": self.__class__.__name__},
         )
-        self.cancel_event = cancel_event
-        self.busy_event = busy_event
-        self.chat_lock = chat_lock
-        self.audio_queue = audio_queue
-        self.broadcast_text_queue = broadcast_text_queue
+        self.cancel_event = cancel_event or threading.Event()
+        self.busy_event = busy_event or threading.Event()
+        self.chat_lock = chat_lock or threading.Lock()
+        self.audio_queue = audio_queue or queue.Queue()
+        self.broadcast_text_queue = broadcast_text_queue or queue.Queue()
         self.max_laps_behind_leader = int(max_laps_behind_leader)
+        self.logger.debug(f"cancel: {self.cancel_event}")
+        self.logger.debug(f"busy: {self.busy_event}")
+        self.logger.debug(f"chat: {self.chat_lock}")
+        self.logger.debug(f"broadcast: {self.broadcast_text_queue}")
+        self.logger.debug(f"audio: {self.audio_queue}")
 
     def sleep(self, seconds):
         """
@@ -164,7 +169,6 @@ class BaseEvent:
                 self.logger.critical("Error sending chat message.")
                 self.logger.critical(e)
             else:
-                self.sleep(0.05)
                 self.pwa["iRacing.com Simulator"].type_keys("{ENTER}")
             self.sleep(0.1)
         finally:

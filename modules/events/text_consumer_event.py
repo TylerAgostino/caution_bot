@@ -12,8 +12,10 @@ class TextConsumerEvent(BaseEvent):
     """
     Consumes text messages to be displayed on the Broadcast through the SDKGaming Websocket
     """
-    def __init__(self, password: str = '', room: str = '',
-                 test=False, sdk=None, *args, **kwargs):
+
+    def __init__(
+        self, password: str = "", room: str = "", test=False, sdk=False, *args, **kwargs
+    ):
         self.password = password
         self.room = room
         super().__init__(sdk=sdk, *args, **kwargs)
