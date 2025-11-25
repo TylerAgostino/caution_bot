@@ -135,14 +135,13 @@ class BaseEvent:
         """
         raise NotImplementedError
 
-    def _chat(self, message, enter=True, race_control=False):
+    def _chat(self, message, race_control=False):
         """
         Sends a chat message in the iRacing simulator.
         Uses chat_lock to ensure thread-safe access to the chat functionality.
 
         Args:
             message (str): The message to send.
-            enter (bool, optional): Whether to press enter after the message. Defaults to True.
             race_control (bool, optional): Whether the message is from race control. Defaults to False.
         """
         # Acquire the lock - this will block if another thread holds it
@@ -159,13 +158,14 @@ class BaseEvent:
             self.sleep(0.1)
             self.sdk.chat_command(1)
             keys = ["^v"]
-            if enter:
-                keys.append("{ENTER}")
             try:
                 self.pwa["iRacing.com Simulator"].type_keys("".join(keys))
             except Exception as e:
                 self.logger.critical("Error sending chat message.")
                 self.logger.critical(e)
+            else:
+                self.sleep(0.05)
+                self.pwa["iRacing.com Simulator"].type_keys("{ENTER}")
             self.sleep(0.1)
         finally:
             # Always release the lock, even if an error occurred
