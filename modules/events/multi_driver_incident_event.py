@@ -169,3 +169,6 @@ class MultiDriverLapIncidentEvent(RandomLapEvent, MultiDriverTimedIncidentEvent)
             else self.sdk["SessionLapsTotal"] + self.end_time
         )
         return lap >= end_lap
+
+    def __init__(self, *args, **kwargs):
+        MultiDriverTimedIncidentEvent.__init__(self, *args, **kwargs)
