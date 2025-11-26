@@ -26,7 +26,6 @@ from modules.events.text_consumer_event import (
     ATVOTextConsumerEvent,
 )
 
-
 from modules.events.f1_qualifying_event import F1QualifyingEvent
 
 from modules.events.multi_driver_incident_event import MultiDriverTimedIncidentEvent, MultiDriverLapIncidentEvent

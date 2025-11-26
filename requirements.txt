@@ -14,3 +14,4 @@ ffmpeg
 imageio-ffmpeg
 ws4py
 signalr-client
+flet>=0.24.0

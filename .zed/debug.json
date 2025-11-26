@@ -11,5 +11,16 @@
     "args": ["run", "better_caution_bot.py"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "module": "streamlit"
+  },
+  {
+    "adapter": "Debugpy",
+    "label": "Flet",
+    "request": "launch",
+    "python": "$ZED_CUSTOM_PYTHON_ACTIVE_ZED_TOOLCHAIN",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "module": "run_flet",
+    "env": {
+      // "GEVENT_SUPPORT": "True"
+    }
   }
 ]
