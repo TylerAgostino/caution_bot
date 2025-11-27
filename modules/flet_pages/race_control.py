@@ -40,6 +40,7 @@ class RaceControlApp:
             "auto_restart_get_ready_position": 1.79,
             "auto_restart_form_lanes_position": 1.63,
             "auto_class_separate_position": -1.0,
+            "extra_lanes": True,
             "quickie_auto_restart_get_ready_position": 0.79,
             "quickie_auto_restart_form_lanes_position": 0.63,
             "quickie_auto_class_separate_position": -1,
@@ -339,6 +340,7 @@ class RaceControlApp:
             label="Enable Random Cautions",
             value=self.random_cautions_enabled,
             on_change=toggle_enabled,
+            disabled=self.is_running,
         )
 
         # Global settings
@@ -346,6 +348,10 @@ class RaceControlApp:
 
         def update_global_config(key, value):
             global_config[key] = value
+            if key == "full_sequence":
+                pit_warning.disabled = not value or self.is_running
+                pit_duration.disabled = not value or self.is_running
+                self.page.update()
 
         def toggle_lap_based(e):
             global_config["use_lap_based"] = e.control.value
@@ -361,6 +367,7 @@ class RaceControlApp:
                 ft.Text("Time Based", size=14, weight=ft.FontWeight.BOLD),
                 ft.Switch(
                     value=global_config["use_lap_based"],
+                    disabled=self.is_running,
                     on_change=toggle_lap_based,
                 ),
                 ft.Text("Lap Based", size=14, weight=ft.FontWeight.BOLD),
@@ -381,6 +388,7 @@ class RaceControlApp:
             value=str(global_config["pit_close_advance_warning"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=not global_config["full_sequence"] or self.is_running,
             on_change=lambda e: update_global_config(
                 "pit_close_advance_warning",
                 int(e.control.value) if e.control.value else 0,
@@ -392,6 +400,7 @@ class RaceControlApp:
             value=str(global_config["pit_close_max_duration"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=not global_config["full_sequence"] or self.is_running,
             on_change=lambda e: update_global_config(
                 "pit_close_max_duration",
                 int(e.control.value) if e.control.value else 0,
@@ -403,6 +412,7 @@ class RaceControlApp:
             value=str(global_config["max_laps_behind_leader"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "max_laps_behind_leader",
                 int(e.control.value) if e.control.value else 0,
@@ -414,6 +424,7 @@ class RaceControlApp:
             value=str(global_config["wave_around_lap"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "wave_around_lap",
                 int(e.control.value) if e.control.value else 0,
@@ -425,6 +436,7 @@ class RaceControlApp:
             value=str(global_config["extend_laps"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "extend_laps",
                 int(e.control.value) if e.control.value else 0,
@@ -436,6 +448,7 @@ class RaceControlApp:
             value=str(global_config["pre_extend_laps"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "pre_extend_laps",
                 int(e.control.value) if e.control.value else 0,
@@ -445,12 +458,14 @@ class RaceControlApp:
         wave_arounds_check = ft.Checkbox(
             label="Wave Arounds",
             value=global_config["wave_arounds"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config("wave_arounds", e.control.value),
         )
 
         notify_skip_check = ft.Checkbox(
             label="Notify on Skipped",
             value=global_config["notify_on_skipped_caution"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "notify_on_skipped_caution", e.control.value
             ),
@@ -459,17 +474,25 @@ class RaceControlApp:
         full_sequence_check = ft.Checkbox(
             label="Full Pit Close Sequence",
             value=global_config["full_sequence"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config("full_sequence", e.control.value),
         )
 
         add_button = ft.ElevatedButton(
             "Add Random Caution Event",
             icon=ft.Icons.ADD,
+            disabled=self.is_running,
             on_click=lambda _: self.add_random_caution_event(),
         )
 
-        # Add initial event
-        self.add_random_caution_event()
+        # Populate list from existing configs, or add initial event if empty
+        if self.random_caution_configs:
+            for i, cfg in enumerate(self.random_caution_configs):
+                self.random_caution_list.controls.append(
+                    self.create_random_caution_card(i, cfg)
+                )
+        else:
+            self.add_random_caution_event()
 
         return ft.Container(
             content=ft.Column(
@@ -536,6 +559,10 @@ class RaceControlApp:
 
         def update_config(key, value):
             config[key] = value
+            if key == "full_sequence":
+                pit_warning.disabled = not value or self.is_running
+                pit_duration.disabled = not value or self.is_running
+                self.page.update()
 
         remove_button = ft.IconButton(
             icon=ft.Icons.DELETE,
@@ -628,6 +655,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Random Code69s",
             value=self.random_code69s_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -651,6 +679,7 @@ class RaceControlApp:
                 ft.Text("Time Based", size=14, weight=ft.FontWeight.BOLD),
                 ft.Switch(
                     value=global_config["use_lap_based"],
+                    disabled=self.is_running,
                     on_change=toggle_lap_based,
                 ),
                 ft.Text("Lap Based", size=14, weight=ft.FontWeight.BOLD),
@@ -671,6 +700,7 @@ class RaceControlApp:
             value=str(global_config["max_speed_km"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "max_speed_km", int(e.control.value) if e.control.value else 0
             ),
@@ -681,6 +711,7 @@ class RaceControlApp:
             value=str(global_config["wet_speed_km"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "wet_speed_km", int(e.control.value) if e.control.value else 0
             ),
@@ -691,6 +722,7 @@ class RaceControlApp:
             value=str(global_config["restart_speed_pct"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "restart_speed_pct", int(e.control.value) if e.control.value else 0
             ),
@@ -701,6 +733,7 @@ class RaceControlApp:
             value=str(global_config["reminder_frequency"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "reminder_frequency", int(e.control.value) if e.control.value else 0
             ),
@@ -712,6 +745,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="-1 to disable",
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "auto_class_separate_position",
                 float(e.control.value) if e.control.value else 0,
@@ -724,6 +758,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="-1 to disable",
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "auto_restart_form_lanes_position",
                 float(e.control.value) if e.control.value else 0,
@@ -736,6 +771,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="-1 to disable",
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "auto_restart_get_ready_position",
                 float(e.control.value) if e.control.value else 0,
@@ -747,6 +783,7 @@ class RaceControlApp:
             value=global_config["lane_names"],
             width=150,
             hint_text="Right,Left",
+            disabled=self.is_running,
             on_change=lambda e: update_global_config("lane_names", e.control.value),
         )
 
@@ -756,6 +793,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="-1 to disable",
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "quickie_window", float(e.control.value) if e.control.value else 0
             ),
@@ -766,6 +804,7 @@ class RaceControlApp:
             value=str(global_config["quickie_auto_class_separate_position"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "quickie_auto_class_separate_position",
                 float(e.control.value) if e.control.value else 0,
@@ -777,6 +816,7 @@ class RaceControlApp:
             value=str(global_config["quickie_auto_restart_form_lanes_position"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "quickie_auto_restart_form_lanes_position",
                 float(e.control.value) if e.control.value else 0,
@@ -788,6 +828,7 @@ class RaceControlApp:
             value=str(global_config["quickie_auto_restart_get_ready_position"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "quickie_auto_restart_get_ready_position",
                 float(e.control.value) if e.control.value else 0,
@@ -799,6 +840,7 @@ class RaceControlApp:
             value=str(global_config["end_of_lap_safety_margin"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "end_of_lap_safety_margin",
                 float(e.control.value) if e.control.value else 0,
@@ -808,20 +850,30 @@ class RaceControlApp:
         wave_arounds_check = ft.Checkbox(
             label="Wave Arounds",
             value=global_config["wave_arounds"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config("wave_arounds", e.control.value),
         )
 
         notify_skip_check = ft.Checkbox(
             label="Notify on Skipped",
             value=global_config["notify_on_skipped_caution"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "notify_on_skipped_caution", e.control.value
             ),
         )
 
+        extra_lanes_check = ft.Checkbox(
+            label="Extra Lanes",
+            value=global_config["extra_lanes"],
+            disabled=self.is_running,
+            on_change=lambda e: update_global_config("extra_lanes", e.control.value),
+        )
+
         quickie_invert_check = ft.Checkbox(
             label="Quickie Invert Lanes",
             value=global_config["quickie_invert_lanes"],
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "quickie_invert_lanes", e.control.value
             ),
@@ -861,11 +913,18 @@ class RaceControlApp:
         add_button = ft.ElevatedButton(
             "Add Random Code69 Event",
             icon=ft.Icons.ADD,
+            disabled=self.is_running,
             on_click=lambda _: self.add_random_code69_event(),
         )
 
-        # Add initial event
-        self.add_random_code69_event()
+        # Populate list from existing configs, or add initial event if empty
+        if self.random_code69_configs:
+            for i, cfg in enumerate(self.random_code69_configs):
+                self.random_code69_list.controls.append(
+                    self.create_random_code69_card(i, cfg)
+                )
+        else:
+            self.add_random_code69_event()
 
         return ft.Container(
             content=ft.Column(
@@ -899,7 +958,7 @@ class RaceControlApp:
                         spacing=10,
                     ),
                     ft.Row(
-                        [wave_arounds_check, notify_skip_check],
+                        [wave_arounds_check, notify_skip_check, extra_lanes_check],
                         wrap=True,
                     ),
                     advanced,
@@ -937,7 +996,8 @@ class RaceControlApp:
         remove_button = ft.IconButton(
             icon=ft.Icons.DELETE,
             icon_color=ft.Colors.RED,
-            tooltip="Remove this event",
+            tooltip="Remove this Code69",
+            disabled=self.is_running,
             on_click=lambda _: self.remove_random_code69_event(index),
         )
 
@@ -946,7 +1006,7 @@ class RaceControlApp:
             value=str(config["min"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
-            hint_text="Negative = from end",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "min", float(e.control.value) if e.control.value else 0
             ),
@@ -958,17 +1018,53 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="Negative = from end",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "max", float(e.control.value) if e.control.value else 0
             ),
         )
 
         likelihood = ft.TextField(
-            label="Chance (%)",
+            label="Likelihood (%)",
             value=str(config["likelihood"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
-            on_change=lambda e: update_config("likelihood", e.control.value),
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "likelihood", int(e.control.value) if e.control.value else 0
+            ),
+        )
+
+        pit_warning = ft.TextField(
+            label="Pit Close Warning (s)",
+            value=str(self.random_caution_global_config["pit_close_advance_warning"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=150,
+            disabled=not self.random_caution_global_config["full_sequence"]
+            or self.is_running,
+            on_change=lambda e: update_config(
+                "pit_close_advance_warning",
+                int(e.control.value) if e.control.value else 0,
+            ),
+        )
+
+        pit_duration = ft.TextField(
+            label="Pit Close Duration (s)",
+            value=str(self.random_caution_global_config["pit_close_max_duration"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=150,
+            disabled=not self.random_caution_global_config["full_sequence"]
+            or self.is_running,
+            on_change=lambda e: update_config(
+                "pit_close_max_duration", int(e.control.value) if e.control.value else 0
+            ),
+        )
+
+        full_sequence_check = ft.Checkbox(
+            label="Full Sequence",
+            value=self.random_caution_global_config["full_sequence"],
+            disabled=self.is_running,
+            on_change=lambda e: update_config("full_sequence", e.control.value),
         )
 
         return ft.Card(
@@ -1013,24 +1109,46 @@ class RaceControlApp:
 
     def build_incident_cautions_tab(self):
         """Build the Incident Cautions tab content"""
-        config = {
-            "use_lap_based": False,
-            "drivers_threshold": 3,
-            "overall_driver_window": 30,
-            "auto_increase": False,
-            "increase_by": 1,
-            "min": 5,
-            "max": -15,
-            "pit_close_advance_warning": 5,
-            "pit_close_max_duration": 90,
-            "wave_arounds": True,
-            "full_sequence": True,
-            "wave_around_lap": 1,
-        }
-        self.incident_caution_config = config
+        # Use existing config if available, otherwise use defaults
+        if (
+            not hasattr(self, "incident_caution_config")
+            or not self.incident_caution_config
+        ):
+            config = {
+                "use_lap_based": False,
+                "drivers_threshold": 3,
+                "incident_window_seconds": 10,
+                "overall_driver_window": 30,
+                "auto_increase": False,
+                "increase_by": 1,
+                "min": 5,
+                "max": -15,
+                "pit_close_advance_warning": 5,
+                "pit_close_max_duration": 90,
+                "wave_arounds": True,
+                "full_sequence": True,
+                "wave_around_lap": 1,
+                "extend_laps": 0,
+                "pre_extend_laps": 1,
+                "max_laps_behind_leader": 0,
+                "notify_on_skipped_caution": False,
+            }
+            self.incident_caution_config = config
+        else:
+            config = self.incident_caution_config
+
+        # Store reference to global config
+        global_config = config
 
         def update_config(key, value):
             config[key] = value
+            if key == "auto_increase":
+                increase_by.disabled = not value or self.is_running
+                self.page.update()
+            elif key == "full_sequence":
+                pit_warning.disabled = not value or self.is_running
+                pit_duration.disabled = not value or self.is_running
+                self.page.update()
 
         def toggle_enabled(e):
             self.incident_cautions_enabled = e.control.value
@@ -1046,6 +1164,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Incident Cautions",
             value=self.incident_cautions_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -1054,6 +1173,7 @@ class RaceControlApp:
                 ft.Text("Time Based", size=14, weight=ft.FontWeight.BOLD),
                 ft.Switch(
                     value=config["use_lap_based"],
+                    disabled=self.is_running,
                     on_change=toggle_lap_based,
                 ),
                 ft.Text("Lap Based", size=14, weight=ft.FontWeight.BOLD),
@@ -1075,17 +1195,32 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="# of cars with 4x",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "drivers_threshold", int(e.control.value) if e.control.value else 0
             ),
         )
 
-        window = ft.TextField(
-            label="Incident Window (seconds)",
+        incident_window = ft.TextField(
+            label="Individual 4x Window (s)",
+            value=str(config["incident_window_seconds"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=180,
+            hint_text="Window to detect driver 4x",
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "incident_window_seconds",
+                int(e.control.value) if e.control.value else 0,
+            ),
+        )
+
+        overall_window = ft.TextField(
+            label="Overall Driver Window (s)",
             value=str(config["overall_driver_window"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
-            hint_text="Time window for incidents",
+            hint_text="Window to count multiple drivers",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "overall_driver_window", int(e.control.value) if e.control.value else 0
             ),
@@ -1094,6 +1229,7 @@ class RaceControlApp:
         auto_increase_check = ft.Checkbox(
             label="Auto Raise Threshold",
             value=config["auto_increase"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("auto_increase", e.control.value),
         )
 
@@ -1102,6 +1238,7 @@ class RaceControlApp:
             value=str(config["increase_by"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=120,
+            disabled=not config["auto_increase"] or self.is_running,
             on_change=lambda e: update_config(
                 "increase_by", int(e.control.value) if e.control.value else 0
             ),
@@ -1112,6 +1249,7 @@ class RaceControlApp:
             value=str(config["min"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "min", float(e.control.value) if e.control.value else 0
             ),
@@ -1123,6 +1261,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
             hint_text="Negative = from end",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "max", float(e.control.value) if e.control.value else 0
             ),
@@ -1133,6 +1272,7 @@ class RaceControlApp:
             value=str(config["pit_close_advance_warning"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=not config["full_sequence"] or self.is_running,
             on_change=lambda e: update_config(
                 "pit_close_advance_warning",
                 int(e.control.value) if e.control.value else 0,
@@ -1144,6 +1284,7 @@ class RaceControlApp:
             value=str(config["pit_close_max_duration"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=not config["full_sequence"] or self.is_running,
             on_change=lambda e: update_config(
                 "pit_close_max_duration", int(e.control.value) if e.control.value else 0
             ),
@@ -1154,6 +1295,7 @@ class RaceControlApp:
             value=str(config["wave_around_lap"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "wave_around_lap", int(e.control.value) if e.control.value else 0
             ),
@@ -1162,13 +1304,60 @@ class RaceControlApp:
         wave_arounds_check = ft.Checkbox(
             label="Wave Arounds",
             value=config["wave_arounds"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("wave_arounds", e.control.value),
         )
 
         full_sequence_check = ft.Checkbox(
             label="Full Pit Close Sequence",
             value=config["full_sequence"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("full_sequence", e.control.value),
+        )
+
+        extend_laps = ft.TextField(
+            label="Extend Laps",
+            value=str(config["extend_laps"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=150,
+            hint_text="0 = no extension",
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "extend_laps", int(e.control.value) if e.control.value else 0
+            ),
+        )
+
+        pre_extend_laps = ft.TextField(
+            label="Pre-Extend Laps",
+            value=str(config["pre_extend_laps"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=150,
+            hint_text="Laps before announcing",
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "pre_extend_laps", int(e.control.value) if e.control.value else 0
+            ),
+        )
+
+        max_laps_behind = ft.TextField(
+            label="Max Laps Behind Leader",
+            value=str(config["max_laps_behind_leader"]),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            width=180,
+            hint_text="0 = unlimited",
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "max_laps_behind_leader", int(e.control.value) if e.control.value else 0
+            ),
+        )
+
+        notify_skip_check = ft.Checkbox(
+            label="Notify on Skipped Caution",
+            value=config["notify_on_skipped_caution"],
+            disabled=self.is_running,
+            on_change=lambda e: update_config(
+                "notify_on_skipped_caution", e.control.value
+            ),
         )
 
         return ft.Container(
@@ -1203,9 +1392,24 @@ class RaceControlApp:
                         size=14,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    ft.Row(
-                        [drivers_threshold, window, increase_by], wrap=True, spacing=10
+                    ft.Text(
+                        "Individual 4x Window: Time to detect a single driver getting 4x incidents",
+                        size=11,
+                        color=ft.Colors.GREY,
+                        italic=True,
                     ),
+                    ft.Text(
+                        "Overall Driver Window: Time window to count multiple drivers with 4x",
+                        size=11,
+                        color=ft.Colors.GREY,
+                        italic=True,
+                    ),
+                    ft.Row(
+                        [drivers_threshold, incident_window, overall_window],
+                        wrap=True,
+                        spacing=10,
+                    ),
+                    ft.Row([increase_by], wrap=True, spacing=10),
                     ft.Row([auto_increase_check], wrap=True),
                     ft.Divider(),
                     window_label,
@@ -1219,7 +1423,15 @@ class RaceControlApp:
                         wrap=True,
                         spacing=10,
                     ),
-                    ft.Row([wave_arounds_check, full_sequence_check], wrap=True),
+                    ft.Row(
+                        [extend_laps, pre_extend_laps, max_laps_behind],
+                        wrap=True,
+                        spacing=10,
+                    ),
+                    ft.Row(
+                        [wave_arounds_check, full_sequence_check, notify_skip_check],
+                        wrap=True,
+                    ),
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
@@ -1249,6 +1461,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Incident Penalties",
             value=self.incident_penalties_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -1257,6 +1470,7 @@ class RaceControlApp:
             value=str(config["initial_penalty_incidents"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=200,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "initial_penalty_incidents",
                 int(e.control.value) if e.control.value else 0,
@@ -1268,6 +1482,7 @@ class RaceControlApp:
             value=config["initial_penalty"],
             width=150,
             hint_text="d = drive through, # = seconds",
+            disabled=self.is_running,
             on_change=lambda e: update_config("initial_penalty", e.control.value),
         )
 
@@ -1276,6 +1491,7 @@ class RaceControlApp:
             value=str(config["recurring_peanlty_every_incidents"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "recurring_peanlty_every_incidents",
                 int(e.control.value) if e.control.value else 0,
@@ -1287,6 +1503,7 @@ class RaceControlApp:
             value=config["recurring_penalty"],
             width=150,
             hint_text="0 = none",
+            disabled=self.is_running,
             on_change=lambda e: update_config("recurring_penalty", e.control.value),
         )
 
@@ -1295,6 +1512,7 @@ class RaceControlApp:
             value=str(config["end_recurring_incidents"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=200,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "end_recurring_incidents",
                 int(e.control.value) if e.control.value else 0,
@@ -1306,12 +1524,14 @@ class RaceControlApp:
             value=config["end_recurring_penalty"],
             width=150,
             hint_text="0 = none",
+            disabled=self.is_running,
             on_change=lambda e: update_config("end_recurring_penalty", e.control.value),
         )
 
         sound_check = ft.Checkbox(
             label="Play Sound on Penalty",
             value=config["sound"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("sound", e.control.value),
         )
 
@@ -1371,14 +1591,23 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Scheduled Messages",
             value=self.scheduled_messages_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
         add_button = ft.ElevatedButton(
             "Add Scheduled Message",
             icon=ft.Icons.ADD,
+            disabled=self.is_running,
             on_click=lambda _: self.add_scheduled_message(),
         )
+
+        # Populate list from existing configs
+        if self.scheduled_messages:
+            for i, cfg in enumerate(self.scheduled_messages):
+                self.scheduled_messages_list.controls.append(
+                    self.create_scheduled_message_card(i, cfg)
+                )
 
         return ft.Container(
             content=ft.Column(
@@ -1439,6 +1668,7 @@ class RaceControlApp:
             icon=ft.Icons.DELETE,
             icon_color=ft.Colors.RED,
             tooltip="Remove this message",
+            disabled=self.is_running,
             on_click=lambda _: self.remove_scheduled_message(index),
         )
 
@@ -1447,6 +1677,7 @@ class RaceControlApp:
             value=str(config["event_time"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "event_time", float(e.control.value) if e.control.value else 0
             ),
@@ -1459,18 +1690,21 @@ class RaceControlApp:
             multiline=True,
             min_lines=2,
             max_lines=4,
+            disabled=self.is_running,
             on_change=lambda e: update_config("message", e.control.value),
         )
 
         race_control_check = ft.Checkbox(
             label="Send to Race Control",
             value=config["race_control"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("race_control", e.control.value),
         )
 
         broadcast_check = ft.Checkbox(
             label="Send to Broadcast",
             value=config["broadcast"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("broadcast", e.control.value),
         )
 
@@ -1526,6 +1760,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Collision Penalty",
             value=self.collision_penalty_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -1534,6 +1769,7 @@ class RaceControlApp:
             value=str(config["collisions_per_penalty"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "collisions_per_penalty", int(e.control.value) if e.control.value else 3
             ),
@@ -1544,6 +1780,7 @@ class RaceControlApp:
             value=config["penalty"],
             width=150,
             hint_text="d = drive through",
+            disabled=self.is_running,
             on_change=lambda e: update_config("penalty", e.control.value),
         )
 
@@ -1552,6 +1789,7 @@ class RaceControlApp:
             value=str(config["tracking_window_seconds"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "tracking_window_seconds",
                 int(e.control.value) if e.control.value else 10,
@@ -1563,6 +1801,7 @@ class RaceControlApp:
             value=str(config["max_laps_behind_leader"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "max_laps_behind_leader",
                 int(e.control.value) if e.control.value else 99,
@@ -1624,6 +1863,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Clear Black Flag",
             value=self.clear_black_flag_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -1632,6 +1872,7 @@ class RaceControlApp:
             value=str(config["interval"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "interval", int(e.control.value) if e.control.value else 5
             ),
@@ -1680,16 +1921,25 @@ class RaceControlApp:
             self.update_tab_indicators()
 
         enable_toggle = ft.Switch(
-            label="Enable Scheduled Black Flags",
+            label="Enable Scheduled Black Flag",
             value=self.scheduled_black_flag_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
         add_button = ft.ElevatedButton(
             "Add Scheduled Black Flag",
             icon=ft.Icons.ADD,
+            disabled=self.is_running,
             on_click=lambda _: self.add_scheduled_black_flag(),
         )
+
+        # Populate list from existing configs
+        if self.scheduled_black_flag_configs:
+            for i, cfg in enumerate(self.scheduled_black_flag_configs):
+                self.scheduled_black_flag_list.controls.append(
+                    self.create_scheduled_black_flag_card(i, cfg)
+                )
 
         return ft.Container(
             content=ft.Column(
@@ -1738,6 +1988,7 @@ class RaceControlApp:
             icon=ft.Icons.DELETE,
             icon_color=ft.Colors.RED,
             tooltip="Remove this event",
+            disabled=self.is_running,
             on_click=lambda _: self.remove_scheduled_black_flag(index),
         )
 
@@ -1747,6 +1998,7 @@ class RaceControlApp:
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
             hint_text="Negative = from end",
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "event_time", float(e.control.value) if e.control.value else 0
             ),
@@ -1757,6 +2009,7 @@ class RaceControlApp:
             value=config["cars"],
             width=200,
             hint_text="Comma separated: 19,42,7",
+            disabled=self.is_running,
             on_change=lambda e: update_config("cars", e.control.value),
         )
 
@@ -1765,6 +2018,7 @@ class RaceControlApp:
             value=config["penalty"],
             width=150,
             hint_text="e.g. L2, d, 4120",
+            disabled=self.is_running,
             on_change=lambda e: update_config("penalty", e.control.value),
         )
 
@@ -1818,6 +2072,7 @@ class RaceControlApp:
         enable_toggle = ft.Switch(
             label="Enable Gap to Leader Penalty",
             value=self.gap_to_leader_enabled,
+            disabled=self.is_running,
             on_change=toggle_enabled,
         )
 
@@ -1826,6 +2081,7 @@ class RaceControlApp:
             value=str(config["gap_to_leader"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=180,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "gap_to_leader", float(e.control.value) if e.control.value else 60.0
             ),
@@ -1836,12 +2092,14 @@ class RaceControlApp:
             value=config["penalty"],
             width=150,
             hint_text="e.g. 4120",
+            disabled=self.is_running,
             on_change=lambda e: update_config("penalty", e.control.value),
         )
 
         sound_check = ft.Checkbox(
             label="Play Sound",
             value=config["sound"],
+            disabled=self.is_running,
             on_change=lambda e: update_config("sound", e.control.value),
         )
 
@@ -1910,56 +2168,55 @@ class RaceControlApp:
 
         def toggle_enabled(e):
             self.text_consumer_enabled = e.control.value
-            password_field.disabled = not e.control.value
-            room_field.disabled = not e.control.value
-            test_check.disabled = not e.control.value
+            token_field.disabled = not e.control.value or self.is_running
+            channel_field.disabled = not e.control.value or self.is_running
+            test_check.disabled = not e.control.value or self.is_running
             self.page.update()
 
         enable_check = ft.Checkbox(
-            label="Enable Text Consumer (SDK Gaming)",
+            label="Enable Text Consumer (Discord)",
             value=self.text_consumer_enabled,
             on_change=toggle_enabled,
+            disabled=self.is_running,
         )
 
-        password_field = ft.TextField(
-            label="Password",
+        token_field = ft.TextField(
+            label="Bot Token",
             value=config["password"],
             password=True,
             can_reveal_password=True,
             width=250,
-            disabled=not self.text_consumer_enabled,
+            disabled=not self.text_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("password", e.control.value),
         )
 
-        room_field = ft.TextField(
-            label="Room",
+        channel_field = ft.TextField(
+            label="Text Channel ID",
             value=config["room"],
             width=250,
-            disabled=not self.text_consumer_enabled,
+            disabled=not self.text_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("room", e.control.value),
         )
 
         test_check = ft.Checkbox(
             label="Test Mode",
             value=config["test"],
-            disabled=not self.text_consumer_enabled,
+            disabled=not self.text_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("test", e.control.value),
         )
 
         return ft.Column(
             [
+                ft.Text("Text Consumer (Discord)", size=16, weight=ft.FontWeight.BOLD),
                 ft.Text(
-                    "Text Consumer (Broadcast)", size=16, weight=ft.FontWeight.BOLD
-                ),
-                ft.Text(
-                    "Send race control messages to SDK Gaming broadcast overlay",
+                    "Display race control messages in Discord text channel",
                     size=11,
                     color=ft.Colors.GREY,
                 ),
                 ft.Divider(),
                 enable_check,
-                password_field,
-                room_field,
+                token_field,
+                channel_field,
                 test_check,
             ]
         )
@@ -1979,23 +2236,24 @@ class RaceControlApp:
 
         def toggle_enabled(e):
             self.audio_consumer_enabled = e.control.value
-            vc_id_field.disabled = not e.control.value
-            volume_slider.disabled = not e.control.value
-            token_field.disabled = not e.control.value
-            hello_check.disabled = not e.control.value
+            vc_id_field.disabled = not e.control.value or self.is_running
+            volume_slider.disabled = not e.control.value or self.is_running
+            token_field.disabled = not e.control.value or self.is_running
+            hello_check.disabled = not e.control.value or self.is_running
             self.page.update()
 
         enable_check = ft.Checkbox(
             label="Enable Audio Consumer (Discord)",
             value=self.audio_consumer_enabled,
             on_change=toggle_enabled,
+            disabled=self.is_running,
         )
 
         vc_id_field = ft.TextField(
             label="Discord Voice Channel ID",
             value=config["vc_id"],
             width=250,
-            disabled=not self.audio_consumer_enabled,
+            disabled=not self.audio_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("vc_id", e.control.value),
         )
 
@@ -2006,7 +2264,7 @@ class RaceControlApp:
             divisions=20,
             label="{value}",
             width=250,
-            disabled=not self.audio_consumer_enabled,
+            disabled=not self.audio_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("volume", e.control.value),
         )
 
@@ -2016,7 +2274,7 @@ class RaceControlApp:
             password=True,
             can_reveal_password=True,
             width=250,
-            disabled=not self.audio_consumer_enabled,
+            disabled=not self.audio_consumer_enabled or self.is_running,
             hint_text="Uses BOT_TOKEN env var if empty",
             on_change=lambda e: update_config("token", e.control.value),
         )
@@ -2024,7 +2282,7 @@ class RaceControlApp:
         hello_check = ft.Checkbox(
             label="Play Hello on Connect",
             value=config["hello"],
-            disabled=not self.audio_consumer_enabled,
+            disabled=not self.audio_consumer_enabled or self.is_running,
             on_change=lambda e: update_config("hello", e.control.value),
         )
 
@@ -2050,6 +2308,23 @@ class RaceControlApp:
 
     def start_race_control(self, e):
         """Start the race control system"""
+        self.is_running = True
+        # Rebuild tabs to update disabled states
+        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
+        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
+        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
+        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
+        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
+        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
+        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
+        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
+        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+
+        # Rebuild consumer section to disable controls
+        # Note: Consumer section is in page.controls[2].controls[2]
+        main_row = self.page.controls[2]  # The Row containing tabs and consumers
+        main_row.controls[2] = self.build_consumer_section()
+
         # Build event list
         event_list = []
 
@@ -2145,6 +2420,7 @@ class RaceControlApp:
                                 "end_of_lap_safety_margin"
                             ],
                             "lane_names": global_config["lane_names"].split(","),
+                            "extra_lanes": global_config["extra_lanes"],
                             "wave_arounds": global_config["wave_arounds"],
                             "notify_on_skipped_caution": global_config[
                                 "notify_on_skipped_caution"
@@ -2172,6 +2448,7 @@ class RaceControlApp:
                     "class": event_class,
                     "args": {
                         "drivers_threshold": config["drivers_threshold"],
+                        "incident_window_seconds": config["incident_window_seconds"],
                         "overall_driver_window": config["overall_driver_window"],
                         "auto_increase": config["auto_increase"],
                         "increase_by": config["increase_by"],
@@ -2184,6 +2461,12 @@ class RaceControlApp:
                         "wave_arounds": config["wave_arounds"],
                         "full_sequence": config["full_sequence"],
                         "wave_around_lap": config["wave_around_lap"],
+                        "extend_laps": config["extend_laps"],
+                        "pre_extend_laps": config["pre_extend_laps"],
+                        "max_laps_behind_leader": config["max_laps_behind_leader"],
+                        "notify_on_skipped_caution": config[
+                            "notify_on_skipped_caution"
+                        ],
                     },
                 }
             )
@@ -2266,10 +2549,12 @@ class RaceControlApp:
 
         # Add Text Consumer if enabled
         if self.text_consumer_enabled:
-            # event_list.append(
-            #     {"class": events.TextConsumerEvent, "args": self.text_consumer_config}
-            # )
-            pass
+            event_list.append(
+                {
+                    "class": events.DiscordTextConsumerEvent,
+                    "args": self.text_consumer_config,
+                }
+            )
 
         # Add Audio Consumer if enabled
         if self.audio_consumer_enabled:
@@ -2316,6 +2601,23 @@ class RaceControlApp:
             spacing=5,
         )
         self.status_indicator.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.RED)
+
+        # Rebuild tabs to re-enable all controls
+        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
+        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
+        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
+        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
+        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
+        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
+        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
+        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
+        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+
+        # Rebuild consumer section to re-enable controls
+        # Note: Consumer section is in page.controls[2].controls[2]
+        main_row = self.page.controls[2]  # The Row containing tabs and consumers
+        main_row.controls[2] = self.build_consumer_section()
+
         self.page.update()
 
     def on_window_event(self, e):
@@ -2477,11 +2779,6 @@ class RaceControlApp:
             },
         )
         self.random_cautions_enabled = config.get("random_cautions_enabled", True)
-        self.random_caution_list.controls.clear()
-        for i, cfg in enumerate(self.random_caution_configs):
-            self.random_caution_list.controls.append(
-                self.create_random_caution_card(i, cfg)
-            )
 
         # Load Random Code69s
         self.random_code69_configs = config.get("random_code69s", [])
@@ -2496,6 +2793,7 @@ class RaceControlApp:
                 "auto_restart_get_ready_position": 1.79,
                 "auto_restart_form_lanes_position": 1.63,
                 "auto_class_separate_position": -1.0,
+                "extra_lanes": True,
                 "quickie_auto_restart_get_ready_position": 0.79,
                 "quickie_auto_restart_form_lanes_position": 0.63,
                 "quickie_auto_class_separate_position": -1,
@@ -2507,18 +2805,28 @@ class RaceControlApp:
                 "notify_on_skipped_caution": False,
             },
         )
+        # Ensure extra_lanes is set for old presets that don't have it
+        if "extra_lanes" not in self.random_code69_global_config:
+            self.random_code69_global_config["extra_lanes"] = True
         self.random_code69s_enabled = config.get("random_code69s_enabled", True)
-        self.random_code69_list.controls.clear()
-        for i, cfg in enumerate(self.random_code69_configs):
-            self.random_code69_list.controls.append(
-                self.create_random_code69_card(i, cfg)
-            )
 
         # Load Incident Caution
         self.incident_caution_config = config.get("incident_caution", {})
         # Ensure use_lap_based is set (default to False for old presets)
         if "use_lap_based" not in self.incident_caution_config:
             self.incident_caution_config["use_lap_based"] = False
+        # Ensure incident_window_seconds is set (default to 10 for old presets)
+        if "incident_window_seconds" not in self.incident_caution_config:
+            self.incident_caution_config["incident_window_seconds"] = 10
+        # Ensure RandomCautionEvent parameters are set
+        if "extend_laps" not in self.incident_caution_config:
+            self.incident_caution_config["extend_laps"] = 0
+        if "pre_extend_laps" not in self.incident_caution_config:
+            self.incident_caution_config["pre_extend_laps"] = 1
+        if "max_laps_behind_leader" not in self.incident_caution_config:
+            self.incident_caution_config["max_laps_behind_leader"] = 0
+        if "notify_on_skipped_caution" not in self.incident_caution_config:
+            self.incident_caution_config["notify_on_skipped_caution"] = False
         self.incident_cautions_enabled = config.get("incident_cautions_enabled", True)
 
         # Load Incident Penalty
@@ -2528,11 +2836,6 @@ class RaceControlApp:
         # Load Scheduled Messages
         self.scheduled_messages = config.get("scheduled_messages", [])
         self.scheduled_messages_enabled = config.get("scheduled_messages_enabled", True)
-        self.scheduled_messages_list.controls.clear()
-        for i, cfg in enumerate(self.scheduled_messages):
-            self.scheduled_messages_list.controls.append(
-                self.create_scheduled_message_card(i, cfg)
-            )
 
         # Load Collision Penalty
         self.collision_penalty_config = config.get(
@@ -2555,11 +2858,6 @@ class RaceControlApp:
         self.scheduled_black_flag_enabled = config.get(
             "scheduled_black_flag_enabled", False
         )
-        self.scheduled_black_flag_list.controls.clear()
-        for i, cfg in enumerate(self.scheduled_black_flag_configs):
-            self.scheduled_black_flag_list.controls.append(
-                self.create_scheduled_black_flag_card(i, cfg)
-            )
 
         # Load Gap to Leader
         self.gap_to_leader_config = config.get(
@@ -2584,6 +2882,21 @@ class RaceControlApp:
 
         # Update tab indicators
         self.update_tab_indicators()
+
+        # Rebuild all tabs to reflect new values
+        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
+        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
+        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
+        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
+        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
+        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
+        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
+        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
+        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+
+        # Rebuild consumer section to reflect new values
+        main_row = self.page.controls[2]  # The Row containing tabs and consumers
+        main_row.controls[2] = self.build_consumer_section()
 
         # Show success message
         self.page.snack_bar = ft.SnackBar(
