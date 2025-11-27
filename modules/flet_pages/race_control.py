@@ -2063,12 +2063,8 @@ class RaceControlApp:
 
             for config in self.random_caution_configs:
                 # If time-based, convert minutes to seconds
-                min_val = (
-                    int(config["min"]) if use_lap_based else int(config["min"] * 60)
-                )
-                max_val = (
-                    int(config["max"]) if use_lap_based else int(config["max"] * 60)
-                )
+                min_val = int(config["min"])
+                max_val = int(config["max"])
 
                 event_list.append(
                     {
@@ -2205,7 +2201,7 @@ class RaceControlApp:
                         {
                             "class": events.ScheduledMessageEvent,
                             "args": {
-                                "event_time": config["event_time"] * 60,
+                                "event_time": config["event_time"],
                                 "message": config["message"],
                                 "race_control": config["race_control"],
                                 "broadcast": config["broadcast"],
@@ -2247,7 +2243,7 @@ class RaceControlApp:
                     {
                         "class": events.SprintRaceDQEvent,
                         "args": {
-                            "event_time": config["event_time"] * 60,
+                            "event_time": config["event_time"],
                             "cars": config["cars"],
                             "penalty": config["penalty"],
                         },
