@@ -131,6 +131,11 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
                     del self.driver_incident_timestamps[car_no]
 
             if len(list(self.driver_incident_timestamps.items())) >= threshold:
+                # if we're already in caution, don't throw another one
+                if self.is_caution_active():
+                    self.logger.debug("Caution already active, not throwing another.")
+                    self.driver_incident_timestamps.clear()
+                    continue
                 self.logger.info(
                     f"Throwing caution: {len(self.driver_incident_timestamps)} drivers triggered a 4x"
                 )
