@@ -4,7 +4,7 @@
 [
   {
     "label": "Build Executable",
-    "command": "$ZED_WORKTREE_ROOT/.venv/Scripts/activate.bat & flet pack ./BetterCautionBot.py --hidden-import win32api --add-data .venv/Lib/site-packages/discord/bin;. --add-data audio;audio -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot & mkdir dist\\audio & copy audio dist\\audio",
+    "command": "$ZED_WORKTREE_ROOT/.venv/Scripts/activate.bat & flet pack ./BetterCautionBot.py --hidden-import win32api --add-data .venv/Lib/site-packages/discord/bin;. --add-data audio;audio -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot & mkdir dist\\audio & xcopy /s /y audio dist\\audio & cd dist & tar -a -c -f BetterCautionBot.zip BetterCautionBot.exe audio",
     // "args": [
     //   "pack",
     //   "./run_flet.py",
