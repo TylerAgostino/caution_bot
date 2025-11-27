@@ -40,7 +40,6 @@ class RaceControlApp:
             "auto_restart_get_ready_position": 1.79,
             "auto_restart_form_lanes_position": 1.63,
             "auto_class_separate_position": -1.0,
-            "extra_lanes": True,
             "quickie_auto_restart_get_ready_position": 0.79,
             "quickie_auto_restart_form_lanes_position": 0.63,
             "quickie_auto_class_separate_position": -1,
@@ -863,13 +862,6 @@ class RaceControlApp:
             ),
         )
 
-        extra_lanes_check = ft.Checkbox(
-            label="Extra Lanes",
-            value=global_config["extra_lanes"],
-            disabled=self.is_running,
-            on_change=lambda e: update_global_config("extra_lanes", e.control.value),
-        )
-
         quickie_invert_check = ft.Checkbox(
             label="Quickie Invert Lanes",
             value=global_config["quickie_invert_lanes"],
@@ -958,7 +950,7 @@ class RaceControlApp:
                         spacing=10,
                     ),
                     ft.Row(
-                        [wave_arounds_check, notify_skip_check, extra_lanes_check],
+                        [wave_arounds_check, notify_skip_check],
                         wrap=True,
                     ),
                     advanced,
@@ -2420,7 +2412,6 @@ class RaceControlApp:
                                 "end_of_lap_safety_margin"
                             ],
                             "lane_names": global_config["lane_names"].split(","),
-                            "extra_lanes": global_config["extra_lanes"],
                             "wave_arounds": global_config["wave_arounds"],
                             "notify_on_skipped_caution": global_config[
                                 "notify_on_skipped_caution"
@@ -2793,7 +2784,6 @@ class RaceControlApp:
                 "auto_restart_get_ready_position": 1.79,
                 "auto_restart_form_lanes_position": 1.63,
                 "auto_class_separate_position": -1.0,
-                "extra_lanes": True,
                 "quickie_auto_restart_get_ready_position": 0.79,
                 "quickie_auto_restart_form_lanes_position": 0.63,
                 "quickie_auto_class_separate_position": -1,
@@ -2805,9 +2795,6 @@ class RaceControlApp:
                 "notify_on_skipped_caution": False,
             },
         )
-        # Ensure extra_lanes is set for old presets that don't have it
-        if "extra_lanes" not in self.random_code69_global_config:
-            self.random_code69_global_config["extra_lanes"] = True
         self.random_code69s_enabled = config.get("random_code69s_enabled", True)
 
         # Load Incident Caution
