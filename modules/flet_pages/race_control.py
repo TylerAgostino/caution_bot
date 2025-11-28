@@ -1,10 +1,14 @@
+import asyncio
 import json
 import os
+from math import isnan
 from typing import Dict, Optional
 
 import flet as ft
+import pandas as pd
 
 from modules import SubprocessManager, events, subprocess_manager
+from modules.events import BaseEvent, F1QualifyingEvent
 
 
 class RaceControlApp:
@@ -87,6 +91,28 @@ class RaceControlApp:
         # Tab references for updating indicators
         self.tabs_control = None
 
+        # F1 Qualifying mode state
+        self.f1_subprocess_manager: Optional[SubprocessManager] = None
+        self.f1_event: Optional[F1QualifyingEvent] = None
+        self.f1_elim_sessions = [
+            {"duration": "12", "advancing_cars": "15"},
+            {"duration": "10", "advancing_cars": "10"},
+        ]
+
+        # F1 Qualifying leaderboard column reference for updates
+        self.f1_leaderboard_column = None
+        self.f1_final_session = {"duration": "8", "advancing_cars": "0"}
+        self.f1_wait_between = 120
+        self.f1_refresh_timer = None
+        self.f1_dialog = None
+
+        # Beer Goggles mode state
+        self.goggle_event: Optional[BaseEvent] = None
+        self.goggles_refresh_timer = None
+        self.goggles_dialog = None
+        self.goggles_selected_tab = 0  # Track selected tab to preserve it
+        self.goggles_tabs_control = None  # Store reference to Tabs control
+
     def main(self, page: ft.Page):
         page.window.prevent_close = True
         self.page = page
@@ -111,6 +137,8 @@ class RaceControlApp:
                 ],
                 vertical_alignment=ft.CrossAxisAlignment.START,
             ),
+            ft.Divider(height=20),
+            self.build_footer(),
         )
 
     def build_header(self):
@@ -2892,6 +2920,1301 @@ class RaceControlApp:
         )
         self.page.snack_bar.open = True
         self.page.update()
+
+    def build_footer(self):
+        """Build the footer with special mode buttons"""
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Text("Special Modes:", size=16, weight=ft.FontWeight.BOLD),
+                    ft.ElevatedButton(
+                        "F1 Qualifying",
+                        icon=ft.Icons.SPEED,
+                        on_click=self.open_f1_qualifying,
+                        style=ft.ButtonStyle(
+                            bgcolor=ft.Colors.BLUE_900,
+                            color=ft.Colors.WHITE,
+                        ),
+                    ),
+                    ft.ElevatedButton(
+                        "Beer Goggles",
+                        icon=ft.Icons.REMOVE_RED_EYE,
+                        on_click=self.open_beer_goggles,
+                        style=ft.ButtonStyle(
+                            bgcolor=ft.Colors.AMBER_900,
+                            color=ft.Colors.WHITE,
+                        ),
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=20,
+            ),
+            padding=10,
+            bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
+            border_radius=5,
+        )
+
+    def open_f1_qualifying(self, e):
+        """Open F1 Qualifying mode dialog"""
+        self.f1_dialog = ft.AlertDialog(
+            modal=False,  # Allow interaction with other windows
+            title=ft.Text("F1 Qualifying Mode"),
+            content=self.build_f1_qualifying_content(),
+            actions=[ft.TextButton("Close", on_click=self.close_f1_dialog)],
+        )
+        self.page.overlay.append(self.f1_dialog)
+        self.f1_dialog.open = True
+        self.page.update()
+
+    def build_f1_qualifying_content(self):
+        """Build the F1 qualifying configuration UI"""
+        session_list = ft.Column(
+            scroll=ft.ScrollMode.AUTO,
+            height=300,
+            spacing=10,
+        )
+
+        def rebuild_sessions():
+            session_list.controls.clear()
+
+            # Header
+            header = ft.Row(
+                [
+                    ft.Container(
+                        ft.Text("Session", weight=ft.FontWeight.BOLD), width=80
+                    ),
+                    ft.Container(
+                        ft.Text("Duration (Mins)", weight=ft.FontWeight.BOLD), width=150
+                    ),
+                    ft.Container(
+                        ft.Text("Advancing Cars", weight=ft.FontWeight.BOLD), width=150
+                    ),
+                    ft.Container(width=100),
+                ]
+            )
+            session_list.controls.append(header)
+            session_list.controls.append(ft.Divider())
+
+            # Elimination sessions
+            for i, session in enumerate(self.f1_elim_sessions):
+
+                def make_duration_change(idx):
+                    def on_change(e):
+                        self.f1_elim_sessions[idx]["duration"] = e.control.value
+
+                    return on_change
+
+                def make_advancing_change(idx):
+                    def on_change(e):
+                        self.f1_elim_sessions[idx]["advancing_cars"] = e.control.value
+
+                    return on_change
+
+                def make_remove_click(idx):
+                    def on_click(e):
+                        self.f1_elim_sessions.pop(idx)
+                        rebuild_sessions()
+                        self.page.update()
+
+                    return on_click
+
+                row = ft.Row(
+                    [
+                        ft.Container(ft.Text(f"Q{i + 1}", size=16), width=80),
+                        ft.TextField(
+                            value=session["duration"],
+                            width=150,
+                            on_change=make_duration_change(i),
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.TextField(
+                            value=session["advancing_cars"],
+                            width=150,
+                            on_change=make_advancing_change(i),
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.DELETE,
+                            icon_color=ft.Colors.RED,
+                            on_click=make_remove_click(i),
+                        ),
+                    ]
+                )
+                session_list.controls.append(row)
+
+            # Final session
+            def on_final_duration_change(e):
+                self.f1_final_session["duration"] = e.control.value
+
+            final_row = ft.Row(
+                [
+                    ft.Container(
+                        ft.Text(f"Q{len(self.f1_elim_sessions) + 1}", size=16), width=80
+                    ),
+                    ft.TextField(
+                        value=self.f1_final_session["duration"],
+                        width=150,
+                        on_change=on_final_duration_change,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.TextField(
+                        value="0",
+                        width=150,
+                        disabled=True,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Container(width=100),
+                ]
+            )
+            session_list.controls.append(final_row)
+
+        rebuild_sessions()
+
+        def add_session(e):
+            self.f1_elim_sessions.append({"duration": "", "advancing_cars": ""})
+            rebuild_sessions()
+            self.page.update()
+
+        def on_wait_change(e):
+            try:
+                self.f1_wait_between = int(e.control.value)
+            except:
+                pass
+
+        controls = ft.Column(
+            [
+                session_list,
+                ft.Row(
+                    [
+                        ft.ElevatedButton(
+                            "Add Session",
+                            icon=ft.Icons.ADD,
+                            on_click=add_session,
+                        ),
+                    ]
+                ),
+                ft.Divider(),
+                ft.Row(
+                    [
+                        ft.Text("Wait Between Sessions (seconds):", size=14),
+                        ft.TextField(
+                            value=str(self.f1_wait_between),
+                            width=100,
+                            on_change=on_wait_change,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                    ]
+                ),
+                ft.Divider(),
+                ft.Row(
+                    [
+                        ft.ElevatedButton(
+                            "Start F1 Qualifying",
+                            icon=ft.Icons.PLAY_ARROW,
+                            on_click=self.start_f1_qualifying,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.GREEN,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "Stop F1 Qualifying",
+                            icon=ft.Icons.STOP,
+                            on_click=self.stop_f1_qualifying,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.RED,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                    ],
+                    spacing=10,
+                ),
+                ft.Container(height=10),
+                self.build_f1_leaderboard(),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            width=1600,
+            height=1000,
+        )
+
+        return controls
+
+    def build_f1_leaderboard(self):
+        """Build F1 qualifying leaderboard display - returns container that will be updated"""
+        # Create persistent Column that we'll update (not replace)
+        self.f1_leaderboard_column = ft.Column(
+            [
+                ft.Text(
+                    "Start qualifying to see leaderboard",
+                    size=14,
+                    color=ft.Colors.GREY,
+                )
+            ],
+            scroll=ft.ScrollMode.AUTO,
+        )
+
+        self.f1_leaderboard_container = ft.Container(
+            content=self.f1_leaderboard_column,
+            padding=20,
+            expand=True,
+        )
+        return self.f1_leaderboard_container
+
+    def format_lap_time(self, x):
+        """Format lap time in MM:SS.mmm format"""
+        if isinstance(x, (int, float)) and not isnan(x) and x > 0:
+            mins = int(x // 60)
+            secs = int(x % 60)
+            millis = int((x % 1) * 1000)
+            return f"{mins:02d}:{secs:02d}.{millis:03d}"
+        return ""
+
+    def update_f1_leaderboard(self):
+        """Update F1 leaderboard with current data"""
+        if not self.f1_event or not self.f1_leaderboard_column:
+            return
+
+        try:
+            # Get leaderboard data
+            leaderboard = self.f1_event.leaderboard_df.copy()
+
+            if leaderboard.empty:
+                # Update controls list instead of replacing content
+                self.f1_leaderboard_column.controls = [
+                    ft.Text(
+                        "Waiting for lap data...",
+                        size=14,
+                        color=ft.Colors.GREY,
+                    )
+                ]
+                self.f1_leaderboard_column.update()
+                return
+
+            # Parse session info
+            subsession_name = self.f1_event.subsession_name
+            time_remaining = self.f1_event.subsession_time_remaining
+
+            # Determine driver at risk
+            all_sessions = [*self.f1_elim_sessions, self.f1_final_session]
+            advancing_cars_list = [s["advancing_cars"] for s in all_sessions]
+
+            driver_at_risk_idx = None
+            if subsession_name and subsession_name.startswith("Q"):
+                try:
+                    subsession_index = int(subsession_name.split("Q")[1]) - 1
+                    if 0 <= subsession_index < len(advancing_cars_list):
+                        driver_at_risk = int(advancing_cars_list[subsession_index])
+                        if 0 < driver_at_risk <= len(leaderboard):
+                            driver_at_risk_idx = driver_at_risk - 1
+                except:
+                    pass
+
+            # Build header
+            header = ft.Row(
+                [
+                    ft.Text(
+                        f"⏱️ {time_remaining}",
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.CYAN,
+                    ),
+                    ft.Text(
+                        f"🏁 {subsession_name}",
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.AMBER,
+                    ),
+                ],
+                spacing=40,
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+
+            # Build leaderboard table
+            rows = []
+
+            # Header row
+            header_cells = [
+                ft.Container(
+                    ft.Text("Pos", weight=ft.FontWeight.BOLD, size=14),
+                    padding=8,
+                    width=60,
+                    alignment=ft.alignment.center,
+                ),
+                ft.Container(
+                    ft.Text("Car #", weight=ft.FontWeight.BOLD, size=14),
+                    padding=8,
+                    width=80,
+                    alignment=ft.alignment.center,
+                ),
+                ft.Container(
+                    ft.Text("Driver", weight=ft.FontWeight.BOLD, size=14),
+                    padding=8,
+                    width=200,
+                    alignment=ft.alignment.center,
+                ),
+            ]
+
+            # Add column headers for each session (skip 'Driver' column in iteration)
+            for col in leaderboard.columns:
+                if col == "Driver":
+                    continue
+                header_cells.append(
+                    ft.Container(
+                        ft.Text(col, weight=ft.FontWeight.BOLD, size=14),
+                        padding=8,
+                        width=150,
+                        alignment=ft.alignment.center,
+                    )
+                )
+
+            rows.append(
+                ft.Container(
+                    ft.Row(header_cells, spacing=2),
+                    bgcolor=ft.Colors.with_opacity(0.3, ft.Colors.BLUE),
+                    border_radius=3,
+                )
+            )
+
+            # Data rows
+            for idx, (car_num, row_data) in enumerate(leaderboard.iterrows()):
+                cells = []
+
+                # Position
+                cells.append(
+                    ft.Container(
+                        ft.Text(str(idx + 1), size=14, weight=ft.FontWeight.BOLD),
+                        padding=8,
+                        width=60,
+                        alignment=ft.alignment.center,
+                    )
+                )
+
+                # Car number
+                cells.append(
+                    ft.Container(
+                        ft.Text(str(car_num), size=14, weight=ft.FontWeight.BOLD),
+                        padding=8,
+                        width=80,
+                        alignment=ft.alignment.center,
+                    )
+                )
+
+                # Driver name
+                driver_name = row_data.get("Driver", "Unknown")
+                cells.append(
+                    ft.Container(
+                        ft.Text(str(driver_name), size=14, weight=ft.FontWeight.W_500),
+                        padding=8,
+                        width=200,
+                        alignment=ft.alignment.center_left,
+                    )
+                )
+
+                # Lap times for each session (skip 'Driver' column)
+                for col_idx, col in enumerate(leaderboard.columns):
+                    if col == "Driver":
+                        continue
+                    value = row_data[col]
+                    formatted_value = self.format_lap_time(value)
+
+                    # Determine cell color
+                    bgcolor = None
+                    text_color = ft.Colors.WHITE
+
+                    if formatted_value:
+                        # Check if this is personal best (fastest in this row)
+                        row_times = [
+                            row_data[c]
+                            for c in leaderboard.columns
+                            if isinstance(row_data[c], (int, float))
+                            and not isnan(row_data[c])
+                            and row_data[c] > 0
+                        ]
+                        if row_times and value == min(row_times):
+                            bgcolor = ft.Colors.with_opacity(0.3, ft.Colors.YELLOW)
+
+                        # Check if this is session best (fastest in this column)
+                        col_times = [
+                            leaderboard.loc[r, col]
+                            for r in leaderboard.index
+                            if isinstance(leaderboard.loc[r, col], (int, float))
+                            and not isnan(leaderboard.loc[r, col])
+                            and leaderboard.loc[r, col] > 0
+                        ]
+                        if col_times and value == min(col_times):
+                            bgcolor = ft.Colors.with_opacity(0.4, ft.Colors.GREEN)
+
+                        # Check if this is overall best
+                        all_times = []
+                        for c in leaderboard.columns:
+                            for r in leaderboard.index:
+                                v = leaderboard.loc[r, c]
+                                if (
+                                    isinstance(v, (int, float))
+                                    and not isnan(v)
+                                    and v > 0
+                                ):
+                                    all_times.append(v)
+                        if all_times and value == min(all_times):
+                            bgcolor = ft.Colors.with_opacity(0.5, ft.Colors.PURPLE)
+
+                    cells.append(
+                        ft.Container(
+                            ft.Text(
+                                formatted_value,
+                                size=14,
+                                color=text_color,
+                                weight=ft.FontWeight.W_500,
+                            ),
+                            padding=8,
+                            width=150,
+                            bgcolor=bgcolor,
+                            alignment=ft.alignment.center,
+                        )
+                    )
+
+                # Orange highlight for driver at risk
+                row_bgcolor = None
+                if driver_at_risk_idx is not None and idx == driver_at_risk_idx:
+                    row_bgcolor = ft.Colors.with_opacity(0.3, ft.Colors.ORANGE)
+
+                # Grey highlight for waiting/eliminated drivers
+                if self.f1_event.waiting_on and car_num in self.f1_event.waiting_on:
+                    row_bgcolor = ft.Colors.with_opacity(0.3, ft.Colors.GREY)
+
+                rows.append(
+                    ft.Container(
+                        ft.Row(cells, spacing=2),
+                        bgcolor=row_bgcolor,
+                        border_radius=3,
+                        padding=2,
+                    )
+                )
+
+            # Update controls list instead of replacing content (preserves scroll)
+            self.f1_leaderboard_column.controls = [
+                header,
+                ft.Divider(height=10),
+                ft.Column(rows, spacing=2, scroll=ft.ScrollMode.AUTO),
+            ]
+            self.f1_leaderboard_column.update()
+
+        except Exception as ex:
+            # Silently handle errors during updates
+            pass
+
+    async def f1_refresh_task(self):
+        """Background task to refresh F1 leaderboard"""
+        while self.f1_event and self.f1_subprocess_manager:
+            self.update_f1_leaderboard()
+            await asyncio.sleep(0.5)  # Update twice per second
+
+    def start_f1_qualifying(self, e):
+        """Start F1 Qualifying event"""
+        all_sessions = [*self.f1_elim_sessions, self.f1_final_session]
+        session_lengths = ", ".join([s["duration"] for s in all_sessions])
+        advancing_cars = ", ".join([s["advancing_cars"] for s in all_sessions])
+
+        self.f1_event = F1QualifyingEvent(
+            session_lengths, advancing_cars, wait_between_sessions=self.f1_wait_between
+        )
+        self.f1_subprocess_manager = SubprocessManager([self.f1_event.run])
+        self.f1_subprocess_manager.start()
+
+        # Start refresh task
+        self.page.run_task(self.f1_refresh_task)
+
+        self.page.show_snack_bar(
+            ft.SnackBar(
+                content=ft.Text("F1 Qualifying Started!"), bgcolor=ft.Colors.GREEN
+            )
+        )
+        self.page.update()
+
+    def stop_f1_qualifying(self, e):
+        """Stop F1 Qualifying event"""
+        if self.f1_subprocess_manager:
+            self.f1_subprocess_manager.stop()
+            self.f1_subprocess_manager = None
+
+        self.f1_event = None
+
+        # Clear leaderboard
+        if self.f1_leaderboard_column:
+            self.f1_leaderboard_column.controls = [
+                ft.Text(
+                    "Qualifying stopped",
+                    size=14,
+                    color=ft.Colors.GREY,
+                )
+            ]
+            self.f1_leaderboard_column.update()
+
+        self.page.show_snack_bar(
+            ft.SnackBar(
+                content=ft.Text("F1 Qualifying Stopped!"), bgcolor=ft.Colors.RED
+            )
+        )
+        self.page.update()
+
+    def close_f1_dialog(self, e):
+        """Close F1 Qualifying dialog"""
+        if self.f1_dialog:
+            self.f1_dialog.open = False
+            self.page.update()
+
+    def open_beer_goggles(self, e):
+        """Open Beer Goggles SDK viewer dialog"""
+        self.goggles_dialog = ft.AlertDialog(
+            modal=False,  # Allow interaction with other windows
+            title=ft.Text("Beer Goggles SDK Viewer"),
+            content=self.build_beer_goggles_content(),
+            actions=[ft.TextButton("Close", on_click=self.close_goggles_dialog)],
+        )
+        self.page.overlay.append(self.goggles_dialog)
+        self.goggles_dialog.open = True
+        self.page.update()
+
+    def build_beer_goggles_content(self):
+        """Build the Beer Goggles SDK viewer UI"""
+        self.goggles_connection_status = ft.Text(
+            "Disconnected",
+            color=ft.Colors.RED,
+            size=16,
+            weight=ft.FontWeight.BOLD,
+        )
+
+        def connect_goggles(e):
+            self.goggle_event = BaseEvent()
+            self.goggles_connection_status.value = "Connected"
+            self.goggles_connection_status.color = ft.Colors.GREEN
+            self.goggles_connection_status.update()
+
+            # Build initial telemetry tabs structure (only once)
+            self.build_initial_goggles_tabs()
+
+            # Start refresh task
+            self.page.run_task(self.goggles_refresh_task)
+
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text("Connected to iRacing SDK"), bgcolor=ft.Colors.GREEN
+                )
+            )
+
+        def disconnect_goggles(e):
+            self.goggle_event = None
+            self.goggles_connection_status.value = "Disconnected"
+            self.goggles_connection_status.color = ft.Colors.RED
+            self.goggles_connection_status.update()
+
+            # Clear telemetry display
+            if hasattr(self, "goggles_telemetry_display"):
+                self.goggles_telemetry_display.content = ft.Column(
+                    [
+                        ft.Text(
+                            "Connect to iRacing to view telemetry data",
+                            size=14,
+                            color=ft.Colors.GREY,
+                        ),
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                )
+                self.goggles_tabs_control = None
+                self.goggles_telemetry_display.update()
+
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text("Disconnected from iRacing SDK"),
+                    bgcolor=ft.Colors.RED,
+                )
+            )
+
+        self.goggles_telemetry_display = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "Connect to iRacing to view telemetry data",
+                        size=14,
+                        color=ft.Colors.GREY,
+                    ),
+                ],
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            padding=10,
+            border=ft.border.all(1, ft.Colors.GREY),
+            border_radius=5,
+            height=500,
+        )
+
+        controls = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.ElevatedButton(
+                            "Connect",
+                            icon=ft.Icons.LINK,
+                            on_click=connect_goggles,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.GREEN,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "Disconnect",
+                            icon=ft.Icons.LINK_OFF,
+                            on_click=disconnect_goggles,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.RED,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                        self.goggles_connection_status,
+                    ],
+                    spacing=10,
+                ),
+                ft.Divider(),
+                self.goggles_telemetry_display,
+            ],
+            width=1100,
+            height=700,
+            scroll=ft.ScrollMode.AUTO,
+        )
+
+        return controls
+
+    def build_telemetry_section(self, section_name, fields):
+        """Build a telemetry section with all fields"""
+        if not self.goggle_event:
+            return ft.Column([ft.Text("Not connected", color=ft.Colors.GREY)])
+
+        controls = []
+        for field in fields:
+            try:
+                # Use bracket notation to access iRSDK fields
+                value = self.goggle_event.sdk[field]
+                if isinstance(value, list):
+                    value_str = str(value)
+                else:
+                    value_str = str(value)
+
+                controls.append(
+                    ft.Container(
+                        ft.Row(
+                            [
+                                ft.Text(
+                                    field + ":",
+                                    size=11,
+                                    weight=ft.FontWeight.BOLD,
+                                    width=250,
+                                ),
+                                ft.Text(value_str, size=11, color=ft.Colors.CYAN),
+                            ],
+                            spacing=10,
+                        ),
+                        padding=ft.padding.symmetric(vertical=2, horizontal=5),
+                    )
+                )
+            except Exception as ex:
+                # Field not available, skip it
+                pass
+
+        # Create a container to hold these controls (for updating later)
+        container = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=1)
+        return container
+
+    def build_initial_goggles_tabs(self):
+        """Build the initial Tabs structure (called once on connect)"""
+        if not self.goggle_event or not hasattr(self, "goggles_telemetry_display"):
+            return
+
+        # Clear previous tab contents
+        self.goggles_tab_contents = {}
+
+        # Define all field sections
+        global_field_sections = {
+            "Session": [
+                "SessionTime",
+                "SessionTick",
+                "SessionNum",
+                "SessionState",
+                "SessionUniqueID",
+                "SessionFlags",
+                "SessionTimeRemain",
+                "SessionLapsRemain",
+                "SessionLapsRemainEx",
+                "SessionTimeTotal",
+                "SessionLapsTotal",
+                "SessionJokerLapsRemain",
+                "SessionOnJokerLap",
+                "SessionTimeOfDay",
+                "PaceMode",
+                "TrackTemp",
+                "TrackTempCrew",
+                "AirTemp",
+                "TrackWetness",
+                "Skies",
+                "AirDensity",
+                "AirPressure",
+                "WindVel",
+                "WindDir",
+                "RelativeHumidity",
+                "FogLevel",
+                "Precipitation",
+                "SolarAltitude",
+                "SolarAzimuth",
+                "WeatherDeclaredWet",
+            ],
+            "Player Car": [
+                "PlayerCarPosition",
+                "PlayerCarClassPosition",
+                "PlayerCarClass",
+                "PlayerTrackSurface",
+                "PlayerTrackSurfaceMaterial",
+                "PlayerCarIdx",
+                "PlayerCarTeamIncidentCount",
+                "PlayerCarMyIncidentCount",
+                "PlayerCarDriverIncidentCount",
+                "PlayerCarWeightPenalty",
+                "PlayerCarPowerAdjust",
+                "PlayerCarDryTireSetLimit",
+                "PlayerCarTowTime",
+                "PlayerCarInPitStall",
+                "PlayerCarPitSvStatus",
+                "PlayerTireCompound",
+                "PlayerFastRepairsUsed",
+                "OnPitRoad",
+                "SteeringWheelAngle",
+                "Throttle",
+                "Brake",
+                "Clutch",
+                "Gear",
+                "RPM",
+                "PlayerCarSLFirstRPM",
+                "PlayerCarSLShiftRPM",
+                "PlayerCarSLLastRPM",
+                "PlayerCarSLBlinkRPM",
+                "Lap",
+                "LapCompleted",
+                "LapDist",
+                "LapDistPct",
+                "RaceLaps",
+                "LapBestLap",
+                "LapBestLapTime",
+                "LapLastLapTime",
+                "LapCurrentLapTime",
+                "Speed",
+                "IsOnTrackCar",
+                "IsInGarage",
+            ],
+            "Telemetry": [
+                "RFcoldPressure",
+                "RFtempCL",
+                "RFtempCM",
+                "RFtempCR",
+                "RFwearL",
+                "RFwearM",
+                "RFwearR",
+                "LFcoldPressure",
+                "LFtempCL",
+                "LFtempCM",
+                "LFtempCR",
+                "LFwearL",
+                "LFwearM",
+                "LFwearR",
+                "RRcoldPressure",
+                "RRtempCL",
+                "RRtempCM",
+                "RRtempCR",
+                "RRwearL",
+                "RRwearM",
+                "RRwearR",
+                "LRcoldPressure",
+                "LRtempCL",
+                "LRtempCM",
+                "LRtempCR",
+                "LRwearL",
+                "LRwearM",
+                "LRwearR",
+                "FuelUsePerHour",
+                "Voltage",
+                "WaterTemp",
+                "WaterLevel",
+                "FuelLevel",
+                "FuelLevelPct",
+                "OilTemp",
+                "OilPress",
+                "OilLevel",
+                "ManifoldPress",
+            ],
+            "Pits": [
+                "PitRepairLeft",
+                "PitOptRepairLeft",
+                "PitstopActive",
+                "FastRepairUsed",
+                "FastRepairAvailable",
+                "LFTiresUsed",
+                "RFTiresUsed",
+                "LRTiresUsed",
+                "RRTiresUsed",
+                "TireSetsUsed",
+                "LFTiresAvailable",
+                "RFTiresAvailable",
+                "LRTiresAvailable",
+                "RRTiresAvailable",
+                "TireSetsAvailable",
+                "PitSvFlags",
+                "PitSvLFP",
+                "PitSvRFP",
+                "PitSvLRP",
+                "PitSvRRP",
+                "PitSvFuel",
+                "PitSvTireCompound",
+            ],
+            "Audio": [
+                "RadioTransmitCarIdx",
+                "RadioTransmitRadioIdx",
+                "RadioTransmitFrequencyIdx",
+                "TireLF_RumblePitch",
+                "TireRF_RumblePitch",
+                "TireLR_RumblePitch",
+                "TireRR_RumblePitch",
+            ],
+            "Performance": [
+                "FrameRate",
+                "CpuUsageFG",
+                "CpuUsageBG",
+                "GpuUsage",
+                "ChanAvgLatency",
+                "ChanLatency",
+                "ChanQuality",
+                "ChanPartnerQuality",
+            ],
+            "Replay": [
+                "IsReplayPlaying",
+                "ReplayFrameNum",
+                "ReplayFrameNumEnd",
+                "CamCarIdx",
+                "CamCameraNumber",
+                "CamGroupNumber",
+                "ReplayPlaySpeed",
+            ],
+        }
+
+        # CarIdx fields for the per-car table
+        caridx_fields = [
+            "CarIdxLap",
+            "CarIdxLapCompleted",
+            "CarIdxLapDistPct",
+            "CarIdxTrackSurface",
+            "CarIdxTrackSurfaceMaterial",
+            "CarIdxOnPitRoad",
+            "CarIdxPosition",
+            "CarIdxClassPosition",
+            "CarIdxClass",
+            "CarIdxF2Time",
+            "CarIdxEstTime",
+            "CarIdxLastLapTime",
+            "CarIdxBestLapTime",
+            "CarIdxBestLapNum",
+            "CarIdxTireCompound",
+            "CarIdxQualTireCompound",
+            "CarIdxQualTireCompoundLocked",
+            "CarIdxFastRepairsUsed",
+            "CarIdxSessionFlags",
+            "CarIdxPaceLine",
+            "CarIdxPaceRow",
+            "CarIdxPaceFlags",
+            "CarIdxSteer",
+            "CarIdxRPM",
+            "CarIdxGear",
+            "CarIdxP2P_Status",
+            "CarIdxP2P_Count",
+        ]
+
+        # Build tabs (only once)
+        tab_list = []
+        for section_name, fields in global_field_sections.items():
+            tab_content = self.build_telemetry_section(section_name, fields)
+            # Store reference to the content column for updates
+            self.goggles_tab_contents[section_name] = tab_content
+            tab_list.append(ft.Tab(text=section_name, content=tab_content))
+
+        # Build CarIdx table tab
+        caridx_tab_content = self.build_caridx_table(caridx_fields)
+        self.goggles_tab_contents["Per-Car Data"] = caridx_tab_content
+        tab_list.append(ft.Tab(text="Per-Car Data", content=caridx_tab_content))
+
+        def on_tab_change(e):
+            """Save selected tab index"""
+            self.goggles_selected_tab = e.control.selected_index
+
+        self.goggles_tabs_control = ft.Tabs(
+            selected_index=self.goggles_selected_tab,
+            animation_duration=300,
+            tabs=tab_list,
+            expand=True,
+            scrollable=True,
+            on_change=on_tab_change,
+        )
+
+        self.goggles_telemetry_display.content = self.goggles_tabs_control
+        self.goggles_telemetry_display.update()
+
+    def build_caridx_table(self, caridx_fields):
+        """Build the CarIdx per-car data table"""
+        # Create DataTable
+        columns = [ft.DataColumn(ft.Text("Car #", weight=ft.FontWeight.BOLD, size=12))]
+
+        # Add columns for each field (remove 'CarIdx' prefix for display)
+        for field in caridx_fields:
+            display_name = field.replace("CarIdx", "")
+            columns.append(ft.DataColumn(ft.Text(display_name, size=10)))
+
+        self.goggles_caridx_datatable = ft.DataTable(
+            columns=columns,
+            rows=[],
+            border=ft.border.all(1, ft.Colors.GREY_700),
+            border_radius=5,
+            vertical_lines=ft.border.BorderSide(1, ft.Colors.GREY_800),
+            horizontal_lines=ft.border.BorderSide(1, ft.Colors.GREY_800),
+            heading_row_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE),
+            heading_row_height=35,
+            data_row_max_height=30,
+            data_row_min_height=25,
+            column_spacing=10,
+        )
+
+        return ft.Column(
+            [
+                ft.Text(
+                    "Per-Car Data (All CarIdx Fields)",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Row(
+                    [
+                        ft.Container(
+                            content=self.goggles_caridx_datatable,
+                            border=ft.border.all(1, ft.Colors.GREY_600),
+                            border_radius=5,
+                            padding=10,
+                        ),
+                    ],
+                    scroll=ft.ScrollMode.ALWAYS,
+                    expand=True,
+                ),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=10,
+            expand=True,
+        )
+
+    def update_goggles_display(self):
+        """Update Beer Goggles telemetry display - only updates tab content"""
+        if not self.goggle_event or not self.goggles_tabs_control:
+            return
+
+        try:
+            # Define all field sections (same order as initial build)
+            global_field_sections = {
+                "Session": [
+                    "SessionTime",
+                    "SessionTick",
+                    "SessionNum",
+                    "SessionState",
+                    "SessionUniqueID",
+                    "SessionFlags",
+                    "SessionTimeRemain",
+                    "SessionLapsRemain",
+                    "SessionLapsRemainEx",
+                    "SessionTimeTotal",
+                    "SessionLapsTotal",
+                    "SessionJokerLapsRemain",
+                    "SessionOnJokerLap",
+                    "SessionTimeOfDay",
+                    "PaceMode",
+                    "TrackTemp",
+                    "TrackTempCrew",
+                    "AirTemp",
+                    "TrackWetness",
+                    "Skies",
+                    "AirDensity",
+                    "AirPressure",
+                    "WindVel",
+                    "WindDir",
+                    "RelativeHumidity",
+                    "FogLevel",
+                    "Precipitation",
+                    "SolarAltitude",
+                    "SolarAzimuth",
+                    "WeatherDeclaredWet",
+                ],
+                "Player Car": [
+                    "PlayerCarPosition",
+                    "PlayerCarClassPosition",
+                    "PlayerCarClass",
+                    "PlayerTrackSurface",
+                    "PlayerTrackSurfaceMaterial",
+                    "PlayerCarIdx",
+                    "PlayerCarTeamIncidentCount",
+                    "PlayerCarMyIncidentCount",
+                    "PlayerCarDriverIncidentCount",
+                    "PlayerCarWeightPenalty",
+                    "PlayerCarPowerAdjust",
+                    "PlayerCarDryTireSetLimit",
+                    "PlayerCarTowTime",
+                    "PlayerCarInPitStall",
+                    "PlayerCarPitSvStatus",
+                    "PlayerTireCompound",
+                    "PlayerFastRepairsUsed",
+                    "OnPitRoad",
+                    "SteeringWheelAngle",
+                    "Throttle",
+                    "Brake",
+                    "Clutch",
+                    "Gear",
+                    "RPM",
+                    "PlayerCarSLFirstRPM",
+                    "PlayerCarSLShiftRPM",
+                    "PlayerCarSLLastRPM",
+                    "PlayerCarSLBlinkRPM",
+                    "Lap",
+                    "LapCompleted",
+                    "LapDist",
+                    "LapDistPct",
+                    "RaceLaps",
+                    "LapBestLap",
+                    "LapBestLapTime",
+                    "LapLastLapTime",
+                    "LapCurrentLapTime",
+                    "Speed",
+                    "IsOnTrackCar",
+                    "IsInGarage",
+                ],
+                "Telemetry": [
+                    "RFcoldPressure",
+                    "RFtempCL",
+                    "RFtempCM",
+                    "RFtempCR",
+                    "RFwearL",
+                    "RFwearM",
+                    "RFwearR",
+                    "LFcoldPressure",
+                    "LFtempCL",
+                    "LFtempCM",
+                    "LFtempCR",
+                    "LFwearL",
+                    "LFwearM",
+                    "LFwearR",
+                    "RRcoldPressure",
+                    "RRtempCL",
+                    "RRtempCM",
+                    "RRtempCR",
+                    "RRwearL",
+                    "RRwearM",
+                    "RRwearR",
+                    "LRcoldPressure",
+                    "LRtempCL",
+                    "LRtempCM",
+                    "LRtempCR",
+                    "LRwearL",
+                    "LRwearM",
+                    "LRwearR",
+                    "FuelUsePerHour",
+                    "Voltage",
+                    "WaterTemp",
+                    "WaterLevel",
+                    "FuelLevel",
+                    "FuelLevelPct",
+                    "OilTemp",
+                    "OilPress",
+                    "OilLevel",
+                    "ManifoldPress",
+                ],
+                "Pits": [
+                    "PitRepairLeft",
+                    "PitOptRepairLeft",
+                    "PitstopActive",
+                    "FastRepairUsed",
+                    "FastRepairAvailable",
+                    "LFTiresUsed",
+                    "RFTiresUsed",
+                    "LRTiresUsed",
+                    "RRTiresUsed",
+                    "TireSetsUsed",
+                    "LFTiresAvailable",
+                    "RFTiresAvailable",
+                    "LRTiresAvailable",
+                    "RRTiresAvailable",
+                    "TireSetsAvailable",
+                    "PitSvFlags",
+                    "PitSvLFP",
+                    "PitSvRFP",
+                    "PitSvLRP",
+                    "PitSvRRP",
+                    "PitSvFuel",
+                    "PitSvTireCompound",
+                ],
+                "Audio": [
+                    "RadioTransmitCarIdx",
+                    "RadioTransmitRadioIdx",
+                    "RadioTransmitFrequencyIdx",
+                    "TireLF_RumblePitch",
+                    "TireRF_RumblePitch",
+                    "TireLR_RumblePitch",
+                    "TireRR_RumblePitch",
+                ],
+                "Performance": [
+                    "FrameRate",
+                    "CpuUsageFG",
+                    "CpuUsageBG",
+                    "GpuUsage",
+                    "ChanAvgLatency",
+                    "ChanLatency",
+                    "ChanQuality",
+                    "ChanPartnerQuality",
+                ],
+                "Replay": [
+                    "IsReplayPlaying",
+                    "ReplayFrameNum",
+                    "ReplayFrameNumEnd",
+                    "CamCarIdx",
+                    "CamCameraNumber",
+                    "CamGroupNumber",
+                    "ReplayPlaySpeed",
+                ],
+            }
+
+            # CarIdx fields for the per-car table
+            caridx_fields = [
+                "CarIdxLap",
+                "CarIdxLapCompleted",
+                "CarIdxLapDistPct",
+                "CarIdxTrackSurface",
+                "CarIdxTrackSurfaceMaterial",
+                "CarIdxOnPitRoad",
+                "CarIdxPosition",
+                "CarIdxClassPosition",
+                "CarIdxClass",
+                "CarIdxF2Time",
+                "CarIdxEstTime",
+                "CarIdxLastLapTime",
+                "CarIdxBestLapTime",
+                "CarIdxBestLapNum",
+                "CarIdxTireCompound",
+                "CarIdxQualTireCompound",
+                "CarIdxQualTireCompoundLocked",
+                "CarIdxFastRepairsUsed",
+                "CarIdxSessionFlags",
+                "CarIdxPaceLine",
+                "CarIdxPaceRow",
+                "CarIdxPaceFlags",
+                "CarIdxSteer",
+                "CarIdxRPM",
+                "CarIdxGear",
+                "CarIdxP2P_Status",
+                "CarIdxP2P_Count",
+            ]
+
+            # Update each telemetry tab's content by updating the column's controls
+            for section_name, fields in global_field_sections.items():
+                if section_name in self.goggles_tab_contents:
+                    tab_column = self.goggles_tab_contents[section_name]
+                    # Build new controls list
+                    new_controls = []
+                    for field in fields:
+                        try:
+                            value = self.goggle_event.sdk[field]
+                            if isinstance(value, list):
+                                new_controls.append(
+                                    ft.Text(
+                                        f"{field}: {value}",
+                                        size=11,
+                                        selectable=True,
+                                    )
+                                )
+                            else:
+                                new_controls.append(
+                                    ft.Container(
+                                        ft.Row(
+                                            [
+                                                ft.Text(
+                                                    field,
+                                                    size=11,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    width=200,
+                                                ),
+                                                ft.Text(
+                                                    str(value),
+                                                    size=11,
+                                                    selectable=True,
+                                                ),
+                                            ]
+                                        ),
+                                        padding=2,
+                                    )
+                                )
+                        except:
+                            pass
+                    # Update the column's controls (preserves scroll)
+                    tab_column.controls = new_controls
+                    tab_column.update()
+
+            # Update the CarIdx table
+            if hasattr(self, "goggles_caridx_datatable"):
+                rows = []
+                try:
+                    # Get the number of cars - use bracket notation, not .get()
+                    caridx_lap = self.goggle_event.sdk["CarIdxLap"]
+                    if isinstance(caridx_lap, list):
+                        num_cars = len(caridx_lap)
+                    else:
+                        num_cars = 0
+
+                    for car_idx in range(num_cars):
+                        cells = [ft.DataCell(ft.Text(str(car_idx), size=10))]
+
+                        for field in caridx_fields:
+                            try:
+                                value = self.goggle_event.sdk[field][car_idx]
+                                # Format the value
+                                if isinstance(value, float):
+                                    if value > 1000:
+                                        display_value = f"{value:.1f}"
+                                    else:
+                                        display_value = f"{value:.2f}"
+                                else:
+                                    display_value = str(value)
+                                cells.append(
+                                    ft.DataCell(ft.Text(display_value, size=9))
+                                )
+                            except:
+                                cells.append(ft.DataCell(ft.Text("-", size=9)))
+
+                        rows.append(ft.DataRow(cells=cells))
+
+                    self.goggles_caridx_datatable.rows = rows
+                    self.goggles_caridx_datatable.update()
+                except Exception as e:
+                    # Debug: print the error
+                    print(f"CarIdx table update error: {e}")
+                    pass
+
+        except Exception as ex:
+            pass
+
+    async def goggles_refresh_task(self):
+        """Background task to refresh Beer Goggles telemetry"""
+        while self.goggle_event:
+            self.update_goggles_display()
+            await asyncio.sleep(0.25)  # Update 4 times per second
+
+    def close_goggles_dialog(self, e):
+        """Close Beer Goggles dialog"""
+        if self.goggles_dialog:
+            self.goggles_dialog.open = False
+            self.page.update()
 
 
 def main(page: ft.Page):
