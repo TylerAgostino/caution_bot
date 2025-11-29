@@ -1,3 +1,0 @@
-from modules.page_sources.beer_goggles import beer_goggles
-from modules.page_sources.f1_qualifying import f1_qualifying
-from modules.page_sources.race_control import race_control
