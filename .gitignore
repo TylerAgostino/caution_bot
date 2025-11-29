@@ -7,3 +7,4 @@
 /venv/
 /bot_venv/
 *.pyc
+**/__pycache__/

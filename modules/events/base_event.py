@@ -6,7 +6,6 @@ import time
 import irsdk
 import pyperclip
 import pywinauto
-import streamlit as st
 from pandas import DataFrame, concat
 
 from modules import generate_black_flag_reason, generate_caution_reason
@@ -63,8 +62,14 @@ class BaseEvent:
         self.thread = None
         self.killed = False
         self.task = None
+        try:
+            import streamlit as st
+
+            lh = st.session_state.get("logger", logging.getLogger(__name__))
+        except Exception:
+            lh = logging.getLogger(__name__)
         self.logger = logging.LoggerAdapter(
-            st.session_state.get("logger", logging.getLogger(__name__)),
+            lh,
             {"event": self.__class__.__name__},
         )
         self.cancel_event = cancel_event or threading.Event()

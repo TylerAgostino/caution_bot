@@ -1,7 +1,12 @@
 import queue
 import threading
 
-from streamlit.runtime.scriptrunner import add_script_run_ctx
+try:
+    from streamlit.runtime.scriptrunner import add_script_run_ctx
+
+    STREAMLIT_AVAILABLE = False
+except ImportError:
+    STREAMLIT_AVAILABLE = False
 
 
 class SubprocessManager:
@@ -50,7 +55,8 @@ class SubprocessManager:
         self.cancel_event.clear()
         for thread in self.threads:
             thread.start()
-            add_script_run_ctx(thread)
+            if STREAMLIT_AVAILABLE:
+                add_script_run_ctx(thread)
 
     def stop(self):
         """
