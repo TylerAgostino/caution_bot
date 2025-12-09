@@ -54,7 +54,25 @@ class RaceControlApp:
             "wave_arounds": True,
             "notify_on_skipped_caution": False,
         }
-        self.incident_caution_config = {}
+        self.incident_caution_config = {
+            "drivers_threshold": 3,
+            "incident_window_seconds": 10,
+            "overall_driver_window": 30,
+            "auto_increase": False,
+            "increase_by": 1,
+            "min": 0,
+            "max": -1,
+            "use_lap_based": False,
+            "extend_laps": 0,
+            "pre_extend_laps": 1,
+            "max_laps_behind_leader": 0,
+            "notify_on_skipped_caution": False,
+            "full_sequence": True,
+            "pit_close_advance_warning": 5,
+            "pit_close_max_duration": 90,
+            "wave_around_lap": 1,
+            "wave_arounds": True,
+        }
         self.incident_penalty_config = {}
         self.scheduled_messages = []
         self.collision_penalty_config = {
@@ -113,6 +131,67 @@ class RaceControlApp:
         self.goggles_selected_tab = 0  # Track selected tab to preserve it
         self.goggles_tabs_control = None  # Store reference to Tabs control
 
+    def get_starred_preset(self):
+        """Get the name of the starred preset"""
+        settings_path = os.path.join("presets", ".settings.json")
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r") as f:
+                    settings = json.load(f)
+                    return settings.get("starred_preset")
+            except:
+                pass
+        return None
+
+    def set_starred_preset(self, preset_name: str):
+        """Set a preset as starred"""
+        preset_dir = "presets"
+        if not os.path.exists(preset_dir):
+            os.makedirs(preset_dir)
+
+        settings_path = os.path.join(preset_dir, ".settings.json")
+        settings = {}
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r") as f:
+                    settings = json.load(f)
+            except:
+                pass
+
+        settings["starred_preset"] = preset_name
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=4)
+
+    def load_default_preset(self):
+        """Load the starred preset configuration data on application startup"""
+        starred = self.get_starred_preset()
+
+        # If no starred preset, star the first available preset
+        if not starred:
+            presets = self.get_available_presets()
+            if presets:
+                starred = presets[0]
+                self.set_starred_preset(starred)
+
+        # Load the starred preset data (but don't rebuild UI yet)
+        if starred:
+            preset_path = os.path.join("presets", f"{starred}.json")
+            if os.path.exists(preset_path):
+                try:
+                    with open(preset_path, "r") as f:
+                        config = json.load(f)
+
+                    # Check if this is an old-format preset (list) or new format (dict)
+                    if isinstance(config, dict):
+                        # Load all configuration data
+                        self._load_config_data(config)
+                    else:
+                        # Old format - skip loading, will use defaults
+                        pass
+                except Exception as e:
+                    # If there's any error loading the preset, just use defaults
+                    pass
+
     def main(self, page: ft.Page):
         page.window.prevent_close = True
         self.page = page
@@ -124,6 +203,9 @@ class RaceControlApp:
 
         # Set window close handler to stop events
         page.window.on_event = self.on_window_event
+
+        # Load the starred preset before building UI
+        self.load_default_preset()
 
         # Build the UI
         page.add(
@@ -181,6 +263,29 @@ class RaceControlApp:
             "Save Preset", icon=ft.Icons.SAVE, on_click=self.show_save_preset_dialog
         )
 
+        # Show starred preset indicator
+        starred_preset = self.get_starred_preset()
+        starred_indicator = (
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.STAR, color=ft.Colors.AMBER, size=16),
+                        ft.Text(
+                            f"Default: {starred_preset}"
+                            if starred_preset
+                            else "No default preset",
+                            size=12,
+                            italic=True,
+                        ),
+                    ],
+                    spacing=5,
+                ),
+                padding=5,
+            )
+            if starred_preset
+            else ft.Container()
+        )
+
         return ft.Container(
             content=ft.Row(
                 [
@@ -188,6 +293,7 @@ class RaceControlApp:
                     self.stop_button,
                     self.status_indicator,
                     ft.Container(expand=True),  # Spacer
+                    starred_indicator,
                     save_button,
                     load_button,
                 ],
@@ -196,119 +302,90 @@ class RaceControlApp:
             padding=10,
         )
 
+    def get_tab_definitions(self):
+        """Get all tab definitions with their enabled status"""
+        return [
+            {
+                "name": "Random Cautions",
+                "icon": ft.Icons.WARNING_AMBER,
+                "enabled": self.random_cautions_enabled,
+                "build_func": self.build_random_cautions_tab,
+            },
+            {
+                "name": "Random Code69s",
+                "icon": ft.Icons.SPEED,
+                "enabled": self.random_code69s_enabled,
+                "build_func": self.build_random_code69s_tab,
+            },
+            {
+                "name": "Incident Cautions",
+                "icon": ft.Icons.CAR_CRASH,
+                "enabled": self.incident_cautions_enabled,
+                "build_func": self.build_incident_cautions_tab,
+            },
+            {
+                "name": "Incident Penalties",
+                "icon": ft.Icons.GAVEL,
+                "enabled": self.incident_penalties_enabled,
+                "build_func": self.build_incident_penalties_tab,
+            },
+            {
+                "name": "Scheduled Messages",
+                "icon": ft.Icons.MESSAGE,
+                "enabled": self.scheduled_messages_enabled,
+                "build_func": self.build_scheduled_messages_tab,
+            },
+            {
+                "name": "Collision Penalty",
+                "icon": ft.Icons.CAR_REPAIR,
+                "enabled": self.collision_penalty_enabled,
+                "build_func": self.build_collision_penalty_tab,
+            },
+            {
+                "name": "Clear Black Flag",
+                "icon": ft.Icons.FLAG,
+                "enabled": self.clear_black_flag_enabled,
+                "build_func": self.build_clear_black_flag_tab,
+            },
+            {
+                "name": "Scheduled Black Flag",
+                "icon": ft.Icons.SPORTS_SCORE,
+                "enabled": self.scheduled_black_flag_enabled,
+                "build_func": self.build_scheduled_black_flag_tab,
+            },
+            {
+                "name": "Gap to Leader",
+                "icon": ft.Icons.TIMER,
+                "enabled": self.gap_to_leader_enabled,
+                "build_func": self.build_gap_to_leader_tab,
+            },
+        ]
+
     def build_main_tabs(self):
-        """Build the main tab section for different event types"""
+        """Build the main tab section for different event types, sorted by enabled status"""
+        # Get tab definitions and sort: enabled first, then disabled
+        tab_defs = self.get_tab_definitions()
+        sorted_tabs = sorted(tab_defs, key=lambda x: (not x["enabled"], x["name"]))
+
+        # Build tabs from sorted definitions
+        tabs = []
+        for tab_def in sorted_tabs:
+            tab = ft.Tab(
+                text=tab_def["name"],
+                icon=ft.Container(
+                    content=ft.Icon(tab_def["icon"]),
+                    bgcolor=ft.Colors.GREEN if tab_def["enabled"] else None,
+                    border_radius=5,
+                    padding=5,
+                ),
+                content=tab_def["build_func"](),
+            )
+            tabs.append(tab)
+
         self.tabs_control = ft.Tabs(
             selected_index=0,
             animation_duration=300,
-            tabs=[
-                ft.Tab(
-                    text="Random Cautions",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.WARNING_AMBER),
-                        bgcolor=ft.Colors.GREEN
-                        if self.random_cautions_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_random_cautions_tab(),
-                ),
-                ft.Tab(
-                    text="Random Code69s",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.SPEED),
-                        bgcolor=ft.Colors.GREEN
-                        if self.random_code69s_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_random_code69s_tab(),
-                ),
-                ft.Tab(
-                    text="Incident Cautions",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.CAR_CRASH),
-                        bgcolor=ft.Colors.GREEN
-                        if self.incident_cautions_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_incident_cautions_tab(),
-                ),
-                ft.Tab(
-                    text="Incident Penalties",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.GAVEL),
-                        bgcolor=ft.Colors.GREEN
-                        if self.incident_penalties_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_incident_penalties_tab(),
-                ),
-                ft.Tab(
-                    text="Scheduled Messages",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.MESSAGE),
-                        bgcolor=ft.Colors.GREEN
-                        if self.scheduled_messages_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_scheduled_messages_tab(),
-                ),
-                ft.Tab(
-                    text="Collision Penalty",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.CAR_REPAIR),
-                        bgcolor=ft.Colors.GREEN
-                        if self.collision_penalty_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_collision_penalty_tab(),
-                ),
-                ft.Tab(
-                    text="Clear Black Flag",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.FLAG),
-                        bgcolor=ft.Colors.GREEN
-                        if self.clear_black_flag_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_clear_black_flag_tab(),
-                ),
-                ft.Tab(
-                    text="Scheduled Black Flag",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.SPORTS_SCORE),
-                        bgcolor=ft.Colors.GREEN
-                        if self.scheduled_black_flag_enabled
-                        else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_scheduled_black_flag_tab(),
-                ),
-                ft.Tab(
-                    text="Gap to Leader",
-                    icon=ft.Container(
-                        content=ft.Icon(ft.Icons.TIMER),
-                        bgcolor=ft.Colors.GREEN if self.gap_to_leader_enabled else None,
-                        border_radius=5,
-                        padding=5,
-                    ),
-                    content=self.build_gap_to_leader_tab(),
-                ),
-            ],
+            tabs=tabs,
             expand=1,
         )
 
@@ -322,35 +399,55 @@ class RaceControlApp:
         )
 
     def update_tab_indicators(self):
-        """Update the visual indicators on tab icons"""
+        """Update the visual indicators on tab icons and reorder tabs"""
         if self.tabs_control and self.page:
-            self.tabs_control.tabs[0].icon.bgcolor = (
-                ft.Colors.GREEN if self.random_cautions_enabled else None
-            )
-            self.tabs_control.tabs[1].icon.bgcolor = (
-                ft.Colors.GREEN if self.random_code69s_enabled else None
-            )
-            self.tabs_control.tabs[2].icon.bgcolor = (
-                ft.Colors.GREEN if self.incident_cautions_enabled else None
-            )
-            self.tabs_control.tabs[3].icon.bgcolor = (
-                ft.Colors.GREEN if self.incident_penalties_enabled else None
-            )
-            self.tabs_control.tabs[4].icon.bgcolor = (
-                ft.Colors.GREEN if self.scheduled_messages_enabled else None
-            )
-            self.tabs_control.tabs[5].icon.bgcolor = (
-                ft.Colors.GREEN if self.collision_penalty_enabled else None
-            )
-            self.tabs_control.tabs[6].icon.bgcolor = (
-                ft.Colors.GREEN if self.clear_black_flag_enabled else None
-            )
-            self.tabs_control.tabs[7].icon.bgcolor = (
-                ft.Colors.GREEN if self.scheduled_black_flag_enabled else None
-            )
-            self.tabs_control.tabs[8].icon.bgcolor = (
-                ft.Colors.GREEN if self.gap_to_leader_enabled else None
-            )
+            # Remember the currently selected tab name
+            current_tab_name = None
+            if 0 <= self.tabs_control.selected_index < len(self.tabs_control.tabs):
+                current_tab_name = self.tabs_control.tabs[
+                    self.tabs_control.selected_index
+                ].text
+
+            # Get sorted tab definitions
+            tab_defs = self.get_tab_definitions()
+            sorted_tabs = sorted(tab_defs, key=lambda x: (not x["enabled"], x["name"]))
+
+            # Rebuild tabs in sorted order
+            new_tabs = []
+            new_selected_index = 0
+            for i, tab_def in enumerate(sorted_tabs):
+                tab = ft.Tab(
+                    text=tab_def["name"],
+                    icon=ft.Container(
+                        content=ft.Icon(tab_def["icon"]),
+                        bgcolor=ft.Colors.GREEN if tab_def["enabled"] else None,
+                        border_radius=5,
+                        padding=5,
+                    ),
+                    content=tab_def["build_func"](),
+                )
+                new_tabs.append(tab)
+
+                # Track the new index of the previously selected tab
+                if tab_def["name"] == current_tab_name:
+                    new_selected_index = i
+
+            # Update tabs and maintain selection
+            self.tabs_control.tabs = new_tabs
+            self.tabs_control.selected_index = new_selected_index
+            self.page.update()
+
+    def rebuild_all_tabs(self):
+        """Rebuild all tab contents (used when enabling/disabling race control)"""
+        if self.tabs_control and self.page:
+            tab_defs = self.get_tab_definitions()
+            sorted_tabs = sorted(tab_defs, key=lambda x: (not x["enabled"], x["name"]))
+
+            # Rebuild each tab's content
+            for i, tab_def in enumerate(sorted_tabs):
+                if i < len(self.tabs_control.tabs):
+                    self.tabs_control.tabs[i].content = tab_def["build_func"]()
+
             self.page.update()
 
     def build_random_cautions_tab(self):
@@ -2330,15 +2427,7 @@ class RaceControlApp:
         """Start the race control system"""
         self.is_running = True
         # Rebuild tabs to update disabled states
-        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
-        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
-        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
-        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
-        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
-        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
-        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
-        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
-        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+        self.rebuild_all_tabs()
 
         # Rebuild consumer section to disable controls
         # Note: Consumer section is in page.controls[2].controls[2]
@@ -2622,15 +2711,7 @@ class RaceControlApp:
         self.status_indicator.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.RED)
 
         # Rebuild tabs to re-enable all controls
-        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
-        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
-        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
-        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
-        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
-        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
-        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
-        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
-        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+        self.rebuild_all_tabs()
 
         # Rebuild consumer section to re-enable controls
         # Note: Consumer section is in page.controls[2].controls[2]
@@ -2680,14 +2761,33 @@ class RaceControlApp:
         def close_dlg(e):
             self.page.close(dlg)
 
-        def load_preset(e):
+        def load_preset_handler(e):
             selected = preset_list.value
             if selected:
                 self.load_preset(selected)
                 close_dlg(e)
 
+        def star_preset_handler(e):
+            selected = preset_list.value
+            if selected:
+                self.set_starred_preset(selected)
+                # Refresh the header to show the new starred preset
+                header_row = self.page.controls[0]
+                header_row.content = self.build_header().content
+                # Refresh the dialog to show the new star
+                self.page.close(dlg)
+                self.show_load_preset_dialog(e)
+                # Show success message
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Preset '{selected}' is now starred!"),
+                    bgcolor=ft.Colors.BLUE,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+
         # Get available presets
         presets = self.get_available_presets()
+        starred_preset = self.get_starred_preset()
 
         if not presets:
             dlg = ft.AlertDialog(
@@ -2696,20 +2796,55 @@ class RaceControlApp:
                 actions=[ft.TextButton("OK", on_click=close_dlg)],
             )
         else:
-            preset_list = ft.Dropdown(
-                label="Select Preset",
-                options=[ft.dropdown.Option(p) for p in presets],
-                width=300,
-            )
+            # Filter out old-format presets
+            valid_presets = []
+            for p in presets:
+                preset_path = os.path.join("presets", f"{p}.json")
+                try:
+                    with open(preset_path, "r") as f:
+                        config = json.load(f)
+                    if isinstance(config, dict):
+                        valid_presets.append(p)
+                except:
+                    pass
 
-            dlg = ft.AlertDialog(
-                title=ft.Text("Load Preset"),
-                content=preset_list,
-                actions=[
-                    ft.TextButton("Cancel", on_click=close_dlg),
-                    ft.TextButton("Load", on_click=load_preset),
-                ],
-            )
+            if not valid_presets:
+                dlg = ft.AlertDialog(
+                    title=ft.Text("No Valid Presets Found"),
+                    content=ft.Text(
+                        "All presets use the old format. Please save new presets using the 'Save Preset' button."
+                    ),
+                    actions=[ft.TextButton("OK", on_click=close_dlg)],
+                )
+            else:
+                # Create dropdown with star indicator for starred preset
+                options = []
+                for p in valid_presets:
+                    label = f"★ {p}" if p == starred_preset else p
+                    options.append(ft.dropdown.Option(key=p, text=label))
+
+                preset_list = ft.Dropdown(
+                    label="Select Preset",
+                    options=options,
+                    value=starred_preset if starred_preset in valid_presets else None,
+                    width=300,
+                )
+
+                star_button = ft.TextButton(
+                    "⭐ Star",
+                    on_click=star_preset_handler,
+                    tooltip="Set as default preset to load on startup",
+                )
+
+                dlg = ft.AlertDialog(
+                    title=ft.Text("Load Preset"),
+                    content=preset_list,
+                    actions=[
+                        ft.TextButton("Cancel", on_click=close_dlg),
+                        star_button,
+                        ft.TextButton("Load", on_click=load_preset_handler),
+                    ],
+                )
 
         self.page.open(dlg)
 
@@ -2771,15 +2906,12 @@ class RaceControlApp:
         self.page.snack_bar.open = True
         self.page.update()
 
-    def load_preset(self, name: str):
-        """Load a saved preset"""
-        preset_path = os.path.join("presets", f"{name}.json")
-        if not os.path.exists(preset_path):
-            return
+    def _load_config_data(self, config: dict):
+        """Load configuration data from a preset config dictionary
 
-        with open(preset_path, "r") as f:
-            config = json.load(f)
-
+        Args:
+            config: Dictionary containing preset configuration data
+        """
         # Load Random Cautions
         self.random_caution_configs = config.get("random_cautions", [])
         self.random_caution_global_config = config.get(
@@ -2827,13 +2959,23 @@ class RaceControlApp:
 
         # Load Incident Caution
         self.incident_caution_config = config.get("incident_caution", {})
-        # Ensure use_lap_based is set (default to False for old presets)
-        if "use_lap_based" not in self.incident_caution_config:
-            self.incident_caution_config["use_lap_based"] = False
-        # Ensure incident_window_seconds is set (default to 10 for old presets)
+        # Ensure all required fields are set with defaults
+        if "drivers_threshold" not in self.incident_caution_config:
+            self.incident_caution_config["drivers_threshold"] = 3
         if "incident_window_seconds" not in self.incident_caution_config:
             self.incident_caution_config["incident_window_seconds"] = 10
-        # Ensure RandomCautionEvent parameters are set
+        if "overall_driver_window" not in self.incident_caution_config:
+            self.incident_caution_config["overall_driver_window"] = 30
+        if "auto_increase" not in self.incident_caution_config:
+            self.incident_caution_config["auto_increase"] = False
+        if "increase_by" not in self.incident_caution_config:
+            self.incident_caution_config["increase_by"] = 1
+        if "min" not in self.incident_caution_config:
+            self.incident_caution_config["min"] = 0
+        if "max" not in self.incident_caution_config:
+            self.incident_caution_config["max"] = -1
+        if "use_lap_based" not in self.incident_caution_config:
+            self.incident_caution_config["use_lap_based"] = False
         if "extend_laps" not in self.incident_caution_config:
             self.incident_caution_config["extend_laps"] = 0
         if "pre_extend_laps" not in self.incident_caution_config:
@@ -2842,6 +2984,16 @@ class RaceControlApp:
             self.incident_caution_config["max_laps_behind_leader"] = 0
         if "notify_on_skipped_caution" not in self.incident_caution_config:
             self.incident_caution_config["notify_on_skipped_caution"] = False
+        if "full_sequence" not in self.incident_caution_config:
+            self.incident_caution_config["full_sequence"] = True
+        if "pit_close_advance_warning" not in self.incident_caution_config:
+            self.incident_caution_config["pit_close_advance_warning"] = 5
+        if "pit_close_max_duration" not in self.incident_caution_config:
+            self.incident_caution_config["pit_close_max_duration"] = 90
+        if "wave_around_lap" not in self.incident_caution_config:
+            self.incident_caution_config["wave_around_lap"] = 1
+        if "wave_arounds" not in self.incident_caution_config:
+            self.incident_caution_config["wave_arounds"] = True
         self.incident_cautions_enabled = config.get("incident_cautions_enabled", True)
 
         # Load Incident Penalty
@@ -2895,31 +3047,60 @@ class RaceControlApp:
         self.audio_consumer_enabled = audio_consumer.get("enabled", False)
         self.audio_consumer_config = audio_consumer.get("config", {})
 
+    def load_preset(self, name: str, silent: bool = False):
+        """Load a saved preset
+
+        Args:
+            name: Name of the preset to load
+            silent: If True, don't show success message (for startup loading)
+        """
+        preset_path = os.path.join("presets", f"{name}.json")
+        if not os.path.exists(preset_path):
+            return
+
+        with open(preset_path, "r") as f:
+            config = json.load(f)
+
+        # Check if this is an old-format preset (list) or new format (dict)
+        if not isinstance(config, dict):
+            # Old format preset file - show error message
+            if not silent:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(
+                        f"Preset '{name}' uses old format. Please save it again to update."
+                    ),
+                    bgcolor=ft.Colors.ORANGE,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+            return
+
+        # Load configuration data using shared method
+        self._load_config_data(config)
+
         # Update tab indicators
         self.update_tab_indicators()
 
         # Rebuild all tabs to reflect new values
-        self.tabs_control.tabs[0].content = self.build_random_cautions_tab()
-        self.tabs_control.tabs[1].content = self.build_random_code69s_tab()
-        self.tabs_control.tabs[2].content = self.build_incident_cautions_tab()
-        self.tabs_control.tabs[3].content = self.build_incident_penalties_tab()
-        self.tabs_control.tabs[4].content = self.build_scheduled_messages_tab()
-        self.tabs_control.tabs[5].content = self.build_collision_penalty_tab()
-        self.tabs_control.tabs[6].content = self.build_clear_black_flag_tab()
-        self.tabs_control.tabs[7].content = self.build_scheduled_black_flag_tab()
-        self.tabs_control.tabs[8].content = self.build_gap_to_leader_tab()
+        self.rebuild_all_tabs()
 
         # Rebuild consumer section to reflect new values
         main_row = self.page.controls[2]  # The Row containing tabs and consumers
         main_row.controls[2] = self.build_consumer_section()
 
-        # Show success message
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text(f"Preset '{name}' loaded successfully!"),
-            bgcolor=ft.Colors.GREEN,
-        )
-        self.page.snack_bar.open = True
-        self.page.update()
+        # Refresh the header to show current starred preset
+        if self.page and self.page.controls:
+            header_row = self.page.controls[0]
+            header_row.content = self.build_header().content
+
+        # Show success message (unless silent mode for startup)
+        if not silent:
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Preset '{name}' loaded successfully!"),
+                bgcolor=ft.Colors.GREEN,
+            )
+            self.page.snack_bar.open = True
+            self.page.update()
 
     def build_footer(self):
         """Build the footer with special mode buttons"""
