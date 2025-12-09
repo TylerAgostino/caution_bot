@@ -1557,19 +1557,21 @@ class RaceControlApp:
 
     def build_incident_penalties_tab(self):
         """Build the Incident Penalties tab content"""
-        config = {
-            "initial_penalty_incidents": 40,
-            "initial_penalty": "d",
-            "recurring_peanlty_every_incidents": 15,
-            "recurring_penalty": "0",
-            "end_recurring_incidents": 55,
-            "end_recurring_penalty": "0",
-            "sound": False,
-        }
-        self.incident_penalty_config = config
+        # Only initialize config if it doesn't exist yet
+        if not self.incident_penalty_config:
+            self.incident_penalty_config = {
+                "initial_penalty_incidents": 40,
+                "initial_penalty": "d",
+                "recurring_peanlty_every_incidents": 15,
+                "recurring_penalty": "0",
+                "end_recurring_incidents": 55,
+                "end_recurring_penalty": "0",
+                "sound": False,
+            }
+        config = self.incident_penalty_config
 
         def update_config(key, value):
-            config[key] = value
+            self.incident_penalty_config[key] = value
 
         def toggle_enabled(e):
             self.incident_penalties_enabled = e.control.value
@@ -2277,11 +2279,13 @@ class RaceControlApp:
 
     def build_text_consumer(self):
         """Build the text consumer configuration"""
-        config = {"password": "", "room": "", "test": False}
-        self.text_consumer_config = config
+        # Only initialize config if it doesn't exist yet
+        if not self.text_consumer_config:
+            self.text_consumer_config = {"password": "", "room": "", "test": False}
+        config = self.text_consumer_config
 
         def update_config(key, value):
-            config[key] = value
+            self.text_consumer_config[key] = value
 
         def toggle_enabled(e):
             self.text_consumer_enabled = e.control.value
@@ -2340,16 +2344,18 @@ class RaceControlApp:
 
     def build_audio_consumer(self):
         """Build the audio consumer configuration"""
-        config = {
-            "vc_id": "420037391882125313",
-            "volume": 1.0,
-            "token": "",
-            "hello": True,
-        }
-        self.audio_consumer_config = config
+        # Only initialize config if it doesn't exist yet
+        if not self.audio_consumer_config:
+            self.audio_consumer_config = {
+                "vc_id": "420037391882125313",
+                "volume": 1.0,
+                "token": "",
+                "hello": True,
+            }
+        config = self.audio_consumer_config
 
         def update_config(key, value):
-            config[key] = value
+            self.audio_consumer_config[key] = value
 
         def toggle_enabled(e):
             self.audio_consumer_enabled = e.control.value
