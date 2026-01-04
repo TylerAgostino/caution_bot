@@ -2934,7 +2934,7 @@ class RaceControlApp:
                 try:
                     with open(preset_path, "r") as f:
                         config = json.load(f)
-                    if isinstance(config, dict):
+                    if isinstance(config, dict) and not p.endswith(".settings"):
                         valid_presets.append(p)
                 except:
                     pass
