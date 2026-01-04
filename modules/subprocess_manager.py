@@ -34,6 +34,7 @@ class SubprocessManager:
         self.chat_lock = threading.Lock()
         self.audio_queue = queue.Queue()
         self.broadcast_text_queue = queue.Queue()
+        self.chat_consumer_queue = queue.Queue()
         self.threads = [
             threading.Thread(
                 target=coro,
@@ -43,6 +44,7 @@ class SubprocessManager:
                     "chat_lock": self.chat_lock,
                     "audio_queue": self.audio_queue,
                     "broadcast_text_queue": self.broadcast_text_queue,
+                    "chat_consumer_queue": self.chat_consumer_queue,
                 },
             )
             for coro in coros

@@ -92,8 +92,12 @@ class RaceControlApp:
         }
         self.text_consumer_config = {}
         self.audio_consumer_config = {}
+        self.chat_consumer_config = {}
         self.text_consumer_enabled = False
         self.audio_consumer_enabled = False
+        self.chat_consumer_enabled = False
+        self.chat_message_list = None
+        self.chat_refresh_timer = None
 
         # Master enable toggles for event tabs
         self.random_cautions_enabled = True
@@ -2256,7 +2260,7 @@ class RaceControlApp:
         )
 
     def build_consumer_section(self):
-        """Build the consumer events section (text and audio)"""
+        """Build the consumer events section (text, audio, and chat)"""
         return ft.Column(
             [
                 ft.Container(
@@ -2269,6 +2273,14 @@ class RaceControlApp:
                 ft.Container(height=20),
                 ft.Container(
                     content=self.build_audio_consumer(),
+                    width=400,
+                    border=ft.border.all(1, ft.Colors.OUTLINE),
+                    border_radius=5,
+                    padding=15,
+                ),
+                ft.Container(height=20),
+                ft.Container(
+                    content=self.build_chat_consumer(),
                     width=400,
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
@@ -2426,6 +2438,70 @@ class RaceControlApp:
                 volume_slider,
                 token_field,
                 hello_check,
+            ]
+        )
+
+    def build_chat_consumer(self):
+        """Build the chat consumer configuration"""
+        # Only initialize config if it doesn't exist yet
+        if not self.chat_consumer_config:
+            self.chat_consumer_config = {"test": False}
+        config = self.chat_consumer_config
+
+        def update_config(key, value):
+            self.chat_consumer_config[key] = value
+
+        def toggle_enabled(e):
+            self.chat_consumer_enabled = e.control.value
+            test_check.disabled = not e.control.value or self.is_running
+            self.page.update()
+
+        enable_check = ft.Checkbox(
+            label="Enable Chat Consumer",
+            value=self.chat_consumer_enabled,
+            on_change=toggle_enabled,
+            disabled=self.is_running,
+        )
+
+        test_check = ft.Checkbox(
+            label="Test Mode",
+            value=config["test"],
+            disabled=not self.chat_consumer_enabled or self.is_running,
+            on_change=lambda e: update_config("test", e.control.value),
+        )
+
+        # Create a ListView to display chat messages
+        self.chat_message_list = ft.ListView(
+            expand=1,
+            spacing=5,
+            padding=10,
+            auto_scroll=True,
+            height=150,
+        )
+
+        return ft.Column(
+            [
+                ft.Text(
+                    "Chat Consumer (Driver Messages)",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Text(
+                    "Display messages directed to your car number (e.g., /123, #123, @123)",
+                    size=11,
+                    color=ft.Colors.GREY,
+                ),
+                ft.Divider(),
+                enable_check,
+                test_check,
+                ft.Container(height=10),
+                ft.Text("Driver Messages:", size=12, weight=ft.FontWeight.BOLD),
+                ft.Container(
+                    content=self.chat_message_list,
+                    border=ft.border.all(1, ft.Colors.OUTLINE),
+                    border_radius=5,
+                    bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.ON_SURFACE),
+                ),
             ]
         )
 
@@ -2676,6 +2752,12 @@ class RaceControlApp:
                 {"class": events.AudioConsumerEvent, "args": self.audio_consumer_config}
             )
 
+        # Add Chat Consumer if enabled
+        if self.chat_consumer_enabled:
+            event_list.append(
+                {"class": events.ChatConsumerEvent, "args": self.chat_consumer_config}
+            )
+
         # Create event instances
         event_instances = [item["class"](**item["args"]) for item in event_list]
 
@@ -2683,6 +2765,10 @@ class RaceControlApp:
         event_run_methods = [event.run for event in event_instances]
         self.subprocess_manager = SubprocessManager(event_run_methods)
         self.subprocess_manager.start()
+
+        # Start chat consumer refresh task if enabled
+        if self.chat_consumer_enabled:
+            self.page.run_task(self.chat_refresh_task)
 
         # Update UI
         self.is_running = True
@@ -2698,10 +2784,69 @@ class RaceControlApp:
         self.status_indicator.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.GREEN)
         self.page.update()
 
+    async def chat_refresh_task(self):
+        """Background task to check for new chat messages and display them"""
+        import datetime
+        import queue
+
+        while self.is_running and self.chat_consumer_enabled:
+            try:
+                # Access the shared chat_consumer_queue from SubprocessManager
+                if self.subprocess_manager and hasattr(
+                    self.subprocess_manager, "chat_consumer_queue"
+                ):
+                    chat_queue = self.subprocess_manager.chat_consumer_queue
+
+                    # Check for new messages in the queue
+                    try:
+                        while not chat_queue.empty():
+                            message = chat_queue.get_nowait()
+                            # Add message to the UI list
+                            if self.chat_message_list:
+                                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                                message_container = ft.Container(
+                                    content=ft.Column(
+                                        [
+                                            ft.Text(
+                                                f"{timestamp}",
+                                                size=10,
+                                                color=ft.Colors.GREY,
+                                            ),
+                                            ft.Text(
+                                                message,
+                                                size=14,
+                                                weight=ft.FontWeight.W_500,
+                                            ),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    padding=5,
+                                    bgcolor=ft.Colors.with_opacity(
+                                        0.1, ft.Colors.PRIMARY
+                                    ),
+                                    border_radius=5,
+                                )
+                                self.chat_message_list.controls.append(
+                                    message_container
+                                )
+                                self.page.update()
+                    except queue.Empty:
+                        pass
+            except Exception as e:
+                # Log any errors but don't stop the refresh task
+                print(f"Error in chat_refresh_task: {e}")
+
+            await asyncio.sleep(0.2)  # Check 5 times per second
+
     def stop_race_control(self, e):
         """Stop the race control system"""
         if self.subprocess_manager:
             self.subprocess_manager.stop()
+            self.subprocess_manager = None
+
+        # Clear chat messages when stopping
+        if self.chat_message_list:
+            self.chat_message_list.controls.clear()
 
         # Update UI
         self.is_running = False
@@ -2899,6 +3044,10 @@ class RaceControlApp:
                 "enabled": self.audio_consumer_enabled,
                 "config": self.audio_consumer_config,
             },
+            "chat_consumer": {
+                "enabled": self.chat_consumer_enabled,
+                "config": self.chat_consumer_config,
+            },
         }
 
         with open(os.path.join(preset_dir, f"{name}.json"), "w") as f:
@@ -3052,6 +3201,11 @@ class RaceControlApp:
         audio_consumer = config.get("audio_consumer", {})
         self.audio_consumer_enabled = audio_consumer.get("enabled", False)
         self.audio_consumer_config = audio_consumer.get("config", {})
+
+        # Load Chat Consumer
+        chat_consumer = config.get("chat_consumer", {})
+        self.chat_consumer_enabled = chat_consumer.get("enabled", False)
+        self.chat_consumer_config = chat_consumer.get("config", {})
 
     def load_preset(self, name: str, silent: bool = False):
         """Load a saved preset

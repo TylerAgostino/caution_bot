@@ -40,6 +40,7 @@ class BaseEvent:
         chat_lock=None,
         audio_queue=None,
         broadcast_text_queue=None,
+        chat_consumer_queue=None,
         max_laps_behind_leader=99,
     ):
         """
@@ -51,6 +52,9 @@ class BaseEvent:
             cancel_event (threading.Event, optional): Event to signal cancellation. Defaults to None.
             busy_event (threading.Event, optional): Event to signal busy state. Defaults to None.
             chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
+            audio_queue (queue.Queue, optional): Queue for audio messages. Defaults to None.
+            broadcast_text_queue (queue.Queue, optional): Queue for broadcast text messages. Defaults to None.
+            chat_consumer_queue (queue.Queue, optional): Queue for chat messages directed to the player. Defaults to None.
             max_laps_behind_leader (int, optional): Maximum Laps Down for cars to be considered in the field. Defaults to 99.
         """
         self.sdk = irsdk.IRSDK() if sdk is None else sdk
@@ -77,12 +81,14 @@ class BaseEvent:
         self.chat_lock = chat_lock or threading.Lock()
         self.audio_queue = audio_queue or queue.Queue()
         self.broadcast_text_queue = broadcast_text_queue or queue.Queue()
+        self.chat_consumer_queue = chat_consumer_queue or queue.Queue()
         self.max_laps_behind_leader = int(max_laps_behind_leader)
         self.logger.debug(f"cancel: {self.cancel_event}")
         self.logger.debug(f"busy: {self.busy_event}")
         self.logger.debug(f"chat: {self.chat_lock}")
         self.logger.debug(f"broadcast: {self.broadcast_text_queue}")
         self.logger.debug(f"audio: {self.audio_queue}")
+        self.logger.debug(f"chat_consumer: {self.chat_consumer_queue}")
 
     def sleep(self, seconds):
         """
@@ -106,6 +112,7 @@ class BaseEvent:
         chat_lock=None,
         audio_queue=None,
         broadcast_text_queue=None,
+        chat_consumer_queue=None,
     ):
         """
         Runs the event sequence.
@@ -116,12 +123,14 @@ class BaseEvent:
             chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio commands. Defaults to None.
             broadcast_text_queue (queue.Queue, optional): Queue for broadcast text messages. Defaults to None.
+            chat_consumer_queue (queue.Queue, optional): Queue for chat consumer messages. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.chat_lock = chat_lock or self.chat_lock
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
+        self.chat_consumer_queue = chat_consumer_queue or self.chat_consumer_queue
         try:
             self.event_sequence()
         except Exception as e:
@@ -150,10 +159,42 @@ class BaseEvent:
         Sends a chat message in the iRacing simulator.
         Uses chat_lock to ensure thread-safe access to the chat functionality.
 
+        Also checks if the message is a DM to the player car (e.g., /123, #123, @123)
+        and if so, places it on the chat consumer queue for display in the UI.
+
         Args:
             message (str): The message to send.
             race_control (bool, optional): Whether the message is from race control. Defaults to False.
         """
+        # Check if this is a DM to the player car
+        import re
+
+        try:
+            # Get player car number
+            player_car_idx = self.sdk["PlayerCarIdx"]
+            driver = [
+                d
+                for d in self.sdk["DriverInfo"]["Drivers"]
+                if d["CarIdx"] == player_car_idx
+            ][0]
+            player_car_number = str(driver["CarNumber"])
+
+            # Check if message starts with /123, #123, or @123 (where 123 is the player car number)
+            dm_pattern = rf"^[/@#]{player_car_number}\s+(.+)$"
+            match = re.match(dm_pattern, message)
+
+            if match:
+                # Extract the message content without the prefix
+                dm_content = match.group(1)
+                # Put it on the chat consumer queue for UI display
+                self.chat_consumer_queue.put(dm_content)
+                self.logger.debug(
+                    f"DM to player car detected, queued for display: {dm_content}"
+                )
+        except Exception as e:
+            # If anything goes wrong with DM detection, just log and continue
+            self.logger.debug(f"Error checking for player DM: {e}")
+
         # Acquire the lock - this will block if another thread holds it
         while not self.chat_lock.acquire(blocking=False):
             self.sleep(0.1)

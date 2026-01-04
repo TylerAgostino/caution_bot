@@ -89,6 +89,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         chat_lock=None,
         audio_queue=None,
         broadcast_text_queue=None,
+        chat_consumer_queue=None,
     ):
         """
         Runs the event sequence.
@@ -99,12 +100,14 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
             chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
             broadcast_text_queue (queue.Queue, optional): Queue for text events. Defaults to None.
+            chat_consumer_queue (queue.Queue, optional): Queue for chat consumer messages. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.chat_lock = chat_lock or self.chat_lock
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
+        self.chat_consumer_queue = chat_consumer_queue or self.chat_consumer_queue
         self.wait_for_start()
         self.logger.debug("Starting MultiDriverTimedIncidentEvent run loop.")
         iterator = self.driver_4x_generator(self.incident_window_seconds)
