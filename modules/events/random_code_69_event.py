@@ -406,13 +406,38 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     car_class = self.get_car_class(carIdx=car['CarIdx'])
                     class_leader = leaders[car_class]
 
-                    distance_completed = car['total_completed']
-                    class_leader_distance_completed = class_leader['total_completed']
-                    class_leader_in_pits = class_leader['InPits']
+                    distance_completed = car["total_completed"]
+                    class_leader_distance_completed = class_leader["total_completed"]
+                    class_leader_in_pits = class_leader["InPits"]
 
-                    gets_catch_up = 1 if class_leader['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and class_leader['CarIdx'] != car['CarIdx'] and not class_leader_in_pits else 0
-                    gets_wave_around = 1 if car['LapCompleted'] <= lead_lap else 0 # todo: this won't work for multiclass... I think?
-                    gets_wave_around = gets_wave_around if self.wave_arounds and not self.quickie else 0
+                    gets_catch_up = (
+                        1
+                        if class_leader["CarIdx"]
+                        not in [c["CarIdx"] for c in restart_order_generator.order]
+                        and class_leader["CarIdx"] != car["CarIdx"]
+                        and not class_leader_in_pits
+                        else 0
+                    )
+                    gets_wave_around = 0
+                    same_class_pacing = [
+                        c
+                        for c in restart_order_generator.order
+                        if self.get_car_class(carIdx=c["CarIdx"]) == car_class
+                    ]
+                    if len(same_class_pacing) > 0:
+                        pacing_leader = same_class_pacing[0]
+                        pacing_leader_laps_complete = pacing_leader["BeganPacingLap"]
+                        gets_wave_around = (
+                            1
+                            if pacing_leader_laps_complete > car["LapCompleted"]
+                            else 0
+                        )
+
+                    gets_wave_around = (
+                        gets_wave_around
+                        if self.wave_arounds and not self.quickie
+                        else 0
+                    )
                     if gets_wave_around:
                         self.logger.debug(f'Laps Completed: {distance_completed}')
                         self.logger.debug(f'Class Leader Laps Completed: {class_leader_distance_completed}')
