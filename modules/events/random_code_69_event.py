@@ -379,7 +379,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 if ((car['CarIdx'] not in [c['CarIdx'] for c in restart_order_generator.order] and
                     self.car_has_completed_lap(car, last_step, this_step) and not self.sdk['CarIdxOnPitRoad'][car['CarIdx']])
                 or (
-                    self.car_has_left_pits(car, last_step, this_step) and self.sdk['CarIdxLapDistPct'][car['CarIdx']] < 0.5
+                    self.car_has_left_pits(car, last_step, this_step) and [x for x in this_step if x['CarIdx'] == car['CarIdx']][0]['LapDistPct'] < 0.5
                 )
                 or (car['CarIdx'] in [c['CarIdx'] for c in restart_order_generator.order] and
                     (self.car_has_entered_pits(car, last_step, this_step) or car_flags & self.Flags.black)
