@@ -199,11 +199,11 @@ class RaceControlApp:
     def main(self, page: ft.Page):
         page.window.prevent_close = True
         self.page = page
-        self.page.window.height = 1150
+        self.page.window.height = 1040
         self.page.window.width = 1400
         page.title = "Better Caution Bot - Race Control"
         page.theme_mode = ft.ThemeMode.DARK
-        page.padding = 20
+        page.padding = 10
 
         # Set window close handler to stop events
         page.window.on_event = self.on_window_event
@@ -214,16 +214,16 @@ class RaceControlApp:
         # Build the UI
         page.add(
             self.build_header(),
-            ft.Divider(height=20),
+            ft.Divider(height=10),
             ft.Row(
                 [
                     self.build_main_tabs(),
-                    ft.Container(width=20),
+                    ft.Container(width=10),
                     self.build_consumer_section(),
                 ],
                 vertical_alignment=ft.CrossAxisAlignment.START,
             ),
-            ft.Divider(height=20),
+            ft.Divider(height=10),
             self.build_footer(),
         )
 
@@ -232,12 +232,12 @@ class RaceControlApp:
         self.status_indicator = ft.Container(
             content=ft.Row(
                 [
-                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=16),
-                    ft.Text("Stopped", size=16, weight=ft.FontWeight.BOLD),
+                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED, size=14),
+                    ft.Text("Stopped", size=14, weight=ft.FontWeight.BOLD),
                 ],
                 spacing=5,
             ),
-            padding=10,
+            padding=8,
             border_radius=5,
             bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.RED),
         )
@@ -303,7 +303,7 @@ class RaceControlApp:
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
-            padding=10,
+            padding=5,
         )
 
     def get_tab_definitions(self):
@@ -396,10 +396,10 @@ class RaceControlApp:
         return ft.Container(
             content=self.tabs_control,
             width=900,
-            height=900,
+            height=800,
             border=ft.border.all(1, ft.Colors.OUTLINE),
             border_radius=5,
-            padding=10,
+            padding=8,
         )
 
     def update_tab_indicators(self):
@@ -457,7 +457,7 @@ class RaceControlApp:
     def build_random_cautions_tab(self):
         """Build the Random Cautions tab content"""
         self.random_caution_list = ft.Column(
-            scroll=ft.ScrollMode.AUTO, spacing=10, expand=True
+            scroll=ft.ScrollMode.AUTO, spacing=5, expand=True
         )
 
         def toggle_enabled(e):
@@ -629,7 +629,7 @@ class RaceControlApp:
                         [
                             ft.Text(
                                 "Random Caution Events",
-                                size=20,
+                                size=16,
                                 weight=ft.FontWeight.BOLD,
                             ),
                             ft.Container(expand=True),
@@ -637,34 +637,36 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     lap_based_toggle,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     ft.Text(
-                        "Global Caution Settings", size=14, weight=ft.FontWeight.BOLD
+                        "Global Caution Settings", size=13, weight=ft.FontWeight.BOLD
                     ),
                     ft.Row(
                         [pit_warning, pit_duration, max_laps_behind],
                         wrap=True,
-                        spacing=10,
+                        spacing=8,
                     ),
                     ft.Row(
                         [wave_around_lap, extend_laps, pre_extend_laps],
                         wrap=True,
-                        spacing=10,
+                        spacing=8,
                     ),
                     ft.Row(
                         [wave_arounds_check, notify_skip_check, full_sequence_check],
                         wrap=True,
+                        spacing=8,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     window_label,
                     add_button,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     self.random_caution_list,
-                ]
+                ],
+                spacing=5,
             ),
-            padding=10,
+            padding=8,
         )
 
     def add_random_caution_event(self):
@@ -738,22 +740,23 @@ class RaceControlApp:
                             [
                                 ft.Text(
                                     f"Caution Event #{index + 1}",
-                                    size=16,
+                                    size=14,
                                     weight=ft.FontWeight.BOLD,
                                 ),
                                 ft.Container(expand=True),
                                 remove_button,
                             ]
                         ),
-                        ft.Divider(),
+                        ft.Divider(height=5),
                         ft.Row(
                             [window_start, window_end, likelihood],
                             wrap=True,
-                            spacing=10,
+                            spacing=8,
                         ),
-                    ]
+                    ],
+                    spacing=5,
                 ),
-                padding=15,
+                padding=10,
             )
         )
 
@@ -773,7 +776,7 @@ class RaceControlApp:
     def build_random_code69s_tab(self):
         """Build the Random Code69s tab content"""
         self.random_code69_list = ft.Column(
-            scroll=ft.ScrollMode.AUTO, spacing=10, expand=True
+            scroll=ft.ScrollMode.AUTO, spacing=5, expand=True
         )
 
         def toggle_enabled(e):
@@ -1013,7 +1016,7 @@ class RaceControlApp:
                             ft.Row(
                                 [quickie_window, quickie_class_sep, quickie_lanes_form],
                                 wrap=True,
-                                spacing=10,
+                                spacing=8,
                             ),
                             ft.Row(
                                 [
@@ -1022,11 +1025,11 @@ class RaceControlApp:
                                     quickie_invert_check,
                                 ],
                                 wrap=True,
-                                spacing=10,
+                                spacing=8,
                             ),
                         ]
                     ),
-                    padding=10,
+                    padding=8,
                 )
             ],
         )
@@ -1054,7 +1057,7 @@ class RaceControlApp:
                         [
                             ft.Text(
                                 "Random Code69 Events",
-                                size=20,
+                                size=16,
                                 weight=ft.FontWeight.BOLD,
                             ),
                             ft.Container(expand=True),
@@ -1062,35 +1065,37 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     lap_based_toggle,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     ft.Text(
-                        "Global Code69 Settings", size=14, weight=ft.FontWeight.BOLD
+                        "Global Code69 Settings", size=13, weight=ft.FontWeight.BOLD
                     ),
                     ft.Row(
                         [max_speed, wet_speed, restart_speed, reminder_freq],
                         wrap=True,
-                        spacing=10,
+                        spacing=8,
                     ),
                     ft.Row(
                         [class_sep, lanes_form, restart_pos, lane_names],
                         wrap=True,
-                        spacing=10,
+                        spacing=8,
                     ),
                     ft.Row(
                         [wave_arounds_check, notify_skip_check],
                         wrap=True,
+                        spacing=8,
                     ),
                     advanced,
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     window_label,
                     add_button,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     self.random_code69_list,
-                ]
+                ],
+                spacing=5,
             ),
-            padding=10,
+            padding=8,
         )
 
     def add_random_code69_event(self):
@@ -1195,23 +1200,24 @@ class RaceControlApp:
                         ft.Row(
                             [
                                 ft.Text(
-                                    f"Random Code69 Event #{index + 1}",
-                                    size=16,
+                                    f"Code69 Event #{index + 1}",
+                                    size=14,
                                     weight=ft.FontWeight.BOLD,
                                 ),
                                 ft.Container(expand=True),
                                 remove_button,
                             ]
                         ),
-                        ft.Divider(),
+                        ft.Divider(height=5),
                         ft.Row(
                             [window_start, window_end, likelihood],
                             wrap=True,
-                            spacing=10,
+                            spacing=8,
                         ),
-                    ]
+                    ],
+                    spacing=5,
                 ),
-                padding=15,
+                padding=10,
             )
         )
 
@@ -1490,7 +1496,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Multi-Driver Incident Caution",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -1505,9 +1511,9 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     lap_based_toggle,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     ft.Text(
                         "Incident Detection Settings",
                         size=14,
@@ -1530,12 +1536,12 @@ class RaceControlApp:
                         wrap=True,
                         spacing=10,
                     ),
-                    ft.Row([increase_by], wrap=True, spacing=10),
+                    ft.Row([increase_by], wrap=True, spacing=8),
                     ft.Row([auto_increase_check], wrap=True),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     window_label,
-                    ft.Row([window_start, window_end], wrap=True, spacing=10),
-                    ft.Divider(),
+                    ft.Row([window_start, window_end], wrap=True, spacing=8),
+                    ft.Divider(height=5),
                     ft.Text(
                         "Caution Sequence Settings", size=14, weight=ft.FontWeight.BOLD
                     ),
@@ -1556,7 +1562,7 @@ class RaceControlApp:
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=10,
+            padding=8,
         )
 
     def build_incident_penalties_tab(self):
@@ -1667,7 +1673,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Incident Penalty System",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -1682,29 +1688,29 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     ft.Text("Initial Penalty", size=14, weight=ft.FontWeight.BOLD),
-                    ft.Row([initial_incidents, initial_penalty], wrap=True, spacing=10),
-                    ft.Divider(),
+                    ft.Row([initial_incidents, initial_penalty], wrap=True, spacing=8),
+                    ft.Divider(height=5),
                     ft.Text("Recurring Penalties", size=14, weight=ft.FontWeight.BOLD),
                     ft.Row(
-                        [recurring_incidents, recurring_penalty], wrap=True, spacing=10
+                        [recurring_incidents, recurring_penalty], wrap=True, spacing=8
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     ft.Text("Final Penalty", size=14, weight=ft.FontWeight.BOLD),
-                    ft.Row([final_incidents, final_penalty], wrap=True, spacing=10),
-                    ft.Divider(),
+                    ft.Row([final_incidents, final_penalty], wrap=True, spacing=8),
+                    ft.Divider(height=5),
                     ft.Row([sound_check]),
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=10,
+            padding=8,
         )
 
     def build_scheduled_messages_tab(self):
         """Build the Scheduled Messages tab content"""
         self.scheduled_messages_list = ft.Column(
-            scroll=ft.ScrollMode.AUTO, spacing=10, expand=True
+            scroll=ft.ScrollMode.AUTO, spacing=5, expand=True
         )
 
         def toggle_enabled(e):
@@ -1741,7 +1747,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Scheduled Messages",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -1756,13 +1762,13 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     add_button,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     self.scheduled_messages_list,
                 ]
             ),
-            padding=10,
+            padding=8,
         )
 
     def add_scheduled_message(self):
@@ -1839,20 +1845,23 @@ class RaceControlApp:
                             [
                                 ft.Text(
                                     f"Scheduled Message #{index + 1}",
-                                    size=16,
+                                    size=14,
                                     weight=ft.FontWeight.BOLD,
                                 ),
                                 ft.Container(expand=True),
                                 remove_button,
                             ]
                         ),
-                        ft.Divider(),
+                        ft.Divider(height=5),
                         event_time,
                         message,
-                        ft.Row([race_control_check, broadcast_check], wrap=True),
-                    ]
+                        ft.Row(
+                            [race_control_check, broadcast_check], wrap=True, spacing=8
+                        ),
+                    ],
+                    spacing=5,
                 ),
-                padding=15,
+                padding=10,
             )
         )
 
@@ -1940,7 +1949,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Collision Penalty Event",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -1955,7 +1964,7 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     ft.Row(
                         [
                             collisions_per_penalty,
@@ -1969,7 +1978,7 @@ class RaceControlApp:
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=10,
+            padding=8,
         )
 
     def build_clear_black_flag_tab(self):
@@ -2010,7 +2019,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Clear Black Flag Event",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -2025,18 +2034,18 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
-                    ft.Row([interval], wrap=True, spacing=10),
+                    ft.Divider(height=5),
+                    ft.Row([interval], wrap=True, spacing=8),
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=10,
+            padding=8,
         )
 
     def build_scheduled_black_flag_tab(self):
         """Build the Scheduled Black Flag tab content"""
         self.scheduled_black_flag_list = ft.Column(
-            scroll=ft.ScrollMode.AUTO, spacing=10, expand=True
+            scroll=ft.ScrollMode.AUTO, spacing=5, expand=True
         )
 
         def toggle_enabled(e):
@@ -2071,7 +2080,7 @@ class RaceControlApp:
                         [
                             ft.Text(
                                 "Scheduled Black Flag Events",
-                                size=20,
+                                size=16,
                                 weight=ft.FontWeight.BOLD,
                             ),
                             ft.Container(expand=True),
@@ -2079,13 +2088,13 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
+                    ft.Divider(height=5),
                     add_button,
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     self.scheduled_black_flag_list,
                 ]
             ),
-            padding=10,
+            padding=8,
         )
 
     def add_scheduled_black_flag(self):
@@ -2120,7 +2129,6 @@ class RaceControlApp:
             value=str(config["event_time"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
-            hint_text="Negative = from end",
             disabled=self.is_running,
             on_change=lambda e: update_config(
                 "event_time", float(e.control.value) if e.control.value else 0
@@ -2128,19 +2136,17 @@ class RaceControlApp:
         )
 
         cars = ft.TextField(
-            label="Car Numbers",
+            label="Car Numbers (comma separated)",
             value=config["cars"],
-            width=200,
-            hint_text="Comma separated: 19,42,7",
+            width=300,
             disabled=self.is_running,
             on_change=lambda e: update_config("cars", e.control.value),
         )
 
         penalty = ft.TextField(
-            label="Penalty",
+            label="Penalty Message",
             value=config["penalty"],
-            width=150,
-            hint_text="e.g. L2, d, 4120",
+            width=300,
             disabled=self.is_running,
             on_change=lambda e: update_config("penalty", e.control.value),
         )
@@ -2152,19 +2158,20 @@ class RaceControlApp:
                         ft.Row(
                             [
                                 ft.Text(
-                                    f"Black Flag Event #{index + 1}",
-                                    size=16,
+                                    f"Scheduled Black Flag #{index + 1}",
+                                    size=14,
                                     weight=ft.FontWeight.BOLD,
                                 ),
                                 ft.Container(expand=True),
                                 remove_button,
                             ]
                         ),
-                        ft.Divider(),
-                        ft.Row([event_time, cars, penalty], wrap=True, spacing=10),
-                    ]
+                        ft.Divider(height=5),
+                        ft.Row([event_time, cars, penalty], wrap=True, spacing=8),
+                    ],
+                    spacing=5,
                 ),
-                padding=15,
+                padding=10,
             )
         )
 
@@ -2235,7 +2242,7 @@ class RaceControlApp:
                                 [
                                     ft.Text(
                                         "Gap to Leader Penalty Event",
-                                        size=20,
+                                        size=16,
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     ft.Text(
@@ -2250,13 +2257,13 @@ class RaceControlApp:
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    ft.Divider(),
-                    ft.Row([gap_to_leader, penalty], wrap=True, spacing=10),
+                    ft.Divider(height=5),
+                    ft.Row([gap_to_leader, penalty], wrap=True, spacing=8),
                     ft.Row([sound_check], wrap=True),
                 ],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=10,
+            padding=8,
         )
 
     def build_consumer_section(self):
@@ -2268,23 +2275,23 @@ class RaceControlApp:
                     width=400,
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
-                    padding=15,
+                    padding=10,
                 ),
-                ft.Container(height=20),
+                ft.Container(height=8),
                 ft.Container(
                     content=self.build_audio_consumer(),
                     width=400,
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
-                    padding=15,
+                    padding=10,
                 ),
-                ft.Container(height=20),
+                ft.Container(height=8),
                 ft.Container(
                     content=self.build_chat_consumer(),
                     width=400,
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
-                    padding=15,
+                    padding=10,
                 ),
             ],
         )
@@ -2340,18 +2347,14 @@ class RaceControlApp:
 
         return ft.Column(
             [
-                ft.Text("Text Consumer (Discord)", size=16, weight=ft.FontWeight.BOLD),
-                ft.Text(
-                    "Display race control messages in Discord text channel",
-                    size=11,
-                    color=ft.Colors.GREY,
-                ),
-                ft.Divider(),
+                ft.Text("Text Consumer (Discord)", size=14, weight=ft.FontWeight.BOLD),
+                ft.Divider(height=5),
                 enable_check,
                 token_field,
                 channel_field,
                 test_check,
-            ]
+            ],
+            spacing=5,
         )
 
     def build_audio_consumer(self):
@@ -2424,21 +2427,17 @@ class RaceControlApp:
         return ft.Column(
             [
                 ft.Text(
-                    "Audio Consumer (Discord Bot)", size=16, weight=ft.FontWeight.BOLD
+                    "Audio Consumer (Discord Bot)", size=14, weight=ft.FontWeight.BOLD
                 ),
-                ft.Text(
-                    "Play audio cues in Discord voice channel",
-                    size=11,
-                    color=ft.Colors.GREY,
-                ),
-                ft.Divider(),
+                ft.Divider(height=5),
                 enable_check,
                 vc_id_field,
-                ft.Text("Volume", size=12),
+                ft.Text("Volume", size=11),
                 volume_slider,
                 token_field,
                 hello_check,
-            ]
+            ],
+            spacing=5,
         )
 
     def build_chat_consumer(self):
@@ -2456,53 +2455,34 @@ class RaceControlApp:
             test_check.disabled = not e.control.value or self.is_running
             self.page.update()
 
-        enable_check = ft.Checkbox(
-            label="Enable Chat Consumer",
-            value=self.chat_consumer_enabled,
-            on_change=toggle_enabled,
-            disabled=self.is_running,
-        )
-
-        test_check = ft.Checkbox(
-            label="Test Mode",
-            value=config["test"],
-            disabled=not self.chat_consumer_enabled or self.is_running,
-            on_change=lambda e: update_config("test", e.control.value),
-        )
 
         # Create a ListView to display chat messages
         self.chat_message_list = ft.ListView(
             expand=1,
-            spacing=5,
-            padding=10,
+            spacing=3,
+            padding=8,
             auto_scroll=True,
-            height=150,
+            height=120,
         )
 
         return ft.Column(
             [
                 ft.Text(
                     "Chat Consumer (Driver Messages)",
-                    size=16,
+                    size=14,
                     weight=ft.FontWeight.BOLD,
                 ),
-                ft.Text(
-                    "Display messages directed to your car number (e.g., /123, #123, @123)",
-                    size=11,
-                    color=ft.Colors.GREY,
-                ),
-                ft.Divider(),
-                enable_check,
-                test_check,
-                ft.Container(height=10),
-                ft.Text("Driver Messages:", size=12, weight=ft.FontWeight.BOLD),
+                ft.Divider(height=5),
+                ft.Container(height=5),
+                ft.Text("Driver Messages:", size=11, weight=ft.FontWeight.BOLD),
                 ft.Container(
                     content=self.chat_message_list,
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
                     bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.ON_SURFACE),
                 ),
-            ]
+            ],
+            spacing=5,
         )
 
     def start_race_control(self, e):
@@ -3203,9 +3183,8 @@ class RaceControlApp:
         self.audio_consumer_config = audio_consumer.get("config", {})
 
         # Load Chat Consumer
-        chat_consumer = config.get("chat_consumer", {})
-        self.chat_consumer_enabled = chat_consumer.get("enabled", False)
-        self.chat_consumer_config = chat_consumer.get("config", {})
+        self.chat_consumer_enabled = True
+        self.chat_consumer_config = {}
 
     def load_preset(self, name: str, silent: bool = False):
         """Load a saved preset
@@ -3267,7 +3246,7 @@ class RaceControlApp:
         return ft.Container(
             content=ft.Row(
                 [
-                    ft.Text("Special Modes:", size=16, weight=ft.FontWeight.BOLD),
+                    ft.Text("Special Modes:", size=14, weight=ft.FontWeight.BOLD),
                     ft.ElevatedButton(
                         "F1 Qualifying",
                         icon=ft.Icons.SPEED,
@@ -3288,9 +3267,9 @@ class RaceControlApp:
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
-                spacing=20,
+                spacing=10,
             ),
-            padding=10,
+            padding=5,
             bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
             border_radius=5,
         )
