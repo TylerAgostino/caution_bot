@@ -1,7 +1,12 @@
 import queue
 import threading
 
-from streamlit.runtime.scriptrunner import add_script_run_ctx
+try:
+    from streamlit.runtime.scriptrunner import add_script_run_ctx
+
+    STREAMLIT_AVAILABLE = False
+except ImportError:
+    STREAMLIT_AVAILABLE = False
 
 
 class SubprocessManager:
@@ -29,6 +34,7 @@ class SubprocessManager:
         self.chat_lock = threading.Lock()
         self.audio_queue = queue.Queue()
         self.broadcast_text_queue = queue.Queue()
+        self.chat_consumer_queue = queue.Queue()
         self.threads = [
             threading.Thread(
                 target=coro,
@@ -38,6 +44,7 @@ class SubprocessManager:
                     "chat_lock": self.chat_lock,
                     "audio_queue": self.audio_queue,
                     "broadcast_text_queue": self.broadcast_text_queue,
+                    "chat_consumer_queue": self.chat_consumer_queue,
                 },
             )
             for coro in coros
@@ -50,7 +57,8 @@ class SubprocessManager:
         self.cancel_event.clear()
         for thread in self.threads:
             thread.start()
-            add_script_run_ctx(thread)
+            if STREAMLIT_AVAILABLE:
+                add_script_run_ctx(thread)
 
     def stop(self):
         """

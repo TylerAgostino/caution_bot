@@ -24,12 +24,14 @@ class RestartOrderManager:
         self.class_lap_times = {}
         def get_fastest_lap_for_class(cc):
             classes = self.sdk['CarIdxClass']
-            best_laps = self.sdk['CarIdxBestLapTime'] or self.sdk['CarIdxLastLapTime']
+            best_laps = self.sdk['CarIdxBestLapTime'] 
+            last_laps = self.sdk['CarIdxLastLapTime']
             best_lap = None
             for i, c in enumerate(classes):
                 if c == cc:
-                    if (best_lap is None or best_laps[i] < best_lap) and best_laps[i] > 0:
-                        best_lap = best_laps[i]
+                    cars_best = best_laps[i] if best_laps[i] > 0 else last_laps[i]
+                    if (best_lap is None or cars_best < best_lap) and cars_best > 0:
+                        best_lap = cars_best
 
             if best_lap is None:
                 return 999999
@@ -90,7 +92,7 @@ class RestartOrderManager:
         """
         # check if we've separated classes
         if self.class_separation:
-            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['CarClassOrder'], x['BeganPacingTick'], -x['BeganPacingDistance']))
+            self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['CarClassOrder'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick'], -x['BeganPacingDistance']))
         else:
             self.order = sorted(self.order, key=lambda x: (x['LatePit'], x['WaveAround'] + x['SlowerClassCatchup'], x['BeganPacingTick'], -x['BeganPacingDistance']))
         self.update_car_positions()

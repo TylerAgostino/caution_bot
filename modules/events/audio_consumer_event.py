@@ -1,14 +1,15 @@
+import asyncio
+import os
 import queue
-from modules.events import BaseEvent
+
 import discord
 from discord.ext import tasks
-import os
-import asyncio
 from imageio_ffmpeg import get_ffmpeg_exe
 
-# Replace with the path to your FFmpeg executable
-module_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+from modules.events import BaseEvent
+
 FFMPEG_PATH = get_ffmpeg_exe()
+
 
 class AudioConsumerEvent(BaseEvent):
     def __init__(
@@ -20,40 +21,55 @@ class AudioConsumerEvent(BaseEvent):
         self.hello = hello
         self.token = token
         super().__init__(sdk=sdk, *args, **kwargs)
-        self.logger.debug(f'Voice Channel ID: {self.vc_id}')
+        self.logger.debug(f"Voice Channel ID: {self.vc_id}")
 
     @staticmethod
-    def ui(ident=''):
+    def ui(ident=""):
         import streamlit as st
+
         col1, col2 = st.columns(2)
         return {
-            'vc_id': col1.text_input("Discord Voice Channel ID", key=f'{ident}vc_id', value='420037391882125313'),
-            'volume': col2.slider("Discord Volume", min_value=0.0, max_value=2.0, key=f'{ident}volume'),
-            'token': col1.text_input("Bot Token (optional)", key=f'{ident}token', value=''),
-            'hello': col2.checkbox("Play Hello on Connect", key=f'{ident}hello', value=True),
+            "vc_id": col1.text_input(
+                "Discord Voice Channel ID",
+                key=f"{ident}vc_id",
+                value="420037391882125313",
+            ),
+            "volume": col2.slider(
+                "Discord Volume", min_value=0.0, max_value=2.0, key=f"{ident}volume"
+            ),
+            "token": col1.text_input(
+                "Bot Token (optional)", key=f"{ident}token", value=""
+            ),
+            "hello": col2.checkbox(
+                "Play Hello on Connect", key=f"{ident}hello", value=True
+            ),
         }
 
     def event_sequence(self):
         # Set up the bot
-        self.logger.debug('Setting up the bot.')
+        self.logger.debug("Setting up the bot.")
         intents = discord.Intents.default()
         intents.message_content = True
         bot = discord.Client(intents=intents)
 
-        self.logger.debug('Setting methods.')
+        self.logger.debug("Setting methods.")
 
         async def play(message=None):
-            fname = os.path.join(module_path, 'audio', f'{message}.mp3')
+            fname = os.path.join(os.getcwd(), "audio", f"{message}.mp3")
             # if it's a directory, grab a random file
-            if os.path.isdir(fname.removesuffix('.mp3')):
+            if os.path.isdir(fname.removesuffix(".mp3")):
                 import random
-                files = os.listdir(fname.removesuffix('.mp3'))
-                fname = os.path.join(fname.removesuffix('.mp3'), random.choice(files))
+
+                files = os.listdir(fname.removesuffix(".mp3"))
+                fname = os.path.join(fname.removesuffix(".mp3"), random.choice(files))
             if not os.path.exists(fname):
-                self.logger.error(f'File {fname} does not exist.')
+                self.logger.error(f"File {fname} does not exist.")
                 return
 
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH), volume=float(self.volume))
+            source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH),
+                volume=float(self.volume),
+            )
             self.vc.play(source)
             while self.vc.is_playing():
                 await asyncio.sleep(0.01)
@@ -77,11 +93,13 @@ class AudioConsumerEvent(BaseEvent):
             print(f"Logged in as {bot.user}")
 
             if self.hello:
-                await play('hello')
+                await play("hello")
 
             auto_play.start()
 
-        self.logger.debug('Running bot.')
+        self.logger.debug("Running bot.")
 
-        token = self.token if self.token and self.token != '' else os.getenv('BOT_TOKEN')
+        token = (
+            self.token if self.token and self.token != "" else os.getenv("BOT_TOKEN")
+        )
         bot.run(token)
