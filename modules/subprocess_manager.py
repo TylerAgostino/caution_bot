@@ -1,13 +1,6 @@
 import queue
 import threading
 
-try:
-    from streamlit.runtime.scriptrunner import add_script_run_ctx
-
-    STREAMLIT_AVAILABLE = False
-except ImportError:
-    STREAMLIT_AVAILABLE = False
-
 
 class SubprocessManager:
     """
@@ -52,13 +45,11 @@ class SubprocessManager:
 
     def start(self):
         """
-        Starts all threads and adds them to the Streamlit script run context.
+        Starts all threads.
         """
         self.cancel_event.clear()
         for thread in self.threads:
             thread.start()
-            if STREAMLIT_AVAILABLE:
-                add_script_run_ctx(thread)
 
     def stop(self):
         """

@@ -16,17 +16,3 @@ class SprintRaceDQEvent(TimedEvent):
             cars = self.cars
         for car in cars:
             self._chat(f"!bl {car} {self.penalty}")
-
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        return {
-            "event_time": st.number_input(
-                "Event Time (min)", value=-1, key=f"{ident}event_time"
-            ),
-            "cars": st.text_input(
-                "Car # (comma separated)", key=f"{ident}cars", value="19"
-            ),
-            "penalty": st.text_input("Penalty", key=f"{ident}penalty", value="L2"),
-        }

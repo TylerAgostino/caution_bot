@@ -38,21 +38,6 @@ class GapToLeaderPenaltyEvent(BaseEvent):
         self.sound = sound
         super().__init__()
 
-    @staticmethod
-    def ui(ident=""):
-        """
-        UI for the GapToLeaderPenaltyEvent.
-        """
-        import streamlit as st
-
-        col1, col2, col3 = st.columns(3)
-        return {
-            "gap_to_leader": col1.number_input(
-                "Gap to Leader (sec)", value=60.0, key=f"{ident}gap_to_leader"
-            ),
-            "sound": col2.checkbox("Sound", value=True, key=f"{ident}sound"),
-        }
-
     def event_sequence(self):
         """
         Monitors cars' gaps to the leader and applies penalties to any car that exceeds the threshold.

@@ -6,17 +6,6 @@ class ClearBlackFlagEvent(BaseEvent):
         super().__init__()
         self.interval = int(interval)
 
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2, col3, _ = st.columns([1, 1, 1, 3])
-        return {
-            "interval": col1.number_input(
-                label="Interval", key=f"{ident}interval", value=1
-            )
-        }
-
     def event_sequence(self):
         while True:
             flags = [

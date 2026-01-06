@@ -15,15 +15,6 @@ class ChatConsumerEvent(BaseEvent):
         if test:
             self.chat_consumer_queue.put("Test message for driver display")
 
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2 = st.columns(2)
-        return {
-            "test": col1.checkbox("Test", key=f"{ident}test", value=False),
-        }
-
     def event_sequence(self):
         """
         Consumes chat messages from the queue.

@@ -36,22 +36,3 @@ class ScheduledMessageEvent(TimedEvent):
                 "text": self.message,
             }
             self.broadcast_text_queue.put(msg)
-
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2, col3 = st.columns([1, 4, 1])
-        return {
-            "event_time": col1.number_input(
-                "Event Time (min)", value=5.0, key=f"{ident}event_time"
-            )
-            * 60,
-            "message": col2.text_input("Message", key=f"{ident}message", value=""),
-            "race_control": col3.checkbox(
-                "Send to Race Control", key=f"{ident}race_control", value=False
-            ),
-            "broadcast": col3.checkbox(
-                "Send to Broadcast", key=f"{ident}broadcast", value=False
-            ),
-        }

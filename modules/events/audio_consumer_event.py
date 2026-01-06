@@ -23,28 +23,6 @@ class AudioConsumerEvent(BaseEvent):
         super().__init__(sdk=sdk, *args, **kwargs)
         self.logger.debug(f"Voice Channel ID: {self.vc_id}")
 
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2 = st.columns(2)
-        return {
-            "vc_id": col1.text_input(
-                "Discord Voice Channel ID",
-                key=f"{ident}vc_id",
-                value="420037391882125313",
-            ),
-            "volume": col2.slider(
-                "Discord Volume", min_value=0.0, max_value=2.0, key=f"{ident}volume"
-            ),
-            "token": col1.text_input(
-                "Bot Token (optional)", key=f"{ident}token", value=""
-            ),
-            "hello": col2.checkbox(
-                "Play Hello on Connect", key=f"{ident}hello", value=True
-            ),
-        }
-
     def event_sequence(self):
         # Set up the bot
         self.logger.debug("Setting up the bot.")

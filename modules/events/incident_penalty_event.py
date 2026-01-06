@@ -35,42 +35,6 @@ class IncidentPenaltyEvent(BaseEvent):
             raise ValueError("You must set the recurring penalty")
         super().__init__()
 
-    @staticmethod
-    def ui(ident=""):
-        """
-        UI for the IncidentPenaltyEvent.
-        """
-        import streamlit as st
-
-        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
-        return {
-            "initial_penalty_incidents": col1.number_input(
-                "Penalty After",
-                value=40,
-                key=f"{ident}initial_penalty_incidents",
-                placeholder="Incidents",
-            ),
-            "initial_penalty": col1.text_input(
-                "Penalty", key=f"{ident}initial_penalty", value="d"
-            ),
-            "recurring_peanlty_every_incidents": col3.number_input(
-                "Then Every", value=15, key=f"{ident}recurring_peanlty_every_incidents"
-            ),
-            "recurring_penalty": col3.text_input(
-                "Recurring Penalty",
-                key=f"{ident}recurring_penalty",
-                value="0",
-                placeholder="Incidents",
-            ),
-            "end_recurring_incidents": col5.number_input(
-                "Final Penalty After", value=55, key=f"{ident}end_recurring_incidents"
-            ),
-            "end_recurring_penalty": col5.text_input(
-                "Final Penalty", key=f"{ident}end_recurring_penalty", value="0"
-            ),
-            "sound": col4.checkbox("Sound", key=f"{ident}sound", value=False),
-        }
-
     def event_sequence(self):
         """
         Applies penalties to any driver who has more than the specified number of incidents.

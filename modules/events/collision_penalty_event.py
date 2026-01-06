@@ -48,30 +48,6 @@ class CollisionPenaltyEvent(BaseEvent):
             max_laps_behind_leader=max_laps_behind_leader,
         )
 
-    @staticmethod
-    def ui(ident=""):
-        """
-        UI for the CollisionPenaltyEvent.
-        """
-        import streamlit as st  # Import here to avoid circular imports
-
-        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
-        return {
-            "collisions_per_penalty": col1.number_input(
-                "Collisions Per Penalty",
-                value=3,
-                min_value=1,
-                key=f"{ident}collisions_per_penalty",
-            ),
-            "penalty": col2.text_input("Penalty", key=f"{ident}penalty", value="d"),
-            "tracking_window_seconds": col1.number_input(
-                "Tracking Window (seconds)",
-                value=10,
-                min_value=1,
-                key=f"{ident}tracking_window_seconds",
-            ),
-        }
-
     def event_sequence(self):
         """
         Monitors incidents over time and applies penalties when collisions are detected.

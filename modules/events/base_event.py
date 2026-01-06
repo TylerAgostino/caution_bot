@@ -66,12 +66,9 @@ class BaseEvent:
         self.thread = None
         self.killed = False
         self.task = None
-        try:
-            import streamlit as st
+        from modules.logging_context import get_logger
 
-            lh = st.session_state.get("logger", logging.getLogger(__name__))
-        except Exception:
-            lh = logging.getLogger(__name__)
+        lh = get_logger() if get_logger() else logging.getLogger(__name__)
         self.logger = logging.LoggerAdapter(
             lh,
             {"event": self.__class__.__name__},
