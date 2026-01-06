@@ -275,9 +275,11 @@ class RaceControlApp:
                     [
                         ft.Icon(ft.Icons.STAR, color=ft.Colors.AMBER, size=16),
                         ft.Text(
-                            f"Default: {starred_preset}"
-                            if starred_preset
-                            else "No default preset",
+                            (
+                                f"Default: {starred_preset}"
+                                if starred_preset
+                                else "No default preset"
+                            ),
                             size=12,
                             italic=True,
                         ),
@@ -504,9 +506,11 @@ class RaceControlApp:
         )
 
         window_label = ft.Text(
-            "Window Start/End (minutes)"
-            if not global_config["use_lap_based"]
-            else "Window Start/End (laps)",
+            (
+                "Window Start/End (minutes)"
+                if not global_config["use_lap_based"]
+                else "Window Start/End (laps)"
+            ),
             size=12,
             weight=ft.FontWeight.BOLD,
         )
@@ -819,9 +823,11 @@ class RaceControlApp:
         )
 
         window_label = ft.Text(
-            "Window Start/End (minutes)"
-            if not global_config["use_lap_based"]
-            else "Window Start/End (laps)",
+            (
+                "Window Start/End (minutes)"
+                if not global_config["use_lap_based"]
+                else "Window Start/End (laps)"
+            ),
             size=12,
             weight=ft.FontWeight.BOLD,
         )
@@ -1309,9 +1315,11 @@ class RaceControlApp:
         )
 
         window_label = ft.Text(
-            "Active Window (minutes)"
-            if not config["use_lap_based"]
-            else "Active Window (laps)",
+            (
+                "Active Window (minutes)"
+                if not config["use_lap_based"]
+                else "Active Window (laps)"
+            ),
             size=12,
             weight=ft.FontWeight.BOLD,
         )
@@ -2454,7 +2462,6 @@ class RaceControlApp:
             self.chat_consumer_enabled = e.control.value
             test_check.disabled = not e.control.value or self.is_running
             self.page.update()
-
 
         # Create a ListView to display chat messages
         self.chat_message_list = ft.ListView(

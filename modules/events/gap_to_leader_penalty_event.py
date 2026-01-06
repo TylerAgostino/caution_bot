@@ -61,17 +61,20 @@ class GapToLeaderPenaltyEvent(BaseEvent):
         laps_complete = 0
         while True:
             for car in self.get_current_running_order():
-                if car['f2time'] == 0 and car['LapCompleted'] > laps_complete:
-                    laps_complete = car['LapCompleted']
+                if car["f2time"] == 0 and car["LapCompleted"] > laps_complete:
+                    laps_complete = car["LapCompleted"]
                     self.audio_queue.put("pacer1") if self.sound else None
-                    next_tone = self.sdk['SessionTime'] + self.gap_to_leader
+                    next_tone = self.sdk["SessionTime"] + self.gap_to_leader
 
-                if car['f2time'] > self.gap_to_leader and car['CarIdx'] not in self.penalized:
-                    self.penalized.append(car['CarIdx'])
-                    self._chat(f'!bl {car["CarNumber"]} {self.penalty}')
-                    self.audio_queue.put('penalty')  if self.sound else None
+                if (
+                    car["f2time"] > self.gap_to_leader
+                    and car["CarIdx"] not in self.penalized
+                ):
+                    self.penalized.append(car["CarIdx"])
+                    self._chat(f"!bl {car['CarNumber']} {self.penalty}")
+                    self.audio_queue.put("penalty") if self.sound else None
 
-            if next_tone and next_tone <= self.sdk['SessionTime']:
+            if next_tone and next_tone <= self.sdk["SessionTime"]:
                 self.audio_queue.put("pacer2") if self.sound else None
                 next_tone = None
 
