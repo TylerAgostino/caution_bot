@@ -1,9 +1,4 @@
-import queue
-import threading
-import time
-
 import irsdk
-import pandas as pd
 
 from modules.events import BaseEvent
 

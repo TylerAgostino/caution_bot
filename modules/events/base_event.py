@@ -8,8 +8,6 @@ import pyperclip
 import pywinauto
 from pandas import DataFrame, concat
 
-from modules import generate_black_flag_reason, generate_caution_reason
-
 
 class BaseEvent:
     """
@@ -69,10 +67,11 @@ class BaseEvent:
         from modules.logging_context import get_logger
 
         lh = get_logger() if get_logger() else logging.getLogger(__name__)
-        self.logger = logging.LoggerAdapter(
-            lh,
-            {"event": self.__class__.__name__},
-        )
+        if lh is not None:
+            self.logger = logging.LoggerAdapter(
+                lh,
+                {"event": self.__class__.__name__},
+            )
         self.cancel_event = cancel_event or threading.Event()
         self.busy_event = busy_event or threading.Event()
         self.chat_lock = chat_lock or threading.Lock()
@@ -525,26 +524,6 @@ class BaseEvent:
             self.logger.error(f"Car {car['CarNumber']} not found in running order.")
             self.logger.error(e)
             return False
-
-    @staticmethod
-    def generate_random_caution_reason():
-        """
-        Generates a random caution reason.
-
-        Returns:
-            str: A random caution reason.
-        """
-        return generate_caution_reason()
-
-    @staticmethod
-    def generate_random_black_flag_reason():
-        """
-        Generates a random black flag reason.
-
-        Returns:
-            str: A random black flag reason.
-        """
-        return generate_black_flag_reason()
 
     def monitor_speed(self, carIdx):
         """

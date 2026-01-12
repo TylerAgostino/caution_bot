@@ -48,8 +48,8 @@ class AudioConsumerEvent(BaseEvent):
                 discord.FFmpegPCMAudio(fname, executable=FFMPEG_PATH),
                 volume=float(self.volume),
             )
-            self.vc.play(source)
-            while self.vc.is_playing():
+            self.vc.play(source)  # pyright: ignore[reportAttributeAccessIssue]
+            while self.vc.is_playing():  # pyright: ignore[reportAttributeAccessIssue]
                 await asyncio.sleep(0.01)
 
         @tasks.loop(seconds=0.1)
@@ -64,6 +64,14 @@ class AudioConsumerEvent(BaseEvent):
         @bot.event
         async def on_ready():
             voice_channel = bot.get_channel(int(self.vc_id))
+            if voice_channel is None:
+                self.logger.error(f"Voice channel with ID {self.vc_id} not found.")
+                return
+            if not isinstance(voice_channel, discord.guild.VocalGuildChannel):
+                self.logger.error(
+                    f"Channel with ID {self.vc_id} is not a voice channel."
+                )
+                return
             if not voice_channel.guild.voice_client:
                 self.vc = await voice_channel.connect()
             else:
@@ -78,6 +86,8 @@ class AudioConsumerEvent(BaseEvent):
         self.logger.debug("Running bot.")
 
         token = (
-            self.token if self.token and self.token != "" else os.getenv("BOT_TOKEN")
+            self.token
+            if self.token and self.token != ""
+            else os.getenv("BOT_TOKEN", "")
         )
         bot.run(token)
