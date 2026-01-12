@@ -92,7 +92,7 @@ class F1QualifyingEvent(BaseEvent):
             f"Q{session_number} will begin in {int(seconds // 60):02}:{int(seconds % 60):02}",
             race_control=True,
         )
-        self._chat(f"Pit Exit is CLOSED.", race_control=True)
+        self._chat("Pit Exit is CLOSED.", race_control=True)
 
         # Count down to session start
         intervals = [i for i in [60, 30, 10, 5, 3, 2, 1] if i < seconds]
