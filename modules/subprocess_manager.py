@@ -56,3 +56,25 @@ class SubprocessManager:
         Sets the cancel event to stop all threads.
         """
         self.cancel_event.set()
+
+        # send sigterm to any threads that remain
+        # Wait for threads to finish gracefully
+        for thread in self.threads:
+            thread.join(timeout=10)
+        # Forcibly kill any threads that are still alive
+        for thread in self.threads:
+            if thread.is_alive():
+                try:
+                    import ctypes
+
+                    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                        ctypes.c_long(thread.ident), ctypes.py_object(SystemExit)
+                    )
+                    if res == 0:
+                        raise ValueError("Thread id not found")
+                    elif res > 1:
+                        # If it returns a number greater than one, we're in trouble, so reset
+                        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, 0)
+                        raise SystemError("PyThreadState_SetAsyncExc failed")
+                except Exception as e:
+                    print(f"Failed to forcibly kill thread {thread.name}: {e}")
