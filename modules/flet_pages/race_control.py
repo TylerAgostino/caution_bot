@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from math import isnan
 from typing import Dict, Optional
@@ -9,6 +10,7 @@ import pandas as pd
 
 from modules import SubprocessManager, events, subprocess_manager
 from modules.events import BaseEvent, F1QualifyingEvent
+from modules.logging_context import get_logger
 
 
 class RaceControlApp:
@@ -2494,282 +2496,352 @@ class RaceControlApp:
 
     def start_race_control(self, e):
         """Start the race control system"""
-        self.is_running = True
-        # Rebuild tabs to update disabled states
-        self.rebuild_all_tabs()
+        # Get logger for logging errors
+        logger_instance = get_logger()
+        logger = (
+            logging.LoggerAdapter(logger_instance, {"event": "RaceControl"})
+            if logger_instance
+            else None
+        )
 
-        # Rebuild consumer section to disable controls
-        # Note: Consumer section is in page.controls[2].controls[2]
-        main_row = self.page.controls[2]  # The Row containing tabs and consumers
-        main_row.controls[2] = self.build_consumer_section()
+        try:
+            self.is_running = True
+            # Rebuild tabs to update disabled states
+            self.rebuild_all_tabs()
 
-        # Build event list
-        event_list = []
+            # Rebuild consumer section to disable controls
+            # Note: Consumer section is in page.controls[2].controls[2]
+            main_row = self.page.controls[2]  # The Row containing tabs and consumers
+            main_row.controls[2] = self.build_consumer_section()
 
-        # Add Random Caution Events (only if enabled)
-        if self.random_cautions_enabled:
-            global_config = self.random_caution_global_config
-            use_lap_based = global_config["use_lap_based"]
-            event_class = (
-                events.LapCautionEvent if use_lap_based else events.RandomCautionEvent
-            )
+            # Build event list
+            event_list = []
 
-            for config in self.random_caution_configs:
-                # If time-based, convert minutes to seconds
-                min_val = int(config["min"])
-                max_val = int(config["max"])
-
-                event_list.append(
-                    {
-                        "class": event_class,
-                        "args": {
-                            "min": min_val,
-                            "max": max_val,
-                            "pit_close_advance_warning": global_config[
-                                "pit_close_advance_warning"
-                            ],
-                            "pit_close_max_duration": global_config[
-                                "pit_close_max_duration"
-                            ],
-                            "wave_arounds": global_config["wave_arounds"],
-                            "notify_on_skipped_caution": global_config[
-                                "notify_on_skipped_caution"
-                            ],
-                            "full_sequence": global_config["full_sequence"],
-                            "wave_around_lap": global_config["wave_around_lap"],
-                            "extend_laps": global_config["extend_laps"],
-                            "pre_extend_laps": global_config["pre_extend_laps"],
-                            "max_laps_behind_leader": global_config[
-                                "max_laps_behind_leader"
-                            ],
-                            "likelihood": config["likelihood"],
-                        },
-                    }
+            # Add Random Caution Events (only if enabled)
+            if self.random_cautions_enabled:
+                global_config = self.random_caution_global_config
+                use_lap_based = global_config["use_lap_based"]
+                event_class = (
+                    events.LapCautionEvent
+                    if use_lap_based
+                    else events.RandomCautionEvent
                 )
 
-        # Add Random Code69 Events (only if enabled)
-        if self.random_code69s_enabled:
-            global_config = self.random_code69_global_config
-            use_lap_based = global_config["use_lap_based"]
-            event_class = (
-                events.RandomLapCode69Event
-                if use_lap_based
-                else events.RandomTimedCode69Event
-            )
+                for config in self.random_caution_configs:
+                    # If time-based, convert minutes to seconds
+                    min_val = int(config["min"])
+                    max_val = int(config["max"])
 
-            for config in self.random_code69_configs:
-                # If time-based, convert minutes to seconds
-                min_val = int(config["min"])
-                max_val = int(config["max"])
-
-                event_list.append(
-                    {
-                        "class": event_class,
-                        "args": {
-                            "min": min_val,
-                            "max": max_val,
-                            "max_speed_km": global_config["max_speed_km"],
-                            "wet_speed_km": global_config["wet_speed_km"],
-                            "restart_speed_pct": global_config["restart_speed_pct"],
-                            "reminder_frequency": global_config["reminder_frequency"],
-                            "auto_restart_get_ready_position": global_config[
-                                "auto_restart_get_ready_position"
-                            ],
-                            "auto_restart_form_lanes_position": global_config[
-                                "auto_restart_form_lanes_position"
-                            ],
-                            "auto_class_separate_position": global_config[
-                                "auto_class_separate_position"
-                            ],
-                            "quickie_auto_restart_get_ready_position": global_config[
-                                "quickie_auto_restart_get_ready_position"
-                            ],
-                            "quickie_auto_restart_form_lanes_position": global_config[
-                                "quickie_auto_restart_form_lanes_position"
-                            ],
-                            "quickie_auto_class_separate_position": global_config[
-                                "quickie_auto_class_separate_position"
-                            ],
-                            "quickie_window": global_config["quickie_window"],
-                            "quickie_invert_lanes": global_config[
-                                "quickie_invert_lanes"
-                            ],
-                            "end_of_lap_safety_margin": global_config[
-                                "end_of_lap_safety_margin"
-                            ],
-                            "lane_names": global_config["lane_names"].split(","),
-                            "wave_arounds": global_config["wave_arounds"],
-                            "notify_on_skipped_caution": global_config[
-                                "notify_on_skipped_caution"
-                            ],
-                            "likelihood": config["likelihood"],
-                        },
-                    }
-                )
-
-        # Add Incident Caution Event (only if enabled)
-        if self.incident_cautions_enabled and self.incident_caution_config:
-            config = self.incident_caution_config
-            use_lap_based = config.get("use_lap_based", False)
-            event_class = (
-                events.MultiDriverLapIncidentEvent
-                if use_lap_based
-                else events.MultiDriverTimedIncidentEvent
-            )
-
-            min_val = int(config["min"])
-            max_val = int(config["max"])
-
-            event_list.append(
-                {
-                    "class": event_class,
-                    "args": {
-                        "drivers_threshold": config["drivers_threshold"],
-                        "incident_window_seconds": config["incident_window_seconds"],
-                        "overall_driver_window": config["overall_driver_window"],
-                        "auto_increase": config["auto_increase"],
-                        "increase_by": config["increase_by"],
-                        "min": min_val,
-                        "max": max_val,
-                        "pit_close_advance_warning": config[
-                            "pit_close_advance_warning"
-                        ],
-                        "pit_close_max_duration": config["pit_close_max_duration"],
-                        "wave_arounds": config["wave_arounds"],
-                        "full_sequence": config["full_sequence"],
-                        "wave_around_lap": config["wave_around_lap"],
-                        "extend_laps": config["extend_laps"],
-                        "pre_extend_laps": config["pre_extend_laps"],
-                        "max_laps_behind_leader": config["max_laps_behind_leader"],
-                        "notify_on_skipped_caution": config[
-                            "notify_on_skipped_caution"
-                        ],
-                    },
-                }
-            )
-
-        # Add Incident Penalty Event (only if enabled)
-        if self.incident_penalties_enabled and self.incident_penalty_config:
-            config = self.incident_penalty_config
-            event_list.append({"class": events.IncidentPenaltyEvent, "args": config})
-
-        # Add Scheduled Messages (only if enabled)
-        if self.scheduled_messages_enabled:
-            for config in self.scheduled_messages:
-                if config["message"]:  # Only add if there's a message
                     event_list.append(
                         {
-                            "class": events.ScheduledMessageEvent,
+                            "class": event_class,
                             "args": {
-                                "event_time": config["event_time"],
-                                "message": config["message"],
-                                "race_control": config["race_control"],
-                                "broadcast": config["broadcast"],
+                                "min": min_val,
+                                "max": max_val,
+                                "pit_close_advance_warning": global_config[
+                                    "pit_close_advance_warning"
+                                ],
+                                "pit_close_max_duration": global_config[
+                                    "pit_close_max_duration"
+                                ],
+                                "wave_arounds": global_config["wave_arounds"],
+                                "notify_on_skipped_caution": global_config[
+                                    "notify_on_skipped_caution"
+                                ],
+                                "full_sequence": global_config["full_sequence"],
+                                "wave_around_lap": global_config["wave_around_lap"],
+                                "extend_laps": global_config["extend_laps"],
+                                "pre_extend_laps": global_config["pre_extend_laps"],
+                                "max_laps_behind_leader": global_config[
+                                    "max_laps_behind_leader"
+                                ],
+                                "likelihood": config["likelihood"],
                             },
                         }
                     )
 
-        # Add Collision Penalty Event (only if enabled)
-        if self.collision_penalty_enabled:
-            config = self.collision_penalty_config
-            event_list.append(
-                {
-                    "class": events.CollisionPenaltyEvent,
-                    "args": {
-                        "collisions_per_penalty": config["collisions_per_penalty"],
-                        "penalty": config["penalty"],
-                        "tracking_window_seconds": config["tracking_window_seconds"],
-                        "max_laps_behind_leader": config["max_laps_behind_leader"],
-                    },
-                }
-            )
+            # Add Random Code69 Events (only if enabled)
+            if self.random_code69s_enabled:
+                global_config = self.random_code69_global_config
+                use_lap_based = global_config["use_lap_based"]
+                event_class = (
+                    events.RandomLapCode69Event
+                    if use_lap_based
+                    else events.RandomTimedCode69Event
+                )
 
-        # Add Clear Black Flag Event (only if enabled)
-        if self.clear_black_flag_enabled:
-            config = self.clear_black_flag_config
-            event_list.append(
-                {
-                    "class": events.ClearBlackFlagEvent,
-                    "args": {
-                        "interval": config["interval"],
-                    },
-                }
-            )
+                for config in self.random_code69_configs:
+                    # If time-based, convert minutes to seconds
+                    min_val = int(config["min"])
+                    max_val = int(config["max"])
 
-        # Add Scheduled Black Flag Events (only if enabled)
-        if self.scheduled_black_flag_enabled:
-            for config in self.scheduled_black_flag_configs:
+                    event_list.append(
+                        {
+                            "class": event_class,
+                            "args": {
+                                "min": min_val,
+                                "max": max_val,
+                                "max_speed_km": global_config["max_speed_km"],
+                                "wet_speed_km": global_config["wet_speed_km"],
+                                "restart_speed_pct": global_config["restart_speed_pct"],
+                                "reminder_frequency": global_config[
+                                    "reminder_frequency"
+                                ],
+                                "auto_restart_get_ready_position": global_config[
+                                    "auto_restart_get_ready_position"
+                                ],
+                                "auto_restart_form_lanes_position": global_config[
+                                    "auto_restart_form_lanes_position"
+                                ],
+                                "auto_class_separate_position": global_config[
+                                    "auto_class_separate_position"
+                                ],
+                                "quickie_auto_restart_get_ready_position": global_config[
+                                    "quickie_auto_restart_get_ready_position"
+                                ],
+                                "quickie_auto_restart_form_lanes_position": global_config[
+                                    "quickie_auto_restart_form_lanes_position"
+                                ],
+                                "quickie_auto_class_separate_position": global_config[
+                                    "quickie_auto_class_separate_position"
+                                ],
+                                "quickie_window": global_config["quickie_window"],
+                                "quickie_invert_lanes": global_config[
+                                    "quickie_invert_lanes"
+                                ],
+                                "end_of_lap_safety_margin": global_config[
+                                    "end_of_lap_safety_margin"
+                                ],
+                                "lane_names": global_config["lane_names"].split(","),
+                                "wave_arounds": global_config["wave_arounds"],
+                                "notify_on_skipped_caution": global_config[
+                                    "notify_on_skipped_caution"
+                                ],
+                                "likelihood": config["likelihood"],
+                            },
+                        }
+                    )
+
+            # Add Incident Caution Event (only if enabled)
+            if self.incident_cautions_enabled and self.incident_caution_config:
+                config = self.incident_caution_config
+                use_lap_based = config.get("use_lap_based", False)
+                event_class = (
+                    events.MultiDriverLapIncidentEvent
+                    if use_lap_based
+                    else events.MultiDriverTimedIncidentEvent
+                )
+
+                min_val = int(config["min"])
+                max_val = int(config["max"])
+
                 event_list.append(
                     {
-                        "class": events.SprintRaceDQEvent,
+                        "class": event_class,
                         "args": {
-                            "event_time": config["event_time"],
-                            "cars": config["cars"],
-                            "penalty": config["penalty"],
+                            "drivers_threshold": config["drivers_threshold"],
+                            "incident_window_seconds": config[
+                                "incident_window_seconds"
+                            ],
+                            "overall_driver_window": config["overall_driver_window"],
+                            "auto_increase": config["auto_increase"],
+                            "increase_by": config["increase_by"],
+                            "min": min_val,
+                            "max": max_val,
+                            "pit_close_advance_warning": config[
+                                "pit_close_advance_warning"
+                            ],
+                            "pit_close_max_duration": config["pit_close_max_duration"],
+                            "wave_arounds": config["wave_arounds"],
+                            "full_sequence": config["full_sequence"],
+                            "wave_around_lap": config["wave_around_lap"],
+                            "extend_laps": config["extend_laps"],
+                            "pre_extend_laps": config["pre_extend_laps"],
+                            "max_laps_behind_leader": config["max_laps_behind_leader"],
+                            "notify_on_skipped_caution": config[
+                                "notify_on_skipped_caution"
+                            ],
                         },
                     }
                 )
 
-        # Add Gap to Leader Penalty Event (only if enabled)
-        if self.gap_to_leader_enabled:
-            config = self.gap_to_leader_config
-            event_list.append(
-                {
-                    "class": events.GapToLeaderPenaltyEvent,
-                    "args": {
-                        "gap_to_leader": config["gap_to_leader"],
-                        "penalty": config["penalty"],
-                        "sound": config["sound"],
-                    },
-                }
+            # Add Incident Penalty Event (only if enabled)
+            if self.incident_penalties_enabled and self.incident_penalty_config:
+                config = self.incident_penalty_config
+                event_list.append(
+                    {"class": events.IncidentPenaltyEvent, "args": config}
+                )
+
+            # Add Scheduled Messages (only if enabled)
+            if self.scheduled_messages_enabled:
+                for config in self.scheduled_messages:
+                    if config["message"]:  # Only add if there's a message
+                        event_list.append(
+                            {
+                                "class": events.ScheduledMessageEvent,
+                                "args": {
+                                    "event_time": config["event_time"],
+                                    "message": config["message"],
+                                    "race_control": config["race_control"],
+                                    "broadcast": config["broadcast"],
+                                },
+                            }
+                        )
+
+            # Add Collision Penalty Event (only if enabled)
+            if self.collision_penalty_enabled:
+                config = self.collision_penalty_config
+                event_list.append(
+                    {
+                        "class": events.CollisionPenaltyEvent,
+                        "args": {
+                            "collisions_per_penalty": config["collisions_per_penalty"],
+                            "penalty": config["penalty"],
+                            "tracking_window_seconds": config[
+                                "tracking_window_seconds"
+                            ],
+                            "max_laps_behind_leader": config["max_laps_behind_leader"],
+                        },
+                    }
+                )
+
+            # Add Clear Black Flag Event (only if enabled)
+            if self.clear_black_flag_enabled:
+                config = self.clear_black_flag_config
+                event_list.append(
+                    {
+                        "class": events.ClearBlackFlagEvent,
+                        "args": {
+                            "interval": config["interval"],
+                        },
+                    }
+                )
+
+            # Add Scheduled Black Flag Events (only if enabled)
+            if self.scheduled_black_flag_enabled:
+                for config in self.scheduled_black_flag_configs:
+                    event_list.append(
+                        {
+                            "class": events.SprintRaceDQEvent,
+                            "args": {
+                                "event_time": config["event_time"],
+                                "cars": config["cars"],
+                                "penalty": config["penalty"],
+                            },
+                        }
+                    )
+
+            # Add Gap to Leader Penalty Event (only if enabled)
+            if self.gap_to_leader_enabled:
+                config = self.gap_to_leader_config
+                event_list.append(
+                    {
+                        "class": events.GapToLeaderPenaltyEvent,
+                        "args": {
+                            "gap_to_leader": config["gap_to_leader"],
+                            "penalty": config["penalty"],
+                            "sound": config["sound"],
+                        },
+                    }
+                )
+
+            # Add Text Consumer if enabled
+            if self.text_consumer_enabled:
+                event_list.append(
+                    {
+                        "class": events.DiscordTextConsumerEvent,
+                        "args": self.text_consumer_config,
+                    }
+                )
+
+            # Add Audio Consumer if enabled
+            if self.audio_consumer_enabled:
+                event_list.append(
+                    {
+                        "class": events.AudioConsumerEvent,
+                        "args": self.audio_consumer_config,
+                    }
+                )
+
+            # Add Chat Consumer if enabled
+            if self.chat_consumer_enabled:
+                event_list.append(
+                    {
+                        "class": events.ChatConsumerEvent,
+                        "args": self.chat_consumer_config,
+                    }
+                )
+
+            # Create event instances with error handling
+            event_instances = []
+            for i, item in enumerate(event_list):
+                try:
+                    event_instance = item["class"](**item["args"])
+                    event_instances.append(event_instance)
+                    if logger:
+                        logger.info(
+                            f"Successfully initialized event: {item['class'].__name__}"
+                        )
+                except Exception as ex:
+                    error_msg = f"Failed to initialize event {item['class'].__name__}: {str(ex)}"
+                    if logger:
+                        logger.error(error_msg)
+                        logger.exception(ex)
+                    # Show error dialog to user
+                    self.show_error_dialog(
+                        "Event Initialization Error",
+                        f"{error_msg}\n\nCheck logs for more details.",
+                    )
+                    # Reset running state
+                    self.is_running = False
+                    self.rebuild_all_tabs()
+                    main_row = self.page.controls[2]
+                    main_row.controls[2] = self.build_consumer_section()
+                    self.page.update()
+                    return
+
+            if logger:
+                logger.info(f"Started {len(event_instances)} events successfully")
+
+            # Create and start subprocess manager
+            event_run_methods = [event.run for event in event_instances]
+            self.subprocess_manager = SubprocessManager(event_run_methods)
+            self.subprocess_manager.start()
+
+            # Start chat consumer refresh task if enabled
+            if self.chat_consumer_enabled:
+                self.page.run_task(self.chat_refresh_task)
+
+            # Update UI
+            self.is_running = True
+            self.start_button.disabled = True
+            self.stop_button.disabled = False
+            self.status_indicator.content = ft.Row(
+                [
+                    ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=16),
+                    ft.Text("Running", size=16, weight=ft.FontWeight.BOLD),
+                ],
+                spacing=5,
             )
+            self.status_indicator.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.GREEN)
+            self.page.update()
 
-        # Add Text Consumer if enabled
-        if self.text_consumer_enabled:
-            event_list.append(
-                {
-                    "class": events.DiscordTextConsumerEvent,
-                    "args": self.text_consumer_config,
-                }
+        except Exception as ex:
+            # Catch any unexpected errors during startup
+            error_msg = f"Unexpected error starting race control: {str(ex)}"
+            if logger:
+                logger.error(error_msg)
+                logger.exception(ex)
+            self.show_error_dialog(
+                "Race Control Error",
+                f"{error_msg}\n\nCheck logs for more details.",
             )
-
-        # Add Audio Consumer if enabled
-        if self.audio_consumer_enabled:
-            event_list.append(
-                {"class": events.AudioConsumerEvent, "args": self.audio_consumer_config}
-            )
-
-        # Add Chat Consumer if enabled
-        if self.chat_consumer_enabled:
-            event_list.append(
-                {"class": events.ChatConsumerEvent, "args": self.chat_consumer_config}
-            )
-
-        # Create event instances
-        event_instances = [item["class"](**item["args"]) for item in event_list]
-
-        # Create and start subprocess manager
-        event_run_methods = [event.run for event in event_instances]
-        self.subprocess_manager = SubprocessManager(event_run_methods)
-        self.subprocess_manager.start()
-
-        # Start chat consumer refresh task if enabled
-        if self.chat_consumer_enabled:
-            self.page.run_task(self.chat_refresh_task)
-
-        # Update UI
-        self.is_running = True
-        self.start_button.disabled = True
-        self.stop_button.disabled = False
-        self.status_indicator.content = ft.Row(
-            [
-                ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.GREEN, size=16),
-                ft.Text("Running", size=16, weight=ft.FontWeight.BOLD),
-            ],
-            spacing=5,
-        )
-        self.status_indicator.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.GREEN)
-        self.page.update()
+            # Reset running state
+            self.is_running = False
+            self.rebuild_all_tabs()
+            main_row = self.page.controls[2]
+            main_row.controls[2] = self.build_consumer_section()
+            self.page.update()
 
     async def chat_refresh_task(self):
         """Background task to check for new chat messages and display them"""
@@ -2867,6 +2939,21 @@ class RaceControlApp:
                 for thread in self.subprocess_manager.threads:
                     thread.join()
             e.page.window.destroy()
+
+    def show_error_dialog(self, title, message):
+        """Show an error dialog to the user"""
+
+        def close_dlg(e):
+            self.page.close(dlg)
+
+        dlg = ft.AlertDialog(
+            title=ft.Text(title),
+            content=ft.Text(message),
+            actions=[
+                ft.TextButton("OK", on_click=close_dlg),
+            ],
+        )
+        self.page.open(dlg)
 
     def show_save_preset_dialog(self, e):
         """Show dialog to save current configuration as preset"""
