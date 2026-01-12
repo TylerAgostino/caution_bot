@@ -14,7 +14,7 @@ class IncidentPenaltyEvent(BaseEvent):
         initial_penalty: str = "",
         recurring_penalty: str = "",
         end_recurring_penalty: str = "",
-        sound: bool = False,
+        sound: bool = True,
     ):
         self.initial_penalty = initial_penalty
         self.recurring_penalty = recurring_penalty
