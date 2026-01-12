@@ -67,7 +67,7 @@ class AudioConsumerEvent(BaseEvent):
             if voice_channel is None:
                 self.logger.error(f"Voice channel with ID {self.vc_id} not found.")
                 return
-            if not isinstance(voice_channel, discord.guild.VocalGuildChannel):
+            if not isinstance(voice_channel, discord.channel.VocalGuildChannel):
                 self.logger.error(
                     f"Channel with ID {self.vc_id} is not a voice channel."
                 )
