@@ -4172,6 +4172,11 @@ class RaceControlApp:
         self.goggles_tab_contents["Per-Car Data"] = caridx_tab_content
         tab_list.append(ft.Tab(text="Per-Car Data", content=caridx_tab_content))
 
+        # Build Driver Info tab
+        driver_info_content = self.build_driver_info_table()
+        self.goggles_tab_contents["Driver Info"] = driver_info_content
+        tab_list.append(ft.Tab(text="Driver Info", content=driver_info_content))
+
         def on_tab_change(e):
             """Save selected tab index"""
             self.goggles_selected_tab = e.control.selected_index
@@ -4188,10 +4193,112 @@ class RaceControlApp:
         self.goggles_telemetry_display.content = self.goggles_tabs_control
         self.goggles_telemetry_display.update()
 
+    def build_driver_info_table(self):
+        """Build the Driver Info table showing static driver information"""
+        # Create DataTable with driver info columns
+        columns = [
+            ft.DataColumn(ft.Text("CarIdx", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("Driver Name", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("Car Number", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("Team Name", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("Car Name", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("Car Class", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("iRating", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("License", weight=ft.FontWeight.BOLD, size=11)),
+            ft.DataColumn(ft.Text("User ID", weight=ft.FontWeight.BOLD, size=11)),
+        ]
+
+        self.goggles_driver_info_datatable = ft.DataTable(
+            columns=columns,
+            rows=[],
+            border=ft.border.all(1, ft.Colors.GREY_700),
+            border_radius=5,
+            vertical_lines=ft.border.BorderSide(1, ft.Colors.GREY_800),
+            horizontal_lines=ft.border.BorderSide(1, ft.Colors.GREY_800),
+            heading_row_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE),
+            heading_row_height=35,
+            data_row_max_height=30,
+            data_row_min_height=25,
+            column_spacing=15,
+        )
+
+        # Populate driver info on initial build
+        self.update_driver_info_table()
+
+        return ft.Column(
+            [
+                ft.Text(
+                    "Driver Information (Static Data)",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Row(
+                    [
+                        ft.Container(
+                            content=self.goggles_driver_info_datatable,
+                            border=ft.border.all(1, ft.Colors.GREY_600),
+                            border_radius=5,
+                            padding=10,
+                        ),
+                    ],
+                    scroll=ft.ScrollMode.ALWAYS,
+                    expand=True,
+                ),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=10,
+            expand=True,
+        )
+
+    def update_driver_info_table(self):
+        """Update the driver info table with static driver data"""
+        if not self.goggle_event or not hasattr(self, "goggles_driver_info_datatable"):
+            return
+
+        try:
+            driver_info = self.goggle_event.sdk["DriverInfo"]
+            if not driver_info or "Drivers" not in driver_info:
+                return
+
+            drivers = driver_info["Drivers"]
+            if not isinstance(drivers, list):
+                return
+
+            rows = []
+            for idx, driver in enumerate(drivers):
+                if not isinstance(driver, dict):
+                    continue
+
+                cells = [
+                    ft.DataCell(ft.Text(str(driver.get("CarIdx", idx)), size=10)),
+                    ft.DataCell(ft.Text(str(driver.get("UserName", "N/A")), size=10)),
+                    ft.DataCell(ft.Text(str(driver.get("CarNumber", "N/A")), size=10)),
+                    ft.DataCell(ft.Text(str(driver.get("TeamName", "N/A")), size=10)),
+                    ft.DataCell(
+                        ft.Text(str(driver.get("CarScreenName", "N/A")), size=10)
+                    ),
+                    ft.DataCell(
+                        ft.Text(str(driver.get("CarClassShortName", "N/A")), size=10)
+                    ),
+                    ft.DataCell(ft.Text(str(driver.get("IRating", "N/A")), size=10)),
+                    ft.DataCell(ft.Text(str(driver.get("LicString", "N/A")), size=10)),
+                    ft.DataCell(ft.Text(str(driver.get("UserID", "N/A")), size=10)),
+                ]
+                rows.append(ft.DataRow(cells=cells))
+
+            self.goggles_driver_info_datatable.rows = rows
+            self.goggles_driver_info_datatable.update()
+        except Exception as e:
+            print(f"Driver info table update error: {e}")
+            pass
+
     def build_caridx_table(self, caridx_fields):
         """Build the CarIdx per-car data table"""
         # Create DataTable
-        columns = [ft.DataColumn(ft.Text("Car #", weight=ft.FontWeight.BOLD, size=12))]
+        columns = [
+            ft.DataColumn(ft.Text("Car #", weight=ft.FontWeight.BOLD, size=12)),
+            ft.DataColumn(ft.Text("Driver", weight=ft.FontWeight.BOLD, size=11)),
+        ]
 
         # Add columns for each field (remove 'CarIdx' prefix for display)
         for field in caridx_fields:
@@ -4499,8 +4606,29 @@ class RaceControlApp:
                     else:
                         num_cars = 0
 
+                    # Get driver info for name lookup
+                    driver_names = {}
+                    try:
+                        driver_info = self.goggle_event.sdk["DriverInfo"]
+                        if driver_info and "Drivers" in driver_info:
+                            drivers = driver_info["Drivers"]
+                            if isinstance(drivers, list):
+                                for driver in drivers:
+                                    if isinstance(driver, dict):
+                                        car_idx_key = driver.get("CarIdx")
+                                        driver_name = driver.get("UserName", "Unknown")
+                                        if car_idx_key is not None:
+                                            driver_names[car_idx_key] = driver_name
+                    except:
+                        pass
+
                     for car_idx in range(num_cars):
-                        cells = [ft.DataCell(ft.Text(str(car_idx), size=10))]
+                        cells = [
+                            ft.DataCell(ft.Text(str(car_idx), size=10)),
+                            ft.DataCell(
+                                ft.Text(driver_names.get(car_idx, "N/A"), size=9)
+                            ),
+                        ]
 
                         for field in caridx_fields:
                             try:
