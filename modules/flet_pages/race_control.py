@@ -1586,7 +1586,7 @@ class RaceControlApp:
                 "recurring_penalty": "0",
                 "end_recurring_incidents": 55,
                 "end_recurring_penalty": "0",
-                "sound": False,
+                "sound": True,
             }
         config = self.incident_penalty_config
 
