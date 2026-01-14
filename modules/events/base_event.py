@@ -731,8 +731,20 @@ class BaseEvent:
                     driver_incidents_df = driver_incidents_df[
                         driver_incidents_df["car_number"] != car_number
                     ]
+                    car_record = next(
+                        d
+                        for d in self.sdk["DriverInfo"]["Drivers"]
+                        if d["CarNumber"] == car_number
+                    )
+                    car_idx = car_record["CarIdx"]
+                    laps_complete = (
+                        self.sdk["CarIdxLapCompleted"][car_idx]
+                        + self.sdk["CarIdxLapDistPct"][car_idx]
+                    )
                     # Log the collision
-                    self.logger.info(f"Collision detected for car #{car_number}.")
+                    self.logger.info(
+                        f"Collision detected for car #{car_number} with {laps_complete} laps completed."
+                    )
 
                     y.append(car_number)
 
