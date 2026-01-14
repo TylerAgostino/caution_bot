@@ -5,11 +5,10 @@
 [
   {
     "adapter": "Debugpy",
-    "label": "Streamlit",
+    "label": "Flet",
     "request": "launch",
     "python": "$ZED_CUSTOM_PYTHON_ACTIVE_ZED_TOOLCHAIN",
-    "args": ["run", "better_caution_bot.py"],
     "cwd": "$ZED_WORKTREE_ROOT",
-    "module": "streamlit"
+    "module": "BetterCautionBot"
   }
 ]

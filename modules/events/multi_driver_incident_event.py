@@ -42,45 +42,6 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         self.start_lap = kwargs.get("min", 0)
         self.end_time = kwargs.get("max", 0)
 
-    @staticmethod
-    def ui(ident=""):
-        """
-        UI for the MultiDriverIncidentEvent.
-        """
-        import streamlit as st
-
-        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
-        return {
-            "drivers_threshold": col1.number_input(
-                "Drivers Threshold",
-                value=3,
-                key=f"{ident}drivers_threshold",
-                help="Number of cars receiving 4x in the window to trigger a caution",
-            ),
-            "overall_driver_window": col2.number_input(
-                "Incident Window (s)",
-                value=30,
-                key=f"{ident}overall_driver_window",
-                help="Number of seconds between drivers' 4xs counted as the same incident",
-            ),
-            "auto_increase": col3.checkbox(
-                "Auto Raise Threshold",
-                value=False,
-                key=f"{ident}auto_increase",
-                help="Raise the threshold after every caution",
-            ),
-            "increase_by": col4.number_input(
-                "Increase By",
-                value=1,
-                min_value=1,
-                key=f"{ident}increase_by",
-                help="Raises the threshold by this number of drivers after every caution",
-            ),
-            **super(MultiDriverTimedIncidentEvent, MultiDriverTimedIncidentEvent).ui(
-                ident
-            ),
-        }
-
     @override
     def run(
         self,
@@ -89,6 +50,7 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
         chat_lock=None,
         audio_queue=None,
         broadcast_text_queue=None,
+        chat_consumer_queue=None,
     ):
         """
         Runs the event sequence.
@@ -99,12 +61,14 @@ class MultiDriverTimedIncidentEvent(RandomCautionEvent):
             chat_lock (threading.Lock, optional): Lock to ensure thread-safe access to chat method. Defaults to None.
             audio_queue (queue.Queue, optional): Queue for audio events. Defaults to None.
             broadcast_text_queue (queue.Queue, optional): Queue for text events. Defaults to None.
+            chat_consumer_queue (queue.Queue, optional): Queue for chat consumer messages. Defaults to None.
         """
         self.cancel_event = cancel_event or self.cancel_event
         self.busy_event = busy_event or self.busy_event
         self.chat_lock = chat_lock or self.chat_lock
         self.audio_queue = audio_queue or self.audio_queue
         self.broadcast_text_queue = broadcast_text_queue or self.broadcast_text_queue
+        self.chat_consumer_queue = chat_consumer_queue or self.chat_consumer_queue
         self.wait_for_start()
         self.logger.debug("Starting MultiDriverTimedIncidentEvent run loop.")
         iterator = self.driver_4x_generator(self.incident_window_seconds)

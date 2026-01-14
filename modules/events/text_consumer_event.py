@@ -25,17 +25,6 @@ class TextConsumerEvent(BaseEvent):
                 {"title": "Race Control", "text": "A test message from Race Control"}
             )
 
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2 = st.columns(2)
-        return {
-            "password": col1.text_input("Password", key=f"{ident}password", value=""),
-            "room": col2.text_input("Room", key=f"{ident}room", value=""),
-            "test": col1.checkbox("Test", key=f"{ident}test", value=False),
-        }
-
     def event_sequence(self):
         """
         Consumes text messages from the queue and sends them to the SDKGaming Websocket.
@@ -120,19 +109,6 @@ class DiscordTextConsumerEvent(TextConsumerEvent):
         )
         client.run(token)
 
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2 = st.columns(2)
-        return {
-            "Token": col1.text_input("Token", key=f"{ident}password", value=""),
-            "Text Channel ID": col2.text_input(
-                "Text Channel ID", key=f"{ident}room", value=""
-            ),
-            "test": col1.checkbox("Test", key=f"{ident}test", value=False),
-        }
-
 
 class ATVOTextConsumerEvent(TextConsumerEvent):
     from enum import Enum
@@ -165,16 +141,6 @@ class ATVOTextConsumerEvent(TextConsumerEvent):
         Investigation = 4
         NoFurtherAction = 5
         ClearPenalty = 6
-
-    @staticmethod
-    def ui(ident=""):
-        import streamlit as st
-
-        col1, col2 = st.columns(2)
-        return {
-            "password": col1.text_input("Password", key=f"{ident}password", value=""),
-            "test": col1.checkbox("Test", key=f"{ident}test", value=False),
-        }
 
     def send_message(self, text: dict):
         """

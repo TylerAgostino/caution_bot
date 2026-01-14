@@ -1,8 +1,6 @@
 pyirsdk
 pywinauto
 pyperclip
-streamlit
-streamlit-autorefresh
 langchain-ollama
 langchain
 langchain-core
@@ -14,3 +12,4 @@ ffmpeg
 imageio-ffmpeg
 ws4py
 signalr-client
+flet>=0.24.0

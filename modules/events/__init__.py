@@ -1,3 +1,5 @@
+# the imports in this file are in a particular order for a particular reason
+# ruff: noqa
 from modules.events.base_event import BaseEvent
 
 from modules.events.random_event import RandomEvent
@@ -25,8 +27,11 @@ from modules.events.text_consumer_event import (
     DiscordTextConsumerEvent,
     ATVOTextConsumerEvent,
 )
-
+from modules.events.chat_consumer_event import ChatConsumerEvent
 
 from modules.events.f1_qualifying_event import F1QualifyingEvent
 
-from modules.events.multi_driver_incident_event import MultiDriverTimedIncidentEvent, MultiDriverLapIncidentEvent
+from modules.events.multi_driver_incident_event import (
+    MultiDriverTimedIncidentEvent,
+    MultiDriverLapIncidentEvent,
+)

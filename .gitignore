@@ -7,3 +7,5 @@
 /venv/
 /bot_venv/
 *.pyc
+**/__pycache__/
+.settings.json
