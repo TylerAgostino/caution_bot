@@ -1,8 +1,6 @@
 import queue
 import threading
 
-from streamlit.runtime.scriptrunner import add_script_run_ctx
-
 
 class SubprocessManager:
     """
@@ -29,6 +27,7 @@ class SubprocessManager:
         self.chat_lock = threading.Lock()
         self.audio_queue = queue.Queue()
         self.broadcast_text_queue = queue.Queue()
+        self.chat_consumer_queue = queue.Queue()
         self.threads = [
             threading.Thread(
                 target=coro,
@@ -38,6 +37,7 @@ class SubprocessManager:
                     "chat_lock": self.chat_lock,
                     "audio_queue": self.audio_queue,
                     "broadcast_text_queue": self.broadcast_text_queue,
+                    "chat_consumer_queue": self.chat_consumer_queue,
                 },
             )
             for coro in coros
@@ -45,15 +45,36 @@ class SubprocessManager:
 
     def start(self):
         """
-        Starts all threads and adds them to the Streamlit script run context.
+        Starts all threads.
         """
         self.cancel_event.clear()
         for thread in self.threads:
             thread.start()
-            add_script_run_ctx(thread)
 
     def stop(self):
         """
         Sets the cancel event to stop all threads.
         """
         self.cancel_event.set()
+
+        # send sigterm to any threads that remain
+        # Wait for threads to finish gracefully
+        for thread in self.threads:
+            thread.join(timeout=10)
+        # Forcibly kill any threads that are still alive
+        for thread in self.threads:
+            if thread.is_alive():
+                try:
+                    import ctypes
+
+                    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                        ctypes.c_long(thread.ident), ctypes.py_object(SystemExit)
+                    )
+                    if res == 0:
+                        raise ValueError("Thread id not found")
+                    elif res > 1:
+                        # If it returns a number greater than one, we're in trouble, so reset
+                        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, 0)
+                        raise SystemError("PyThreadState_SetAsyncExc failed")
+                except Exception as e:
+                    print(f"Failed to forcibly kill thread {thread.name}: {e}")
