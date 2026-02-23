@@ -416,6 +416,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         leader = -1
 
         while not self.restart_ready.is_set():
+            last_step = this_step
             this_step = self.get_current_running_order()
             # Get the class leaders
             leaders = {}
@@ -471,6 +472,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     ]
 
                 if (
+                    car["LapCompleted"] > lead_lap
+                    or len(restart_order_generator.order) > 0
+                ) and (
                     (
                         car["CarIdx"]
                         not in [c["CarIdx"] for c in restart_order_generator.order]
