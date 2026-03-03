@@ -416,7 +416,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
         leader = -1
 
         while not self.restart_ready.is_set():
-            last_step = this_step
             this_step = self.get_current_running_order()
             # Get the class leaders
             leaders = {}
@@ -606,6 +605,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     continue
             self.sdk.unfreeze_var_buffer_latest()
             self.sdk.freeze_var_buffer_latest()
+            last_step = this_step
             if not restart_order_generator.leader():
                 continue
 
@@ -660,7 +660,6 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 restart_order_generator.class_separation = True
                 self.can_separate_classes = False
                 self.logger.debug(restart_order_generator.order)
-            last_step = this_step
 
             if (
                 0
