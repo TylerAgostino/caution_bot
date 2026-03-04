@@ -119,7 +119,7 @@ class RandomCautionEvent(RandomTimedEvent):
                 last_step = this_step
                 self.sleep(1)
                 if self.sdk["SessionFlags"] & self.Flags.green:
-                    self.logger.warn("Caution ended during wave arounds.")
+                    self.logger.warning("Caution ended during wave arounds.")
                     overridden = True
                     break
             if not overridden:

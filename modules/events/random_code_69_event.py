@@ -371,7 +371,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         lead_lap = max([car["LapCompleted"] for car in last_step])
         max_total_completed = max([car["total_completed"] for car in last_step])
         if max_total_completed - lead_lap >= 1 - self.end_of_lap_safety_margin:
-            self.logger.warn(
+            self.logger.warning(
                 "Safety margin triggered, extending notification phase by 1 lap"
             )
             lead_lap += 1
@@ -722,7 +722,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 )
                 try:
                     if car["CarIdx"] == self.sdk["PlayerCarIdx"]:
-                        self.logger.warn(
+                        self.logger.warning(
                             f"{str(lane_names[i % number_of_lanes]).upper()} lane for player car"
                         )
                 except:
