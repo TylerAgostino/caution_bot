@@ -1790,6 +1790,8 @@ class RaceControlApp:
             "message": "",
             "race_control": False,
             "broadcast": False,
+            "play_audio": False,
+            "audio_file": "",
         }
         self.scheduled_messages.append(config)
 
@@ -1799,6 +1801,11 @@ class RaceControlApp:
 
     def create_scheduled_message_card(self, index: int, config: Dict):
         """Create a card for a scheduled message"""
+        # Ensure legacy configs have the new keys with safe defaults
+        if "play_audio" not in config:
+            config["play_audio"] = False
+        if "audio_file" not in config:
+            config["audio_file"] = ""
 
         def update_config(key, value):
             config[key] = value
@@ -1847,6 +1854,27 @@ class RaceControlApp:
             on_change=lambda e: update_config("broadcast", e.control.value),
         )
 
+        audio_file_field = ft.TextField(
+            label="Audio File",
+            hint_text="Filename supplied to the audio consumer (e.g. alert)",
+            value=config["audio_file"],
+            width=300,
+            disabled=self.is_running or not config["play_audio"],
+            on_change=lambda e: update_config("audio_file", e.control.value),
+        )
+
+        def toggle_play_audio(e):
+            update_config("play_audio", e.control.value)
+            audio_file_field.disabled = self.is_running or not e.control.value
+            audio_file_field.update()
+
+        play_audio_check = ft.Checkbox(
+            label="Play Audio",
+            value=config["play_audio"],
+            disabled=self.is_running,
+            on_change=toggle_play_audio,
+        )
+
         return ft.Card(
             content=ft.Container(
                 content=ft.Column(
@@ -1867,6 +1895,9 @@ class RaceControlApp:
                         message,
                         ft.Row(
                             [race_control_check, broadcast_check], wrap=True, spacing=8
+                        ),
+                        ft.Row(
+                            [play_audio_check, audio_file_field], wrap=True, spacing=8
                         ),
                     ],
                     spacing=5,
@@ -2684,6 +2715,8 @@ class RaceControlApp:
                                     "message": config["message"],
                                     "race_control": config["race_control"],
                                     "broadcast": config["broadcast"],
+                                    "play_audio": config.get("play_audio", False),
+                                    "audio_file": config.get("audio_file", ""),
                                 },
                             }
                         )
