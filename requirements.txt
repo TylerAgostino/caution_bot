@@ -12,7 +12,7 @@ ffmpeg
 imageio-ffmpeg
 ws4py
 signalr-client
-flet>=0.24.0
+flet==0.28.3
 pytest
 pandas
 PyInstaller
