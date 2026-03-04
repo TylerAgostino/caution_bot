@@ -16,3 +16,4 @@ flet==0.28.3
 pytest
 pandas
 PyInstaller
+davey
