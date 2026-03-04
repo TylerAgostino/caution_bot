@@ -539,6 +539,7 @@ class BaseEvent:
             "last_time": self.sdk["SessionTime"],
         }
         while True:
+            next_speed = 0
             try:
                 distance_in_lap = (
                     1 + self.sdk["CarIdxLapDistPct"][carIdx] - speeds["last_location"]
