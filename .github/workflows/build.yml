@@ -23,8 +23,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Resolve discord bin path
+        id: discord
+        run: |
+          $discordBin = python -c "import discord, os; print(os.path.join(os.path.dirname(discord.__file__), 'bin'))"
+          echo "bin_path=$discordBin" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
       - name: Build executable
-        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data ".venv/Lib/site-packages/discord/bin;." --add-data "audio;audio" -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
+        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data "${{ steps.discord.outputs.bin_path }};." --add-data "audio;audio" -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
 
       - name: Copy audio to dist
         run: |
