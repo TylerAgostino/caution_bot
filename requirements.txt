@@ -13,3 +13,5 @@ imageio-ffmpeg
 ws4py
 signalr-client
 flet>=0.24.0
+pytest
+pandas

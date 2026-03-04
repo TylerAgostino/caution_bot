@@ -316,6 +316,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         self.quickie_auto_class_separate_position = quickie_auto_class_separate_position
         self.quickie_invert_lanes = quickie_invert_lanes
         self.end_of_lap_safety_margin = end_of_lap_safety_margin
+        self.final_restart_order: list[list[str]] = []
         super().__init__(*args, **kwargs)
         self.max_laps_behind_leader = 99999
         self.pacing_speed_km = lambda: (
@@ -371,7 +372,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
         lead_lap = max([car["LapCompleted"] for car in last_step])
         max_total_completed = max([car["total_completed"] for car in last_step])
         if max_total_completed - lead_lap >= 1 - self.end_of_lap_safety_margin:
-            self.logger.warn(
+            self.logger.warning(
                 "Safety margin triggered, extending notification phase by 1 lap"
             )
             lead_lap += 1
@@ -722,7 +723,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                 )
                 try:
                     if car["CarIdx"] == self.sdk["PlayerCarIdx"]:
-                        self.logger.warn(
+                        self.logger.warning(
                             f"{str(lane_names[i % number_of_lanes]).upper()} lane for player car"
                         )
                 except:
@@ -829,6 +830,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
         for i in range(len(lane_order_generators)):
             lane_order_generators[i].update_order()
             self.logger.debug(lane_order_generators[i].order)
+
+        # Snapshot the finalised order for tests and post-race inspection.
+        self.final_restart_order = [
+            [car["CarNumber"] for car in lane_order_generators[i].order]
+            for i in range(len(lane_order_generators))
+        ]
 
         self._chat("Green Flag!", race_control=True)
         self._chat("Green Flag!", race_control=True)

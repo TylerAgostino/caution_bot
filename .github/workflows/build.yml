@@ -1,0 +1,42 @@
+name: Build Executable
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build executable
+        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data ".venv/Lib/site-packages/discord/bin;." --add-data "audio;audio" -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
+
+      - name: Copy audio to dist
+        run: |
+          mkdir dist\audio
+          xcopy /s /y audio dist\audio
+
+      - name: Create release archive
+        working-directory: dist
+        run: tar -a -c -f BetterCautionBot.zip BetterCautionBot.exe audio
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterCautionBot
+          path: dist\BetterCautionBot.zip

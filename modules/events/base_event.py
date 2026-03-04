@@ -539,6 +539,7 @@ class BaseEvent:
             "last_time": self.sdk["SessionTime"],
         }
         while True:
+            next_speed = 0
             try:
                 distance_in_lap = (
                     1 + self.sdk["CarIdxLapDistPct"][carIdx] - speeds["last_location"]
@@ -554,10 +555,13 @@ class BaseEvent:
                     "last_location": self.sdk["CarIdxLapDistPct"][carIdx],
                     "last_time": self.sdk["SessionTime"],
                 }
-                yield speeds["speed"]
+                next_speed = speeds["speed"]
             except ZeroDivisionError:
                 self.logger.error("Zero division error in speed calculation.")
-                yield 0
+            except Exception as e:
+                self.logger.error("Error in speed calculation.")
+                self.logger.error(e)
+            yield next_speed
 
     def multi_lane_restart(
         self,
