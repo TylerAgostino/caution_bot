@@ -65,6 +65,7 @@ IMPORTANT
 
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 from typing import Any
@@ -156,11 +157,29 @@ class ReplaySDK:
 
     def __init__(self, telemetry_path: str | Path) -> None:
         path = Path(telemetry_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Telemetry file not found: {path}")
 
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
+        # Transparently resolve .json.gz <-> .json:
+        # If the caller passed a plain .json path but only the compressed
+        # variant exists, upgrade to .json.gz automatically (and vice-versa).
+        if not path.exists():
+            if path.suffix == ".json":
+                gz_path = path.with_suffix(".json.gz")
+                if gz_path.exists():
+                    path = gz_path
+            elif path.suffix == ".gz" and path.stem.endswith(".json"):
+                plain_path = path.with_suffix("").with_suffix(".json")
+                if plain_path.exists():
+                    path = plain_path
+
+        if not path.exists():
+            raise FileNotFoundError(f"Telemetry file not found: {telemetry_path}")
+
+        if path.suffix == ".gz":
+            with gzip.open(path, "rt", encoding="utf-8") as fh:
+                data = json.load(fh)
+        else:
+            with path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
 
         if "frames" not in data or not isinstance(data["frames"], list):
             raise ValueError(

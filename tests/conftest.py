@@ -163,9 +163,12 @@ class ReplayFixture:
         """Load a ``ReplayFixture`` from a ``.meta.json`` sidecar file.
 
         The corresponding telemetry file is expected to sit next to the
-        sidecar with the same stem minus the ``.meta`` suffix::
+        sidecar with the same stem minus the ``.meta`` suffix.  The
+        compressed variant (``.json.gz``) is preferred over plain ``.json``
+        when both exist::
 
-            tests/fixtures/my_race.json          ← telemetry
+            tests/fixtures/my_race.json.gz       ← telemetry (preferred)
+            tests/fixtures/my_race.json          ← telemetry (fallback)
             tests/fixtures/my_race.meta.json     ← sidecar (this file)
 
         Raises
@@ -179,13 +182,20 @@ class ReplayFixture:
             meta = json.load(fh)
 
         # Derive the telemetry path: strip the ".meta" part of the stem.
-        # e.g.  my_race.meta.json  →  my_race.json
-        telemetry_name = meta_path.name.replace(".meta.json", ".json")
-        telemetry_path = meta_path.parent / telemetry_name
+        # e.g.  my_race.meta.json  →  my_race.json  (or my_race.json.gz)
+        # Prefer the compressed variant when both exist; fall back to plain JSON.
+        telemetry_stem = meta_path.name.replace(".meta.json", "")
+        gz_path = meta_path.parent / f"{telemetry_stem}.json.gz"
+        plain_path = meta_path.parent / f"{telemetry_stem}.json"
 
-        if not telemetry_path.exists():
+        if gz_path.exists():
+            telemetry_path = gz_path
+        elif plain_path.exists():
+            telemetry_path = plain_path
+        else:
             raise FileNotFoundError(
-                f"Telemetry file '{telemetry_path}' not found for sidecar '{meta_path}'."
+                f"Telemetry file '{plain_path}' (or '{gz_path}') not found "
+                f"for sidecar '{meta_path}'."
             )
 
         # Merge supplied event_kwargs over the defaults.
