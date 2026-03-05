@@ -9,3 +9,4 @@
 *.pyc
 **/__pycache__/
 .settings.json
+.pytest_cache/
