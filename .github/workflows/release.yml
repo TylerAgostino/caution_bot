@@ -47,5 +47,5 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist\BetterCautionBot.zip
+          files: dist/BetterCautionBot.zip
           generate_release_notes: true
