@@ -55,11 +55,14 @@ class AudioConsumerEvent(BaseEvent):
         @tasks.loop(seconds=0.1)
         async def auto_play():
             try:
+                self.sleep(0)
                 text = self.audio_queue.get(False)
                 await play(text)
             except queue.Empty:
                 pass
-            self.sleep(0)
+            except KeyboardInterrupt:
+                await bot.close()
+                raise
 
         @bot.event
         async def on_ready():
