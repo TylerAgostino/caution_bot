@@ -1,0 +1,63 @@
+{
+  "description": "Mugello",
+  "event_kwargs": {
+    "wave_arounds": true,
+    "notify_on_skipped_caution": true,
+    "max_speed_km": 69,
+    "wet_speed_km": 69,
+    "restart_speed_pct": 125,
+    "reminder_frequency": 8,
+    "lane_names": [
+      "One",
+      "Two"
+    ],
+    "extra_lanes": true,
+    "auto_restart_get_ready_position": 1.2,
+    "auto_restart_form_lanes_position": 1.1,
+    "auto_class_separate_position": -1.0,
+    "quickie_auto_restart_get_ready_position": 0.79,
+    "quickie_auto_restart_form_lanes_position": 0.63,
+    "quickie_auto_class_separate_position": -1.0,
+    "quickie_window": -1,
+    "quickie_invert_lanes": false,
+    "end_of_lap_safety_margin": 0,
+    "max_laps_behind_leader": 99
+  },
+  "expected_restart_order": [
+    [
+      "19",
+      "64",
+      "69",
+      "703",
+      "243",
+      "10",
+      "8",
+      "119",
+      "39",
+      "45",
+      "58",
+      "57",
+      "37",
+      "6",
+      "79",
+      "666"
+    ],
+    [
+      "9",
+      "017",
+      "99",
+      "3",
+      "137",
+      "65",
+      "013",
+      "43",
+      "24",
+      "22",
+      "42",
+      "5",
+      "38",
+      "02",
+      "7"
+    ]
+  ]
+}

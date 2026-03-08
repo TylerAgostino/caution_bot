@@ -1,5 +1,5 @@
 """
-capture_telemetry.py -- iRacing Telemetry Capture Tool
+capture_telemetry.py -- iRacing Telemetry Capture Tool (gzip-compressed output)
 =======================================================
 
 WORKFLOW
@@ -9,7 +9,7 @@ WORKFLOW
 2.  Run this script, passing the same Code 69 settings you use in the bot::
 
         python tests/capture_telemetry.py \\
-            --output tests/fixtures/my_race.json \\
+            --output tests/fixtures/my_race.json.gz \\
             --wave-arounds \\
             --extra-lanes \\
             --max-speed-km 69 \\
@@ -36,23 +36,28 @@ WORKFLOW
 
 5.  On completion two files are written side-by-side:
 
-        my_race.json            telemetry frames (for ReplaySDK)
+        my_race.json.gz         gzip-compressed telemetry frames (for ReplaySDK)
         my_race.meta.json       sidecar with event_kwargs + expected_restart_order
 
     The .meta.json is immediately usable with test_fixtures.py — no manual
     editing of the restart order is needed.
+
+    ReplaySDK transparently decompresses .json.gz files on load, so the test
+    suite needs no changes when consuming these fixtures.
 
 SIZE NOTES
 ----------
   - 4 Hz (not 60 Hz)             :  15× fewer frames than the naïve approach
   - Static keys hoisted out       :  removes ~70 % of per-frame payload
   - Compact JSON (no indent)      :  2–3× smaller than indented JSON
-  A 5-minute Code 69 sequence typically produces < 15 MB.
+  - gzip compression (level 9)   :  typically 5–11× further reduction
+  A 5-minute Code 69 sequence typically produces < 1 MB compressed.
 
 COMMAND-LINE ARGUMENTS
 ----------------------
   --output PATH               Output telemetry file path.
-                              Defaults to tests/fixtures/telemetry_<timestamp>.json
+                              Defaults to tests/fixtures/telemetry_<timestamp>.json.gz
+                              Plain .json is also accepted; ReplaySDK reads both.
   --description TEXT          Human-readable label for the .meta.json sidecar.
                               Defaults to the output filename stem.
 
@@ -91,6 +96,7 @@ DYNAMIC KEYS (captured every tick, stored per-frame)
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import queue
 import sys
@@ -359,6 +365,8 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
     event_thread.start()
     print("Recording …  (Ctrl-C to abort)\n")
 
+    sdk.replay_set_play_speed(1)
+
     try:
         while not recording_stop.is_set():
             loop_start = time.monotonic()
@@ -422,8 +430,14 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as fh:
-        json.dump(telemetry_output, fh, separators=(",", ":"))
+
+    # Write compressed if the path ends with .gz, otherwise plain JSON.
+    if output_path.suffix == ".gz":
+        with gzip.open(output_path, "wt", encoding="utf-8", compresslevel=9) as fh:
+            json.dump(telemetry_output, fh, separators=(",", ":"))
+    else:
+        with output_path.open("w", encoding="utf-8") as fh:
+            json.dump(telemetry_output, fh, separators=(",", ":"))
 
     actual_size = output_path.stat().st_size
     print(f"\n[DONE] {len(frames)} frames written to: {output_path}")
@@ -483,7 +497,7 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
 
 def _default_output_path() -> Path:
     ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-    return Path("tests") / "fixtures" / f"telemetry_{ts}.json"
+    return Path("tests") / "fixtures" / f"telemetry_{ts}.json.gz"
 
 
 def main(argv: list[str] | None = None) -> None:

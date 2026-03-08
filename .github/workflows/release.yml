@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Resolve discord bin path
+        id: discord
+        run: |
+          $discordBin = python -c "import discord, os; print(os.path.join(os.path.dirname(discord.__file__), 'bin'))"
+          echo "bin_path=$discordBin" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build executable
+        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data "${{ steps.discord.outputs.bin_path }};." --add-data "audio;audio" -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
+
+      - name: Copy audio to dist
+        run: |
+          mkdir dist\audio
+          xcopy /s /y audio dist\audio
+
+      - name: Create release archive
+        working-directory: dist
+        run: tar -a -c -f BetterCautionBot.zip BetterCautionBot.exe audio
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist\BetterCautionBot.zip
+          generate_release_notes: true

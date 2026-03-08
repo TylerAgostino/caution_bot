@@ -1,0 +1,71 @@
+{
+  "description": "One leader pits, another disconnects",
+  "event_kwargs": {
+    "wave_arounds": true,
+    "notify_on_skipped_caution": true,
+    "max_speed_km": 69,
+    "wet_speed_km": 69,
+    "restart_speed_pct": 125,
+    "reminder_frequency": 8,
+    "lane_names": [
+      "One",
+      "Two"
+    ],
+    "extra_lanes": true,
+    "auto_restart_get_ready_position": 1.8,
+    "auto_restart_form_lanes_position": 1.5,
+    "auto_class_separate_position": -1.0,
+    "quickie_auto_restart_get_ready_position": 0.79,
+    "quickie_auto_restart_form_lanes_position": 0.63,
+    "quickie_auto_class_separate_position": -1.0,
+    "quickie_window": -1,
+    "quickie_invert_lanes": false,
+    "end_of_lap_safety_margin": 0,
+    "max_laps_behind_leader": 99
+  },
+  "expected_restart_order": [
+    [
+      "10",
+      "243",
+      "11",
+      "16",
+      "99",
+      "816",
+      "187",
+      "137",
+      "64",
+      "8",
+      "9",
+      "12",
+      "00",
+      "79",
+      "39",
+      "45",
+      "338",
+      "66",
+      "60",
+      "42"
+    ],
+    [
+      "37",
+      "14",
+      "69",
+      "32",
+      "3",
+      "74",
+      "58",
+      "22",
+      "248",
+      "703",
+      "7",
+      "017",
+      "751",
+      "71",
+      "666",
+      "38",
+      "119",
+      "13",
+      "19"
+    ]
+  ]
+}
