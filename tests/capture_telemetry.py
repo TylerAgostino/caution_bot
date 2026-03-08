@@ -365,6 +365,8 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
     event_thread.start()
     print("Recording …  (Ctrl-C to abort)\n")
 
+    sdk.replay_set_play_speed(1)
+
     try:
         while not recording_stop.is_set():
             loop_start = time.monotonic()
