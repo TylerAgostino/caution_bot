@@ -257,11 +257,13 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
         test runner can reconstruct the event with identical settings.
     """
     sdk = irsdk.IRSDK()
+    bot_sdk = irsdk.IRSDK()
     pwa = pywinauto.Application()
 
     print("Waiting for iRacing connection …")
     while not sdk.startup():
         time.sleep(1.0)
+    bot_sdk.startup()
     print("Connected to iRacing.\n")
 
     # ------------------------------------------------------------------
@@ -308,7 +310,7 @@ def capture(output_path: Path, description: str, event_kwargs: dict) -> None:
         max=1,
         likelihood=100,
         **event_kwargs,
-        sdk=sdk,
+        sdk=bot_sdk,
         pwa=pwa,
         cancel_event=cancel_event,
         busy_event=busy_event,

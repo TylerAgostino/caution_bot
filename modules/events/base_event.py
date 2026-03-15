@@ -519,6 +519,8 @@ class BaseEvent:
                 and last_step_record["InPits"] == 0
                 and last_step_record["LapCompleted"] > 0
                 and this_step_record["LapCompleted"] > 0
+            ) or (
+                this_step_record["InPits"] == 1 and last_step_record["LapDistPct"] < 0
             )
         except IndexError as e:
             self.logger.error(f"Car {car['CarNumber']} not found in running order.")
