@@ -193,7 +193,7 @@ class RestartOrderManager:
             self.order[i]["WavesRemain"] = (
                 car["ActualPosition"] - (car["WaveAround"] + car["SlowerClassCatchup"])
                 < self.leader()["ActualPosition"] - 1
-            )
+            ) and car["ActualPosition"] > 0
 
         if self.order:
             self.out_of_place_cars = []
@@ -222,6 +222,14 @@ class RestartOrderManager:
                 car
                 for car in self.order
                 if self.sdk["CarIdxLapDistPct"][car["CarIdx"]] != -1
+                and (
+                    not [
+                        c
+                        for c in self.order
+                        if not self.sdk["CarIdxOnPitRoad"][c["CarIdx"]]
+                    ]
+                    or not self.sdk["CarIdxOnPitRoad"][car["CarIdx"]]
+                )
             ),
             None,
         )
