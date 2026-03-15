@@ -1,0 +1,69 @@
+{
+  "description": "Leader Disconnects and Rejoins",
+  "event_kwargs": {
+    "wave_arounds": true,
+    "notify_on_skipped_caution": true,
+    "max_speed_km": 69,
+    "wet_speed_km": 69,
+    "restart_speed_pct": 125,
+    "reminder_frequency": 8,
+    "lane_names": [
+      "One",
+      "Two"
+    ],
+    "extra_lanes": true,
+    "auto_restart_get_ready_position": 1.95,
+    "auto_restart_form_lanes_position": 1.63,
+    "auto_class_separate_position": -1.0,
+    "quickie_auto_restart_get_ready_position": 0.79,
+    "quickie_auto_restart_form_lanes_position": 0.63,
+    "quickie_auto_class_separate_position": -1.0,
+    "quickie_window": -1,
+    "quickie_invert_lanes": false,
+    "end_of_lap_safety_margin": 0,
+    "max_laps_behind_leader": 99
+  },
+  "expected_restart_order": [
+    [
+      "4",
+      "137",
+      "45",
+      "14",
+      "39",
+      "37",
+      "549",
+      "703",
+      "87",
+      "9",
+      "99",
+      "30",
+      "666",
+      "67",
+      "2",
+      "55",
+      "38",
+      "71",
+      "119"
+    ],
+    [
+      "32",
+      "16",
+      "751",
+      "22",
+      "187",
+      "017",
+      "64",
+      "10",
+      "13",
+      "69",
+      "11",
+      "42",
+      "816",
+      "8",
+      "79",
+      "02",
+      "837",
+      "57"
+    ]
+  ]
+}
