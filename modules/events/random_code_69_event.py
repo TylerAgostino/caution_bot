@@ -460,17 +460,11 @@ class RandomTimedCode69Event(RandomTimedEvent):
             # When two cars cross the S/F line on the same tick their
             # current LapDistPct has already reset to ~0, making their
             # total_completed values effectively tied.  Break that tie by
-            # the car's LapDistPct from the *previous* step (last_step) so
+            # the car's LapDistPct from the current step so
             # the car that was physically further around the track gets
             # added to the restart order first.
             def _sort_key(car):
-                last_record = next(
-                    (c for c in last_step if c["CarIdx"] == car["CarIdx"]), None
-                )
-                prev_dist = (
-                    last_record["LapDistPct"] if last_record is not None else 0.0
-                )
-                return (car["total_completed"], prev_dist)
+                return (car["total_completed"], car["LapDistPct"])
 
             this_step = sorted(this_step, key=_sort_key, reverse=True)
 
