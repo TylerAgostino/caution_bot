@@ -30,12 +30,11 @@ class RandomTimedEvent(RandomEvent):
         super().__init__(*args, **kwargs)
         min = int(float(min) * 60)
         max = int(float(max) * 60)
-        self.quickie = False
+        min = min if min >= 0 else int(self.sdk["SessionTimeTotal"]) + min
+        max = max if max >= 0 else int(self.sdk["SessionTimeTotal"]) + max
+        self.start_time = random.randint(min, max)
+        self.quickie = False if self.start_time <= max - (quickie_window * 60) else True
         self.quickie_window = quickie_window
-        self.start_time = random.randint(
-            min if min >= 0 else int(self.sdk["SessionTimeTotal"]) + min,
-            max if max >= 0 else int(self.sdk["SessionTimeTotal"]) + max,
-        )
 
     def is_time_to_start(self, adjustment=0):
         """
