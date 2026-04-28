@@ -1,6 +1,4 @@
-import irsdk
-
-from modules.events import BaseEvent
+from modules.events import IRSDK, BaseEvent
 
 
 class CollisionPenaltyEvent(BaseEvent):
@@ -38,7 +36,7 @@ class CollisionPenaltyEvent(BaseEvent):
         self.driver_collision_counts = {}
 
         super().__init__(
-            sdk=sdk or irsdk.IRSDK(),
+            sdk=sdk or IRSDK(),
             pwa=pwa,
             max_laps_behind_leader=max_laps_behind_leader,
         )

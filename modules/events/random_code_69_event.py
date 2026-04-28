@@ -143,14 +143,14 @@ class RestartOrderManager:
         or need to perform wave arounds.
         """
         # First update all the actual positions
-        self.sdk.freeze_var_buffer_latest()
+        # self.sdk.freeze_var_buffer_latest()
         for i, car in enumerate(self.order):
             self.order[i]["ActualPosition"] = (
                 self.sdk["CarIdxLapCompleted"][car["CarIdx"]]
                 + self.sdk["CarIdxLapDistPct"][car["CarIdx"]]
                 - car["BeganPacingLap"]
             )
-        self.sdk.unfreeze_var_buffer_latest()
+        # self.sdk.unfreeze_var_buffer_latest()
         # Then update the expected positions to be right behind the car in front of them
         for i, car in enumerate(self.order):
             self.order[i]["IncorrectOvertakes"] = []

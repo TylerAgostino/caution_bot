@@ -3949,6 +3949,24 @@ class RaceControlApp:
                 )
             )
 
+        def freeze_goggles(e):
+            if self.goggle_event and self.goggle_event.sdk:
+                self.goggle_event.sdk.freeze_var_buffer_latest()
+                self.page.show_snack_bar(
+                    ft.SnackBar(
+                        content=ft.Text("Buffer frozen"), bgcolor=ft.Colors.BLUE
+                    )
+                )
+
+        def unfreeze_goggles(e):
+            if self.goggle_event and self.goggle_event.sdk:
+                self.goggle_event.sdk.unfreeze_var_buffer_latest()
+                self.page.show_snack_bar(
+                    ft.SnackBar(
+                        content=ft.Text("Buffer unfrozen"), bgcolor=ft.Colors.BLUE_GREY
+                    )
+                )
+
         def disconnect_goggles(e):
             self.goggle_event = None
             self.goggles_connection_status.value = "Disconnected"
@@ -4013,6 +4031,24 @@ class RaceControlApp:
                             on_click=disconnect_goggles,
                             style=ft.ButtonStyle(
                                 bgcolor=ft.Colors.RED,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "Freeze Buffer",
+                            icon=ft.Icons.PAUSE,
+                            on_click=freeze_goggles,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.BLUE,
+                                color=ft.Colors.WHITE,
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "Unfreeze Buffer",
+                            icon=ft.Icons.PLAY_ARROW,
+                            on_click=unfreeze_goggles,
+                            style=ft.ButtonStyle(
+                                bgcolor=ft.Colors.BLUE_GREY,
                                 color=ft.Colors.WHITE,
                             ),
                         ),

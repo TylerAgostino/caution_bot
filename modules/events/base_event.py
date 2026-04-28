@@ -9,6 +9,18 @@ import pywinauto
 from pandas import DataFrame, concat
 
 
+class IRSDK(irsdk.IRSDK):
+    @property
+    def _var_buffer_latest(self):
+        if self.__var_buffer_latest is not None:
+            return self.__var_buffer_latest
+        # return 2nd most recent var buffer
+        # because it might be a situation (with most recent var buffer)
+        # that half of var buffer written with new data
+        # and other half still old
+        return sorted(self._header.var_buf, key=lambda v: v.tick_count, reverse=True)[1]
+
+
 class BaseEvent:
     """
     Base class for handling events in the iRacing simulator.
@@ -55,7 +67,7 @@ class BaseEvent:
             chat_consumer_queue (queue.Queue, optional): Queue for chat messages directed to the player. Defaults to None.
             max_laps_behind_leader (int, optional): Maximum Laps Down for cars to be considered in the field. Defaults to 99.
         """
-        self.sdk = irsdk.IRSDK() if sdk is None else sdk
+        self.sdk = IRSDK() if sdk is None else sdk
         if self.sdk:
             self.pwa = pwa or pywinauto.Application()
             self.sdk.shutdown()

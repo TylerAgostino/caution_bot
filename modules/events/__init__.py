@@ -1,6 +1,6 @@
 # the imports in this file are in a particular order for a particular reason
 # ruff: noqa
-from modules.events.base_event import BaseEvent
+from modules.events.base_event import BaseEvent, IRSDK
 
 from modules.events.random_event import RandomEvent
 from modules.events.random_lap_event import RandomLapEvent, LapEvent
