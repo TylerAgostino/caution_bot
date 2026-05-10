@@ -1,0 +1,584 @@
+<!doctype html>
+<!--
+  Caution Bot Broadcast Overlay  —  Main
+  ========================================
+  OBS Browser Source:  http://localhost:{{PORT}}/
+  Width: {{WIDTH}}   Height: {{HEIGHT}}
+  Enable "Allow transparency" in browser-source properties.
+
+  Overlays rendered here
+  ──────────────────────
+  • F1 qualifying timing tower  (top-left, visible when qualifying is running)
+  • Race-control message banner (bottom-centre, slides up on new messages)
+-->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            /* ── Fonts ─────────────────────────────────────────────────────────────── */
+            @font-face { font-family: Saira-Black;     src: url("/static/fonts/Saira-Black.ttf")     format("truetype"); }
+            @font-face { font-family: Saira-Bold;      src: url("/static/fonts/Saira-Bold.ttf")      format("truetype"); }
+            @font-face { font-family: Saira-Regular;   src: url("/static/fonts/Saira-Regular.ttf")   format("truetype"); }
+            @font-face { font-family: Saira-BoldItalic;src: url("/static/fonts/Saira-BoldItalic.ttf")format("truetype"); }
+
+            /* ── Theme variables ────────────────────────────────────────────────────── */
+            :root {
+              --accent:   #D4D6B1;
+              --danger:   #D4D6B1;
+              --elim:     #A73C3C;
+              --bg:       #192433;
+              --bg-dark:  #0d1721;
+              --text:     #ffffff;
+              --dimmed:   #888888;
+              --fn-black: Saira-Black,      sans-serif;
+              --fn-bold:  Saira-Bold,       sans-serif;
+              --fn-reg:   Saira-Regular,    sans-serif;
+              --fn-ital:  Saira-BoldItalic, sans-serif;
+            }
+
+            /* ── Reset ──────────────────────────────────────────────────────────────── */
+            *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+            html, body {
+              width:  {{WIDTH}}px;
+              height: {{HEIGHT}}px;
+              background: transparent;
+              overflow: hidden;
+            }
+
+            .overlay { width: 100%; height: 100%; position: relative; }
+
+
+            /* ═══════════════════════════════════════════════════════════════════════ */
+            /* TIMING TOWER                                                            */
+            /* ═══════════════════════════════════════════════════════════════════════ */
+
+            #timing-tower {
+              position: absolute;
+              top:  110px;
+              left:  18px;
+              width: 348px;
+              border-radius: 4px;
+              overflow: hidden;
+              box-shadow: 0 6px 28px rgba(0, 0, 0, 0.75);
+              opacity: 0;
+              transition: opacity 0.4s ease;
+            }
+            #timing-tower.visible { opacity: 1; }
+
+            /* ── Tower header ── */
+            .tower-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              background: var(--accent);
+              padding: 0 10px;
+              height: 36px;
+              gap: 8px;
+              transition: background 0.3s ease;
+            }
+
+            .tower-session {
+              font-family: var(--fn-black);
+              font-size: 20px;
+              color: #000;
+              flex: 1;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              transition: color 0.2s;
+            }
+
+            .tower-timer {
+              font-family: var(--fn-bold);
+              font-size: 15px;
+              color: #000;
+              font-variant-numeric: tabular-nums;
+              flex-shrink: 0;
+              transition: color 0.2s;
+            }
+
+            /* ── Full-header GREEN FLAG ── */
+            /* The header background pulses green then fades back to accent over 4.5 s. */
+            .tower-header.flag-green {
+              animation: header-go 4.5s ease-out forwards;
+            }
+            @keyframes header-go {
+              0%, 40%  { background: #00c853; }
+              100%     { background: #34D6B1; }
+            }
+
+            /* ── Full-header CHECKERED FLAG ── */
+            /* Dark checkerboard fills the entire header; text switches to white. */
+            .tower-header.flag-checkered {
+              background-image:
+                linear-gradient(rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.52)),
+                linear-gradient(45deg, #000 25%, transparent 25%),
+                linear-gradient(-45deg, #000 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #000 75%),
+                linear-gradient(-45deg, transparent 75%, #000 75%);
+              background-size:     auto, 12px 12px, 12px 12px, 12px 12px, 12px 12px;
+              background-position: 0 0,  0 0,      0 6px,      6px -6px,  -6px 0px;
+              background-color: #fff;
+              animation: none; /* cancel any in-progress green-flag animation */
+            }
+            .tower-header.flag-checkered .tower-session,
+            .tower-header.flag-checkered .tower-timer { color: #fff; }
+
+            /* ── Driver rows ── */
+            .driver-row {
+              position: relative;
+              display: flex;
+              align-items: center;
+              height: 28px;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+              overflow: hidden;
+            }
+
+            .driver-row.safe            { background: var(--bg); }
+            .driver-row.at_risk         { background: rgba(112, 65,  60, 0.90); }
+            .driver-row.elimination_zone{ background: rgba(153, 60, 60, 0.90); }
+            .driver-row.knocked_out     { background: var(--bg-dark); opacity: 0.90; }
+
+            /* Left accent bar */
+            .row-indicator {
+              width: 4px;
+              align-self: stretch;
+              flex-shrink: 0;
+            }
+            .safe             .row-indicator { background: transparent; }
+            .at_risk          .row-indicator { background: var(--danger); }
+            .elimination_zone .row-indicator { background: var(--elim); }
+            .knocked_out      .row-indicator { background: #444; }
+
+            /* Position number */
+            .row-pos {
+              font-family: var(--fn-bold);
+              font-size: 11px;
+              color: var(--text);
+              width: 28px;
+              text-align: center;
+              flex-shrink: 0;
+            }
+            .knocked_out .row-pos { color: var(--dimmed); }
+
+            /* Car number */
+            .row-car {
+              font-family: var(--fn-ital);
+              font-size: 12px;
+              color: var(--accent);
+              width: 36px;
+              text-align: center;
+              flex-shrink: 0;
+            }
+            .knocked_out .row-car { color: var(--dimmed); }
+
+            /* Driver name */
+            .row-name {
+              font-family: var(--fn-reg);
+              font-size: 12px;
+              color: var(--text);
+              flex: 1;
+              padding: 0 5px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .knocked_out .row-name { color: var(--dimmed); }
+
+            /* Lap time cell — flex so the finished-flag icon sits left of the time */
+            .row-time {
+              display: flex;
+              align-items: center;
+              justify-content: flex-end;
+              gap: 4px;
+              font-family: var(--fn-bold);
+              font-size: 12px;
+              color: var(--accent);
+              width: 90px;
+              padding-right: 6px;
+              flex-shrink: 0;
+              font-variant-numeric: tabular-nums;
+            }
+            .knocked_out      .row-time { color: var(--dimmed); }
+            .at_risk          .row-time { color: var(--danger); }
+            .elimination_zone .row-time { color: #D4D6B1; }
+
+            /* "No Time" placeholder for drivers who've advanced but not yet run */
+            .no-time-label {
+              font-family: var(--fn-bold);
+              font-size: 10px;
+              color: var(--dimmed);
+              letter-spacing: 0.3px;
+              font-variant-numeric: normal;
+            }
+
+            /* Small checkered swatch shown when a driver has taken the flag */
+            .row-finished-flag {
+              width: 10px;
+              height: 10px;
+              flex-shrink: 0;
+              border-radius: 1px;
+              background-image:
+                linear-gradient(45deg, #000 25%, transparent 25%),
+                linear-gradient(-45deg, #000 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #000 75%),
+                linear-gradient(-45deg, transparent 75%, #000 75%);
+              background-size:     4px 4px;
+              background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+              background-color: #fff;
+            }
+
+            /* Position-change arrow column */
+            .row-arrow {
+              width: 14px;
+              text-align: center;
+              font-size: 8px;
+              flex-shrink: 0;
+              padding-right: 4px;
+              color: transparent;
+            }
+            .row-arrow.up   { color: var(--accent); }
+            .row-arrow.down { color: var(--danger); }
+
+            /* ── Group divider ── */
+            .group-divider {
+              height: 2px;
+              background: linear-gradient(to right, var(--accent) 30%, transparent);
+            }
+
+            /* ── Position-change flash overlays ── */
+            .driver-row.flash-up::after,
+            .driver-row.flash-down::after {
+              content: '';
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              animation: flash-fade 2s ease-out forwards;
+            }
+            .driver-row.flash-up::after   { background: rgba(52,  214, 177, 0.40); }
+            .driver-row.flash-down::after { background: rgba(252,  85,   0, 0.35); }
+
+            @keyframes flash-fade {
+              0%, 25% { opacity: 1; }
+              100%    { opacity: 0; }
+            }
+
+
+            /* ═══════════════════════════════════════════════════════════════════════ */
+            /* RACE CONTROL BANNER                                                     */
+            /* ═══════════════════════════════════════════════════════════════════════ */
+
+            #rc-anchor {
+              position: absolute;
+              bottom: 72px;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 84%;
+              max-width: 1440px;
+            }
+
+            .rc-banner {
+              display: flex;
+              align-items: stretch;
+              background: var(--bg);
+              border-radius: 4px;
+              overflow: hidden;
+              box-shadow: 0 6px 28px rgba(0, 0, 0, 0.75);
+              opacity: 0;
+              transform: translateY(40px);
+              transition:
+                opacity   0.45s ease,
+                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .rc-banner.visible { opacity: 1; transform: translateY(0); }
+
+            .rc-stripe { width: 6px; background: var(--accent); flex-shrink: 0; }
+
+            .rc-body { padding: 9px 18px 11px; flex: 1; min-width: 0; }
+
+            .rc-label {
+              font-family: var(--fn-bold);
+              font-size: 12px;
+              color: var(--accent);
+              text-transform: uppercase;
+              letter-spacing: 2.5px;
+              margin-bottom: 2px;
+            }
+
+            .rc-text {
+              font-family: var(--fn-reg);
+              font-size: 20px;
+              color: var(--text);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .rc-icon {
+              display: flex;
+              align-items: center;
+              padding: 0 16px;
+              background: var(--accent);
+              color: #000;
+              font-family: var(--fn-black);
+              font-size: 10px;
+              letter-spacing: 1px;
+              text-transform: uppercase;
+              writing-mode: vertical-rl;
+              transform: rotate(180deg);
+              flex-shrink: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="overlay">
+            <!-- ================================================================== -->
+            <!-- F1 QUALIFYING TIMING TOWER                                          -->
+            <!-- ================================================================== -->
+            <div id="timing-tower">
+                <div class="tower-header" id="tower-header">
+                    <span class="tower-session" id="session-label"
+                        >Qualifying</span
+                    >
+                    <span class="tower-timer" id="time-remaining">--:--</span>
+                </div>
+                <div id="driver-list"></div>
+            </div>
+
+            <!-- ================================================================== -->
+            <!-- RACE CONTROL BANNER                                                 -->
+            <!-- ================================================================== -->
+            <div id="rc-anchor">
+                <div class="rc-banner" id="rc-banner">
+                    <div class="rc-stripe"></div>
+                    <div class="rc-body">
+                        <div class="rc-label" id="rc-label">Race Control</div>
+                        <div class="rc-text" id="rc-text"></div>
+                    </div>
+                    <div class="rc-icon">Race Control</div>
+                </div>
+            </div>
+        </div>
+        <!-- /.overlay -->
+
+        <script>
+            /* ====================================================================== */
+            /* RACE CONTROL BANNER                                                      */
+            /* ====================================================================== */
+
+            const banner = document.getElementById("rc-banner");
+            const labelEl = document.getElementById("rc-label");
+            const textEl = document.getElementById("rc-text");
+            let hideTimer = null;
+
+            function showMessage(title, text, displayMs = 20000) {
+                if (hideTimer) clearTimeout(hideTimer);
+                labelEl.textContent = title || "Race Control";
+                textEl.textContent = text || "";
+                banner.classList.remove("visible");
+                void banner.offsetWidth;
+                banner.classList.add("visible");
+                hideTimer = setTimeout(
+                    () => banner.classList.remove("visible"),
+                    displayMs,
+                );
+            }
+
+            const rcSrc = new EventSource("/sse/rc");
+            rcSrc.onmessage = (e) => {
+                try {
+                    showMessage(...Object.values(JSON.parse(e.data)));
+                } catch (_) {}
+            };
+
+            /* ====================================================================== */
+            /* F1 TIMING TOWER                                                          */
+            /* ====================================================================== */
+
+            const tower = document.getElementById("timing-tower");
+            const towerHeader = document.getElementById("tower-header");
+            const sessionLabel = document.getElementById("session-label");
+            const timerEl = document.getElementById("time-remaining");
+            const listEl = document.getElementById("driver-list");
+
+            let prevPositions = new Map(); // car_num → position
+            let prevSessionName = "";
+            let greenFlagTimer = null;
+
+            // ── Helpers ──────────────────────────────────────────────────────────────
+
+            function sessionDisplayLabel(name) {
+                if (!name) return "Qualifying";
+                if (name.startsWith("Pre-"))
+                    return name.slice(4) + " Begins In";
+                return name;
+            }
+
+            /**
+             * Flash the tower header green for 4.5 s (CSS animation fades it back to teal).
+             * Cancels any in-progress green animation before restarting so rapid calls work.
+             */
+            function showGreenFlag() {
+                towerHeader.classList.remove("flag-checkered");
+                towerHeader.classList.remove("flag-green");
+                void towerHeader.offsetWidth; // force reflow to restart animation
+                towerHeader.classList.add("flag-green");
+                if (greenFlagTimer) clearTimeout(greenFlagTimer);
+                greenFlagTimer = setTimeout(
+                    () => towerHeader.classList.remove("flag-green"),
+                    4500,
+                );
+            }
+
+            function esc(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
+
+            // ── Row builder ──────────────────────────────────────────────────────────
+
+            /**
+             * Build one driver-row HTML string.
+             * @param {object} d             – driver object from SSE state
+             * @param {number} posChange     – position delta (+ = gained, - = lost)
+             * @param {boolean} checkeredOut – whether the session checkered flag is out
+             */
+            function makeRow(d, posChange, checkeredOut) {
+                const arrowClass =
+                    posChange > 0 ? "up" : posChange < 0 ? "down" : "";
+                const arrowChar =
+                    posChange > 0 ? "▲" : posChange < 0 ? "▼" : "";
+
+                // Build the time-cell content
+                let timeInner;
+                if (d.status !== "knocked_out" && d.no_current_time) {
+                    // Advanced to this session but hasn't set a lap yet
+                    timeInner = '<span class="no-time-label">No Time</span>';
+                } else {
+                    // Show a tiny checkered swatch if this driver has completed their final lap
+                    const flagHtml =
+                        checkeredOut && d.finished && d.status !== "knocked_out"
+                            ? '<span class="row-finished-flag"></span>'
+                            : "";
+                    timeInner = flagHtml + esc(d.best_time || "—");
+                }
+
+                return (
+                    `<div class="driver-row ${esc(d.status || "safe")}" data-car="${esc(d.car_num)}">` +
+                    `<div class="row-indicator"></div>` +
+                    `<div class="row-pos">${esc(String(d.position))}</div>` +
+                    `<div class="row-car">${esc(d.car_num)}</div>` +
+                    `<div class="row-name">${esc(d.driver_name)}</div>` +
+                    `<div class="row-time">${timeInner}</div>` +
+                    `<div class="row-arrow ${arrowClass}">${arrowChar}</div>` +
+                    `</div>`
+                );
+            }
+
+            // ── Main update ───────────────────────────────────────────────────────────
+
+            function updateTower(state) {
+                const {
+                    session_name = "",
+                    time_remaining = "--:--",
+                    checkered_flag = false,
+                    drivers = [],
+                } = state;
+
+                // Detect Pre-Qn → Qn transition and flash green header
+                const wasPreSession = prevSessionName.startsWith("Pre-");
+                const isPreSession = session_name.startsWith("Pre-");
+                if (wasPreSession && !isPreSession && prevSessionName !== "")
+                    showGreenFlag();
+                prevSessionName = session_name;
+
+                // ── Header: session label + checkered / timer ──
+                sessionLabel.textContent = sessionDisplayLabel(session_name);
+
+                if (checkered_flag) {
+                    towerHeader.classList.add("flag-checkered");
+                    towerHeader.classList.remove("flag-green");
+                    if (greenFlagTimer) {
+                        clearTimeout(greenFlagTimer);
+                        greenFlagTimer = null;
+                    }
+                    timerEl.style.display = "none";
+                } else {
+                    towerHeader.classList.remove("flag-checkered");
+                    timerEl.style.display = "";
+                    timerEl.textContent = time_remaining;
+                }
+
+                if (!drivers.length) {
+                    listEl.innerHTML = "";
+                    return;
+                }
+
+                // ── Compute position changes ──
+                const currPos = new Map(
+                    drivers.map((d) => [d.car_num, d.position]),
+                );
+                const posChanges = new Map();
+                for (const [car, pos] of currPos) {
+                    const prev = prevPositions.get(car);
+                    if (prev !== undefined && prev !== pos)
+                        posChanges.set(car, prev - pos);
+                }
+                prevPositions = currPos;
+
+                // ── Build HTML ──
+                const active = drivers.filter(
+                    (d) => d.status !== "knocked_out",
+                );
+                const knockedOut = drivers.filter(
+                    (d) => d.status === "knocked_out",
+                );
+
+                const parts = [];
+                active.forEach((d) =>
+                    parts.push(
+                        makeRow(
+                            d,
+                            posChanges.get(d.car_num) || 0,
+                            checkered_flag,
+                        ),
+                    ),
+                );
+                if (knockedOut.length) {
+                    parts.push('<div class="group-divider"></div>');
+                    knockedOut.forEach((d) => parts.push(makeRow(d, 0, false)));
+                }
+
+                listEl.innerHTML = parts.join("");
+                tower.classList.add("visible");
+
+                // ── Apply flash animations to changed rows ──
+                for (const [car, delta] of posChanges) {
+                    if (!delta) continue;
+                    const row = listEl.querySelector(
+                        `[data-car="${esc(car)}"]`,
+                    );
+                    if (!row) continue;
+                    const cls = delta > 0 ? "flash-up" : "flash-down";
+                    row.classList.add(cls);
+                    row.addEventListener(
+                        "animationend",
+                        () => row.classList.remove(cls),
+                        { once: true },
+                    );
+                }
+            }
+
+            const f1Src = new EventSource("/sse/f1");
+            f1Src.onmessage = (e) => {
+                try {
+                    updateTower(JSON.parse(e.data));
+                } catch (_) {}
+            };
+        </script>
+    </body>
+</html>

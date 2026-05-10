@@ -28,6 +28,7 @@ from modules.events.text_consumer_event import (
     ATVOTextConsumerEvent,
 )
 from modules.events.chat_consumer_event import ChatConsumerEvent
+from modules.events.overlay_consumer_event import OverlayConsumerEvent
 
 from modules.events.f1_qualifying_event import F1QualifyingEvent
 
