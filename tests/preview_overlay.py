@@ -19,7 +19,7 @@ Simulated scenario
 
 Live reload
 -----------
-Whenever ``overlay.html`` or ``overlay.css`` changes on disk, every
+Whenever ``overlay.html`` changes on disk, every
 connected browser tab reloads automatically — no manual refresh needed.
 
 Manual RC trigger
@@ -56,8 +56,7 @@ from pathlib import Path
 _THIS_DIR = Path(__file__).parent
 _REPO_DIR = _THIS_DIR.parent
 _OVERLAY_HTML = _REPO_DIR / "modules" / "flet_pages" / "overlays" / "overlay.html"
-_DEFAULT_CSS = _REPO_DIR / "modules" / "flet_pages" / "overlay.css"
-_FONTS_DIR = _DEFAULT_CSS.parent / "fonts"
+_FONTS_DIR = _OVERLAY_HTML.parent.parent / "fonts"
 
 # ---------------------------------------------------------------------------
 # Static scenario data  —  Q2 checkered flag, session still live
@@ -434,8 +433,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 )
             case "/sse/reload":
                 self._handle_sse(_reload_clients, initial_payload=None)
-            case "/static/overlay.css":
-                self._serve_file(_DEFAULT_CSS, "text/css")
+
             case "/trigger-rc":
                 _broadcast_rc(STATIC_RC_MESSAGE)
                 self._plain_response(200, "RC banner triggered.")
@@ -595,7 +593,7 @@ def main() -> None:
     ).start()
 
     # ── Live-reload file watcher ────────────────────────────────────────
-    watched = [p for p in [_OVERLAY_HTML, _DEFAULT_CSS] if p.exists()]
+    watched = [_OVERLAY_HTML] if _OVERLAY_HTML.exists() else []
     if watched:
         threading.Thread(
             target=_file_watcher,
@@ -614,7 +612,7 @@ def main() -> None:
     print(
         f"  RC banner     →  fires in {args.rc_delay:.0f}s, then every {args.rc_interval:.0f}s"
     )
-    print(f"  Live reload   →  active (edit overlay.html / overlay.css to trigger)")
+    print(f"  Live reload   →  active (edit overlay.html to trigger)")
     print(f"  {sep}")
     print(f"  Endpoints:")
     print(f"    GET /              — overlay page (main + timing tower + banner)")

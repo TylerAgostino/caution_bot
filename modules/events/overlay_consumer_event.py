@@ -8,8 +8,7 @@ Endpoints
 GET /                    – Index page with links to available overlays.
 GET /rc-message          – Race-control message banner (transparent; place at bottom).
 GET /f1-timing           – F1 qualifying timing tower (transparent; place at left).
-GET /static/overlay.css  – CSS theme file (swappable via ``css_file`` constructor arg).
-GET /static/fonts/<name> – Font files resolved from the same directory as the CSS.
+GET /static/fonts/<name> – Font files served from the flet_pages/fonts/ directory.
 GET /sse/rc              – Server-Sent Events stream for race-control messages.
 GET /sse/f1              – Server-Sent Events stream for F1 timing state.
 
@@ -54,10 +53,8 @@ if TYPE_CHECKING:
 
 _THIS_DIR = Path(__file__).parent
 _OVERLAY_HTML = _THIS_DIR.parent / "flet_pages" / "overlays" / "overlay.html"
-_DEFAULT_CSS = _THIS_DIR.parent / "flet_pages" / "overlay.css"
 _STANDINGS_HTML = _THIS_DIR.parent / "flet_pages" / "overlays" / "standings.html"
-# Fonts live next to the CSS file
-_FONTS_DIR = _DEFAULT_CSS.parent / "fonts"
+_FONTS_DIR = _OVERLAY_HTML.parent.parent / "fonts"
 
 
 # --------------------------------------------------------------------------- #
@@ -97,9 +94,6 @@ class OverlayConsumerEvent(BaseEvent):
         Overlay canvas width in pixels (default 1920).
     height : int
         Overlay canvas height in pixels (default 1080).
-    css_file : str
-        Absolute or relative path to an alternate CSS theme file.
-        Leave empty to use the bundled ``overlay.css``.
     """
 
     def __init__(
@@ -107,7 +101,6 @@ class OverlayConsumerEvent(BaseEvent):
         port: int = 8765,
         width: int = 1920,
         height: int = 1080,
-        css_file: str = "",
         *args,
         **kwargs,
     ):
@@ -115,7 +108,6 @@ class OverlayConsumerEvent(BaseEvent):
         self.port = int(port)
         self.width = int(width)
         self.height = int(height)
-        self.css_path = Path(css_file) if css_file else _DEFAULT_CSS
 
         # Per-overlay SSE client queues: list of queue.Queue, one per connected tab.
         self._rc_clients: list[queue.Queue] = []
@@ -383,8 +375,6 @@ class OverlayConsumerEvent(BaseEvent):
                     self._handle_sse(event._rc_clients)
                 elif path == "/sse/f1":
                     self._handle_sse(event._f1_clients)
-                elif path == "/static/overlay.css":
-                    self._serve_file(event.css_path, "text/css")
                 elif path.startswith("/static/fonts/"):
                     font_name = path[len("/static/fonts/") :]
                     self._serve_file(_FONTS_DIR / font_name, "font/truetype")

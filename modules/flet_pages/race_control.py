@@ -99,7 +99,6 @@ class RaceControlApp:
             "port": "8765",
             "width": "1920",
             "height": "1080",
-            "css_file": "",
         }
         self.text_consumer_enabled = False
         self.audio_consumer_enabled = False
@@ -2554,7 +2553,6 @@ class RaceControlApp:
                 "port": "8765",
                 "width": "1920",
                 "height": "1080",
-                "css_file": "",
             }
         config = self.overlay_consumer_config
 
@@ -2572,7 +2570,6 @@ class RaceControlApp:
             port_field.disabled = disabled
             width_field.disabled = disabled
             height_field.disabled = disabled
-            css_field.disabled = disabled
             self.page.update()
 
         enable_check = ft.Checkbox(
@@ -2606,14 +2603,6 @@ class RaceControlApp:
             on_change=lambda e: update_config("height", e.control.value),
         )
 
-        css_field = ft.TextField(
-            label="CSS file path (blank = bundled overlay.css)",
-            value=config.get("css_file", ""),
-            width=360,
-            disabled=not self.overlay_consumer_enabled or self.is_running,
-            on_change=lambda e: update_config("css_file", e.control.value),
-        )
-
         url_text = ft.Text(
             f"http://localhost:{config.get('port', '8765')}/",
             size=11,
@@ -2631,7 +2620,6 @@ class RaceControlApp:
                 ft.Divider(height=5),
                 enable_check,
                 ft.Row([port_field, width_field, height_field], spacing=8),
-                css_field,
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.LINK, size=14, color=ft.Colors.BLUE),
@@ -2935,9 +2923,6 @@ class RaceControlApp:
                             ),
                             "height": int(
                                 self.overlay_consumer_config.get("height", 1080)
-                            ),
-                            "css_file": self.overlay_consumer_config.get(
-                                "css_file", ""
                             ),
                         },
                     }
