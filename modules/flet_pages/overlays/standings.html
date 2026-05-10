@@ -15,10 +15,30 @@
         <meta charset="UTF-8" />
         <style>
             /* ── Fonts ─────────────────────────────────────────────────────────────── */
-            @font-face { font-family: Saira-Black;     src: url("/static/fonts/Saira-Black.ttf")     format("truetype"); }
-            @font-face { font-family: Saira-Bold;      src: url("/static/fonts/Saira-Bold.ttf")      format("truetype"); }
-            @font-face { font-family: Saira-Regular;   src: url("/static/fonts/Saira-Regular.ttf")   format("truetype"); }
-            @font-face { font-family: Saira-BoldItalic;src: url("/static/fonts/Saira-BoldItalic.ttf")format("truetype"); }
+            /* Local files are tried first (served by the overlay HTTP server).        */
+            /* Google Fonts CDN is used as an automatic fallback when the files are    */
+            /* absent.  Run download_fonts.py to populate the local fonts/ directory.  */
+            @font-face {
+              font-family: Saira-Black;
+              src: url("/static/fonts/Saira-Black.ttf") format("truetype"),
+                   url("https://fonts.gstatic.com/s/saira/v23/memWYa2wxmKQyPMrZX79wwYZQMhsyuShhKMjjbU9uXuA7_PFosg.ttf") format("truetype");
+            }
+            @font-face {
+              font-family: Saira-Bold;
+              src: url("/static/fonts/Saira-Bold.ttf") format("truetype"),
+                   url("https://fonts.gstatic.com/s/saira/v23/memWYa2wxmKQyPMrZX79wwYZQMhsyuShhKMjjbU9uXuA773Fosg.ttf") format("truetype");
+            }
+            @font-face {
+              font-family: Saira-Regular;
+              src: url("/static/fonts/Saira-Regular.ttf") format("truetype"),
+                   url("https://fonts.gstatic.com/s/saira/v23/memWYa2wxmKQyPMrZX79wwYZQMhsyuShhKMjjbU9uXuA71rCosg.ttf") format("truetype");
+            }
+            @font-face {
+              font-family: Saira-BoldItalic;
+              font-style: italic;
+              src: url("/static/fonts/Saira-BoldItalic.ttf") format("truetype"),
+                   url("https://fonts.gstatic.com/s/saira/v23/memUYa2wxmKQyNkiV50dulWP7s95AqZTzZHcVdxWI9WH-pKBrYwxkw.ttf") format("truetype");
+            }
 
             /* ── Theme variables ────────────────────────────────────────────────────── */
             :root {
