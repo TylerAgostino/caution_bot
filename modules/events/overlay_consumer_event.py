@@ -253,13 +253,22 @@ class OverlayConsumerEvent(BaseEvent):
             drivers = []
 
             for pos, (car_num, row) in enumerate(df.iterrows()):
-                # Best lap time across all sessions (smallest positive value).
+                # During an active session, show the current session time.
+                # Otherwise, show the best time across all sessions (smallest positive value).
                 best_time = None
-                for col in q_cols:
-                    val = row.get(col)
+                if is_active_session and current_q_num is not None:
+                    # Show current session time during active sessions
+                    current_q_col = f"Q{current_q_num}"
+                    val = row.get(current_q_col)
                     if isinstance(val, (int, float)) and not isnan(val) and val > 0:
-                        if best_time is None or val < best_time:
-                            best_time = val
+                        best_time = val
+                else:
+                    # Show overall best time between sessions
+                    for col in q_cols:
+                        val = row.get(col)
+                        if isinstance(val, (int, float)) and not isnan(val) and val > 0:
+                            if best_time is None or val < best_time:
+                                best_time = val
 
                 # Per-session individual lap times for the standings overlay.
                 session_times: dict[str, str] = {}

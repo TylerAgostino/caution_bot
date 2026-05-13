@@ -82,6 +82,7 @@ class F1QualifyingEvent(BaseEvent):
         2. Run each qualifying session in sequence (Q1, Q2, Q3...)
         3. Track advancing drivers between sessions
         4. Terminate after final session
+        5. Print final results table
         """
         # Create list of tuples: [(session_length, cars_advancing), ...]
         session_info = list(zip(self.session_minutes, self.session_advancing_cars))
@@ -96,6 +97,37 @@ class F1QualifyingEvent(BaseEvent):
             advancing_drivers = self.subsession(
                 length, num_drivers_remain, session_number, advancing_drivers
             )
+
+        # Print final results to logs
+        self.print_final_results()
+
+    def print_final_results(self):
+        """
+        Prints the final qualifying results table to the logs.
+        """
+        self.logger.info("=" * 80)
+        self.logger.info("F1 QUALIFYING - FINAL RESULTS")
+        self.logger.info("=" * 80)
+
+        with self.leaderboard_lock:
+            if self.leaderboard_df.empty:
+                self.logger.info("No results available.")
+                return
+
+            # Create a copy to work with
+            results_df = self.leaderboard_df.copy()
+
+            # Add position column
+            results_df.insert(0, "Pos", range(1, len(results_df) + 1))
+
+            # Format the DataFrame as a string table
+            results_table = results_df.to_string(index=True)
+
+            # Log each line of the table
+            for line in results_table.split("\n"):
+                self.logger.info(line)
+
+        self.logger.info("=" * 80)
 
     def wait_before_next_session(self, seconds, session_number):
         self.checkered_flag_out = False
