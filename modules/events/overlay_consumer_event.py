@@ -5,9 +5,7 @@ Serves browser-based OBS overlays over a local HTTP server.
 
 Endpoints
 ---------
-GET /                    – Index page with links to available overlays.
-GET /rc-message          – Race-control message banner (transparent; place at bottom).
-GET /f1-timing           – F1 qualifying timing tower (transparent; place at left).
+GET /                    – Consolidated qualifying overlay (timing tower + standings board).
 GET /static/fonts/<name> – Font files served from the flet_pages/fonts/ directory.
 GET /sse/rc              – Server-Sent Events stream for race-control messages.
 GET /sse/f1              – Server-Sent Events stream for F1 timing state.
@@ -19,7 +17,14 @@ Add a **single** Browser Source in OBS pointed at::
     http://localhost:<port>/
 
 Enable "Allow transparency" in the Browser Source settings.
-The page displays whichever overlays have active data at any given moment:
+
+The overlay automatically switches between the **timing tower** and the **full
+standings board** based on session state:
+
+* **Timing tower** – shown while a session is live and at least one eligible
+  driver has not yet completed their final timed lap after the checkered flag.
+* **Standings board** – shown once every eligible driver has crossed the line,
+  and again during the pre-session countdown between rounds.
 
 Integration with F1 Qualifying
 -------------------------------
@@ -53,7 +58,6 @@ if TYPE_CHECKING:
 
 _THIS_DIR = Path(__file__).parent
 _OVERLAY_HTML = _THIS_DIR.parent / "flet_pages" / "overlays" / "overlay.html"
-_STANDINGS_HTML = _THIS_DIR.parent / "flet_pages" / "overlays" / "standings.html"
 _FONTS_DIR = _OVERLAY_HTML.parent.parent / "fonts"
 
 
@@ -378,10 +382,8 @@ class OverlayConsumerEvent(BaseEvent):
                 elif path.startswith("/static/fonts/"):
                     font_name = path[len("/static/fonts/") :]
                     self._serve_file(_FONTS_DIR / font_name, "font/truetype")
-                elif path == "/standings":
-                    self._serve_html(_STANDINGS_HTML)
                 else:
-                    # All other paths (including "/") serve the combined overlay.
+                    # All paths (including "/") serve the consolidated overlay.
                     self._serve_html(_OVERLAY_HTML)
 
             # ---------------------------------------------------------------- #

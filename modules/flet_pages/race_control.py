@@ -97,8 +97,6 @@ class RaceControlApp:
         self.chat_consumer_config = {}
         self.overlay_consumer_config = {
             "port": "8765",
-            "width": "1920",
-            "height": "1080",
         }
         self.text_consumer_enabled = False
         self.audio_consumer_enabled = False
@@ -2551,8 +2549,6 @@ class RaceControlApp:
         if not self.overlay_consumer_config:
             self.overlay_consumer_config = {
                 "port": "8765",
-                "width": "1920",
-                "height": "1080",
             }
         config = self.overlay_consumer_config
 
@@ -2568,8 +2564,6 @@ class RaceControlApp:
             self.overlay_consumer_enabled = e.control.value
             disabled = not e.control.value or self.is_running
             port_field.disabled = disabled
-            width_field.disabled = disabled
-            height_field.disabled = disabled
             self.page.update()
 
         enable_check = ft.Checkbox(
@@ -2587,22 +2581,6 @@ class RaceControlApp:
             on_change=lambda e: update_config("port", e.control.value),
         )
 
-        width_field = ft.TextField(
-            label="Width (px)",
-            value=config.get("width", "1920"),
-            width=100,
-            disabled=not self.overlay_consumer_enabled or self.is_running,
-            on_change=lambda e: update_config("width", e.control.value),
-        )
-
-        height_field = ft.TextField(
-            label="Height (px)",
-            value=config.get("height", "1080"),
-            width=100,
-            disabled=not self.overlay_consumer_enabled or self.is_running,
-            on_change=lambda e: update_config("height", e.control.value),
-        )
-
         url_text = ft.Text(
             f"http://localhost:{config.get('port', '8765')}/",
             size=11,
@@ -2618,8 +2596,14 @@ class RaceControlApp:
                     weight=ft.FontWeight.BOLD,
                 ),
                 ft.Divider(height=5),
+                ft.Text(
+                    "The overlay canvas automatically fills the OBS browser source size.",
+                    size=11,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                    italic=True,
+                ),
                 enable_check,
-                ft.Row([port_field, width_field, height_field], spacing=8),
+                ft.Row([port_field], spacing=8),
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.LINK, size=14, color=ft.Colors.BLUE),
@@ -3480,7 +3464,7 @@ class RaceControlApp:
         self.overlay_consumer_enabled = overlay_consumer.get("enabled", False)
         self.overlay_consumer_config = overlay_consumer.get(
             "config",
-            {"port": "8765", "width": "1920", "height": "1080", "css_file": ""},
+            {"port": "8765"},
         )
 
     def load_preset(self, name: str, silent: bool = False):
