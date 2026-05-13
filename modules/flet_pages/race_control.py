@@ -95,9 +95,14 @@ class RaceControlApp:
         self.text_consumer_config = {}
         self.audio_consumer_config = {}
         self.chat_consumer_config = {}
+        self.overlay_consumer_config = {
+            "port": "8765",
+        }
         self.text_consumer_enabled = False
         self.audio_consumer_enabled = False
         self.chat_consumer_enabled = False
+        self.overlay_consumer_enabled = False
+        self.overlay_event = None  # Running OverlayConsumerEvent reference
         self.chat_message_list = None
         self.chat_refresh_timer = None
 
@@ -111,6 +116,7 @@ class RaceControlApp:
         self.clear_black_flag_enabled = False
         self.scheduled_black_flag_enabled = False
         self.gap_to_leader_enabled = False
+        self.f1_qualifying_enabled = False
 
         # Tab references for updating indicators
         self.tabs_control = None
@@ -128,7 +134,6 @@ class RaceControlApp:
         self.f1_final_session = {"duration": "8", "advancing_cars": "0"}
         self.f1_wait_between = 120
         self.f1_refresh_timer = None
-        self.f1_dialog = None
 
         # Beer Goggles mode state
         self.goggle_event: Optional[BaseEvent] = None
@@ -366,6 +371,12 @@ class RaceControlApp:
                 "icon": ft.Icons.TIMER,
                 "enabled": self.gap_to_leader_enabled,
                 "build_func": self.build_gap_to_leader_tab,
+            },
+            {
+                "name": "F1 Qualifying",
+                "icon": ft.Icons.SPEED,
+                "enabled": self.f1_qualifying_enabled,
+                "build_func": self.build_f1_qualifying_tab,
             },
         ]
 
@@ -2334,6 +2345,14 @@ class RaceControlApp:
                     border_radius=5,
                     padding=10,
                 ),
+                ft.Container(height=8),
+                ft.Container(
+                    content=self.build_overlay_consumer(),
+                    width=400,
+                    border=ft.border.all(1, ft.Colors.OUTLINE),
+                    border_radius=5,
+                    padding=10,
+                ),
             ],
         )
 
@@ -2520,6 +2539,77 @@ class RaceControlApp:
                     border=ft.border.all(1, ft.Colors.OUTLINE),
                     border_radius=5,
                     bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.ON_SURFACE),
+                ),
+            ],
+            spacing=5,
+        )
+
+    def build_overlay_consumer(self):
+        """Build the overlay server configuration panel."""
+        if not self.overlay_consumer_config:
+            self.overlay_consumer_config = {
+                "port": "8765",
+            }
+        config = self.overlay_consumer_config
+
+        def update_config(key, value):
+            self.overlay_consumer_config[key] = value
+            # Live-update the URL hint
+            url_text.value = (
+                f"http://localhost:{self.overlay_consumer_config.get('port', '8765')}/"
+            )
+            url_text.update()
+
+        def toggle_enabled(e):
+            self.overlay_consumer_enabled = e.control.value
+            disabled = not e.control.value or self.is_running
+            port_field.disabled = disabled
+            self.page.update()
+
+        enable_check = ft.Checkbox(
+            label="Enable Overlay Server (OBS)",
+            value=self.overlay_consumer_enabled,
+            on_change=toggle_enabled,
+            disabled=self.is_running,
+        )
+
+        port_field = ft.TextField(
+            label="Port",
+            value=config.get("port", "8765"),
+            width=90,
+            disabled=not self.overlay_consumer_enabled or self.is_running,
+            on_change=lambda e: update_config("port", e.control.value),
+        )
+
+        url_text = ft.Text(
+            f"http://localhost:{config.get('port', '8765')}/",
+            size=11,
+            color=ft.Colors.BLUE,
+            selectable=True,
+        )
+
+        return ft.Column(
+            [
+                ft.Text(
+                    "Overlay Server (OBS Browser Source)",
+                    size=14,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Divider(height=5),
+                ft.Text(
+                    "The overlay canvas automatically fills the OBS browser source size.",
+                    size=11,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                    italic=True,
+                ),
+                enable_check,
+                ft.Row([port_field], spacing=8),
+                ft.Row(
+                    [
+                        ft.Icon(ft.Icons.LINK, size=14, color=ft.Colors.BLUE),
+                        url_text,
+                    ],
+                    spacing=4,
                 ),
             ],
             spacing=5,
@@ -2805,6 +2895,23 @@ class RaceControlApp:
                     }
                 )
 
+            # Add Overlay Consumer if enabled
+            if self.overlay_consumer_enabled:
+                event_list.append(
+                    {
+                        "class": events.OverlayConsumerEvent,
+                        "args": {
+                            "port": int(self.overlay_consumer_config.get("port", 8765)),
+                            "width": int(
+                                self.overlay_consumer_config.get("width", 1920)
+                            ),
+                            "height": int(
+                                self.overlay_consumer_config.get("height", 1080)
+                            ),
+                        },
+                    }
+                )
+
             # Create event instances with error handling
             event_instances = []
             for i, item in enumerate(event_list):
@@ -2836,10 +2943,37 @@ class RaceControlApp:
             if logger:
                 logger.info(f"Started {len(event_instances)} events successfully")
 
+            # Keep a reference to the overlay event so we can wire in the F1
+            # qualifying event later without restarting the server.
+            self.overlay_event = next(
+                (
+                    e
+                    for e in event_instances
+                    if isinstance(e, events.OverlayConsumerEvent)
+                ),
+                None,
+            )
+
             # Create and start subprocess manager
             event_run_methods = [event.run for event in event_instances]
             self.subprocess_manager = SubprocessManager(event_run_methods)
             self.subprocess_manager.start()
+
+            # Start F1 Qualifying if enabled
+            if self.f1_qualifying_enabled:
+                all_sessions = [*self.f1_elim_sessions, self.f1_final_session]
+                session_lengths = ", ".join([s["duration"] for s in all_sessions])
+                advancing_cars = ", ".join([s["advancing_cars"] for s in all_sessions])
+                self.f1_event = F1QualifyingEvent(
+                    session_lengths,
+                    advancing_cars,
+                    wait_between_sessions=self.f1_wait_between,
+                )
+                self.f1_subprocess_manager = SubprocessManager([self.f1_event.run])
+                self.f1_subprocess_manager.start()
+                if self.overlay_event is not None:
+                    self.overlay_event.f1_event = self.f1_event
+                self.page.run_task(self.f1_refresh_task)
 
             # Start chat consumer refresh task if enabled
             if self.chat_consumer_enabled:
@@ -2935,6 +3069,14 @@ class RaceControlApp:
         if self.subprocess_manager:
             self.subprocess_manager.stop()
             self.subprocess_manager = None
+
+        # Stop F1 Qualifying if running
+        if self.f1_subprocess_manager:
+            self.f1_subprocess_manager.stop()
+            self.f1_subprocess_manager = None
+        self.f1_event = None
+
+        self.overlay_event = None
 
         # Clear chat messages when stopping
         if self.chat_message_list:
@@ -3155,6 +3297,10 @@ class RaceControlApp:
                 "enabled": self.chat_consumer_enabled,
                 "config": self.chat_consumer_config,
             },
+            "overlay_consumer": {
+                "enabled": self.overlay_consumer_enabled,
+                "config": self.overlay_consumer_config,
+            },
         }
 
         with open(os.path.join(preset_dir, f"{name}.json"), "w") as f:
@@ -3313,6 +3459,14 @@ class RaceControlApp:
         self.chat_consumer_enabled = True
         self.chat_consumer_config = {}
 
+        # Load Overlay Consumer
+        overlay_consumer = config.get("overlay_consumer", {})
+        self.overlay_consumer_enabled = overlay_consumer.get("enabled", False)
+        self.overlay_consumer_config = overlay_consumer.get(
+            "config",
+            {"port": "8765"},
+        )
+
     def load_preset(self, name: str, silent: bool = False):
         """Load a saved preset
 
@@ -3375,15 +3529,6 @@ class RaceControlApp:
                 [
                     ft.Text("Special Modes:", size=14, weight=ft.FontWeight.BOLD),
                     ft.ElevatedButton(
-                        "F1 Qualifying",
-                        icon=ft.Icons.SPEED,
-                        on_click=self.open_f1_qualifying,
-                        style=ft.ButtonStyle(
-                            bgcolor=ft.Colors.BLUE_900,
-                            color=ft.Colors.WHITE,
-                        ),
-                    ),
-                    ft.ElevatedButton(
                         "Beer Goggles",
                         icon=ft.Icons.REMOVE_RED_EYE,
                         on_click=self.open_beer_goggles,
@@ -3401,24 +3546,12 @@ class RaceControlApp:
             border_radius=5,
         )
 
-    def open_f1_qualifying(self, e):
-        """Open F1 Qualifying mode dialog"""
-        self.f1_dialog = ft.AlertDialog(
-            modal=False,  # Allow interaction with other windows
-            title=ft.Text("F1 Qualifying Mode"),
-            content=self.build_f1_qualifying_content(),
-            actions=[ft.TextButton("Close", on_click=self.close_f1_dialog)],
-        )
-        self.page.overlay.append(self.f1_dialog)
-        self.f1_dialog.open = True
-        self.page.update()
-
-    def build_f1_qualifying_content(self):
-        """Build the F1 qualifying configuration UI"""
+    def build_f1_qualifying_tab(self):
+        """Build the F1 Qualifying tab content"""
         session_list = ft.Column(
             scroll=ft.ScrollMode.AUTO,
-            height=300,
-            spacing=10,
+            height=220,
+            spacing=5,
         )
 
         def rebuild_sessions():
@@ -3431,12 +3564,12 @@ class RaceControlApp:
                         ft.Text("Session", weight=ft.FontWeight.BOLD), width=80
                     ),
                     ft.Container(
-                        ft.Text("Duration (Mins)", weight=ft.FontWeight.BOLD), width=150
+                        ft.Text("Duration (Mins)", weight=ft.FontWeight.BOLD), width=130
                     ),
                     ft.Container(
-                        ft.Text("Advancing Cars", weight=ft.FontWeight.BOLD), width=150
+                        ft.Text("Advancing Cars", weight=ft.FontWeight.BOLD), width=130
                     ),
-                    ft.Container(width=100),
+                    ft.Container(width=60),
                 ]
             )
             session_list.controls.append(header)
@@ -3470,20 +3603,23 @@ class RaceControlApp:
                         ft.Container(ft.Text(f"Q{i + 1}", size=16), width=80),
                         ft.TextField(
                             value=session["duration"],
-                            width=150,
+                            width=130,
                             on_change=make_duration_change(i),
                             text_align=ft.TextAlign.CENTER,
+                            disabled=self.is_running,
                         ),
                         ft.TextField(
                             value=session["advancing_cars"],
-                            width=150,
+                            width=130,
                             on_change=make_advancing_change(i),
                             text_align=ft.TextAlign.CENTER,
+                            disabled=self.is_running,
                         ),
                         ft.IconButton(
                             icon=ft.Icons.DELETE,
                             icon_color=ft.Colors.RED,
                             on_click=make_remove_click(i),
+                            disabled=self.is_running,
                         ),
                     ]
                 )
@@ -3500,17 +3636,18 @@ class RaceControlApp:
                     ),
                     ft.TextField(
                         value=self.f1_final_session["duration"],
-                        width=150,
+                        width=130,
                         on_change=on_final_duration_change,
                         text_align=ft.TextAlign.CENTER,
+                        disabled=self.is_running,
                     ),
                     ft.TextField(
                         value="0",
-                        width=150,
+                        width=130,
                         disabled=True,
                         text_align=ft.TextAlign.CENTER,
                     ),
-                    ft.Container(width=100),
+                    ft.Container(width=60),
                 ]
             )
             session_list.controls.append(final_row)
@@ -3528,63 +3665,72 @@ class RaceControlApp:
             except:
                 pass
 
-        controls = ft.Column(
-            [
-                session_list,
-                ft.Row(
-                    [
-                        ft.ElevatedButton(
-                            "Add Session",
-                            icon=ft.Icons.ADD,
-                            on_click=add_session,
-                        ),
-                    ]
-                ),
-                ft.Divider(),
-                ft.Row(
-                    [
-                        ft.Text("Wait Between Sessions (seconds):", size=14),
-                        ft.TextField(
-                            value=str(self.f1_wait_between),
-                            width=100,
-                            on_change=on_wait_change,
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                    ]
-                ),
-                ft.Divider(),
-                ft.Row(
-                    [
-                        ft.ElevatedButton(
-                            "Start F1 Qualifying",
-                            icon=ft.Icons.PLAY_ARROW,
-                            on_click=self.start_f1_qualifying,
-                            style=ft.ButtonStyle(
-                                bgcolor=ft.Colors.GREEN,
-                                color=ft.Colors.WHITE,
-                            ),
-                        ),
-                        ft.ElevatedButton(
-                            "Stop F1 Qualifying",
-                            icon=ft.Icons.STOP,
-                            on_click=self.stop_f1_qualifying,
-                            style=ft.ButtonStyle(
-                                bgcolor=ft.Colors.RED,
-                                color=ft.Colors.WHITE,
-                            ),
-                        ),
-                    ],
-                    spacing=10,
-                ),
-                ft.Container(height=10),
-                self.build_f1_leaderboard(),
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            width=1600,
-            height=1000,
+        def toggle_enabled(e):
+            self.f1_qualifying_enabled = e.control.value
+            self.update_tab_indicators()
+
+        enable_toggle = ft.Switch(
+            label="Enable F1 Qualifying",
+            value=self.f1_qualifying_enabled,
+            on_change=toggle_enabled,
+            disabled=self.is_running,
         )
 
-        return controls
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        "F1 Qualifying Mode",
+                                        size=16,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Text(
+                                        "F1-style knockout qualifying sessions",
+                                        size=12,
+                                        color=ft.Colors.GREY,
+                                    ),
+                                ],
+                                expand=True,
+                            ),
+                            enable_toggle,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                    ft.Divider(height=5),
+                    ft.Row(
+                        [
+                            ft.Text("Wait Between Sessions (seconds):", size=13),
+                            ft.TextField(
+                                value=str(self.f1_wait_between),
+                                width=80,
+                                on_change=on_wait_change,
+                                text_align=ft.TextAlign.CENTER,
+                                disabled=self.is_running,
+                            ),
+                            ft.Container(expand=True),
+                            ft.ElevatedButton(
+                                "Add Session",
+                                icon=ft.Icons.ADD,
+                                on_click=add_session,
+                                disabled=self.is_running,
+                            ),
+                        ],
+                        spacing=10,
+                    ),
+                    ft.Container(height=5),
+                    session_list,
+                    ft.Divider(height=5),
+                    self.build_f1_leaderboard(),
+                ],
+                scroll=ft.ScrollMode.AUTO,
+                spacing=5,
+            ),
+            padding=8,
+        )
 
     def build_f1_leaderboard(self):
         """Build F1 qualifying leaderboard display - returns container that will be updated"""
@@ -3855,60 +4001,6 @@ class RaceControlApp:
         while self.f1_event and self.f1_subprocess_manager:
             self.update_f1_leaderboard()
             await asyncio.sleep(0.5)  # Update twice per second
-
-    def start_f1_qualifying(self, e):
-        """Start F1 Qualifying event"""
-        all_sessions = [*self.f1_elim_sessions, self.f1_final_session]
-        session_lengths = ", ".join([s["duration"] for s in all_sessions])
-        advancing_cars = ", ".join([s["advancing_cars"] for s in all_sessions])
-
-        self.f1_event = F1QualifyingEvent(
-            session_lengths, advancing_cars, wait_between_sessions=self.f1_wait_between
-        )
-        self.f1_subprocess_manager = SubprocessManager([self.f1_event.run])
-        self.f1_subprocess_manager.start()
-
-        # Start refresh task
-        self.page.run_task(self.f1_refresh_task)
-
-        self.page.show_snack_bar(
-            ft.SnackBar(
-                content=ft.Text("F1 Qualifying Started!"), bgcolor=ft.Colors.GREEN
-            )
-        )
-        self.page.update()
-
-    def stop_f1_qualifying(self, e):
-        """Stop F1 Qualifying event"""
-        if self.f1_subprocess_manager:
-            self.f1_subprocess_manager.stop()
-            self.f1_subprocess_manager = None
-
-        self.f1_event = None
-
-        # Clear leaderboard
-        if self.f1_leaderboard_column:
-            self.f1_leaderboard_column.controls = [
-                ft.Text(
-                    "Qualifying stopped",
-                    size=14,
-                    color=ft.Colors.GREY,
-                )
-            ]
-            self.f1_leaderboard_column.update()
-
-        self.page.show_snack_bar(
-            ft.SnackBar(
-                content=ft.Text("F1 Qualifying Stopped!"), bgcolor=ft.Colors.RED
-            )
-        )
-        self.page.update()
-
-    def close_f1_dialog(self, e):
-        """Close F1 Qualifying dialog"""
-        if self.f1_dialog:
-            self.f1_dialog.open = False
-            self.page.update()
 
     def open_beer_goggles(self, e):
         """Open Beer Goggles SDK viewer dialog"""

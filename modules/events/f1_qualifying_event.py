@@ -1,3 +1,5 @@
+import threading
+
 from pandas import DataFrame
 
 from modules.events import BaseEvent
@@ -60,6 +62,17 @@ class F1QualifyingEvent(BaseEvent):
             self.leaderboard[f"Q{n + 1}"] = {}
         self.leaderboard_df = DataFrame(self.leaderboard)
 
+        # Tracks car numbers knocked out in previous sessions so the overlay
+        # can display them distinctly from drivers still in contention.
+        self.knocked_out_drivers: set = set()
+        self.checkered_flag_out: bool = False
+        self.session_finishers: set = (
+            set()
+        )  # cars that completed final lap this subsession
+        # Guards every read/write of leaderboard_df so the overlay thread never
+        # copies a partially-built DataFrame.
+        self.leaderboard_lock = threading.Lock()
+
     def event_sequence(self):
         """
         Main event sequence that runs the entire qualifying session.
@@ -85,6 +98,7 @@ class F1QualifyingEvent(BaseEvent):
             )
 
     def wait_before_next_session(self, seconds, session_number):
+        self.checkered_flag_out = False
         wait_start_time = self.sdk["SessionTime"]
         wait_end_time = wait_start_time + seconds
         # ----- SESSION PREPARATION PHASE -----
@@ -138,14 +152,14 @@ class F1QualifyingEvent(BaseEvent):
             ]
             if new_cars_behind:
                 sorted_laps = sorted(laps.items(), key=lambda x: x[1])
-                for car in new_cars_behind:
-                    # Give them their new position
-                    self._chat(
-                        f"/{car} You are now P{sorted_laps.index((car, laps[car])) + 1}"
-                    )
-                self._chat(
-                    f"/{carNumber} You are now P{sorted_laps.index((carNumber, laps[carNumber])) + 1}"
-                )
+                # for car in new_cars_behind:
+                #     # Give them their new position
+                #     self._chat(
+                #         f"/{car} You are now P{sorted_laps.index((car, laps[car])) + 1}"
+                #     )
+                # self._chat(
+                #     f"/{carNumber} You are now P{sorted_laps.index((carNumber, laps[carNumber])) + 1}"
+                # )
         return laps
 
     def update_leaderboard(self, fastest_laps, session_number, send_msg=True):
@@ -196,23 +210,24 @@ class F1QualifyingEvent(BaseEvent):
             # Update session leaderboard
             self.leaderboard[f"Q{session_number}"][car] = lap
 
-        # Update the dataframe representation of the leaderboard
-        self.leaderboard_df = DataFrame(self.leaderboard)
-        driver_names = {
-            c["CarNumber"]: c["UserName"] for c in self.sdk["DriverInfo"]["Drivers"]
-        }
-        self.leaderboard_df["Driver"] = self.leaderboard_df.index.map(driver_names)
-        # sort df columns
-        self.leaderboard_df = self.leaderboard_df[
-            ["Driver"] + [f"Q{n + 1}" for n in range(len(self.session_minutes))]
-        ]
-
-        # Sort the dataframe by lap times, prioritizing higher qualifying sessions
-        sessions = [f"Q{n + 1}" for n in range(len(self.session_minutes))]
-        sessions.reverse()
-        self.leaderboard_df = self.leaderboard_df.sort_values(
-            by=sessions, ascending=True
-        )
+        # Rebuild the DataFrame under the lock so the overlay thread never
+        # copies a half-constructed frame.
+        with self.leaderboard_lock:
+            self.leaderboard_df = DataFrame(self.leaderboard)
+            driver_names = {
+                c["CarNumber"]: c["UserName"] for c in self.sdk["DriverInfo"]["Drivers"]
+            }
+            self.leaderboard_df["Driver"] = self.leaderboard_df.index.map(driver_names)
+            # sort df columns
+            self.leaderboard_df = self.leaderboard_df[
+                ["Driver"] + [f"Q{n + 1}" for n in range(len(self.session_minutes))]
+            ]
+            # Sort the dataframe by lap times, prioritising higher qualifying sessions
+            sessions = [f"Q{n + 1}" for n in range(len(self.session_minutes))]
+            sessions.reverse()
+            self.leaderboard_df = self.leaderboard_df.sort_values(
+                by=sessions, ascending=True
+            )
 
     def subsession(
         self, length, num_drivers_remain, session_number, subset_of_drivers=None
@@ -232,6 +247,7 @@ class F1QualifyingEvent(BaseEvent):
         self.subsession_name = f"Q{session_number}"
         self._chat(f"Pit Exit is OPEN.", race_control=True)
         self.waiting_on = None
+        self.session_finishers = set()
 
         # ----- SESSION RUNNING PHASE -----
         session_time_at_start = self.sdk["SessionTime"]
@@ -300,6 +316,7 @@ class F1QualifyingEvent(BaseEvent):
                     self._chat(f"Time Remaining: {self.subsession_time_remaining}")
 
             if out_of_time:
+                self.checkered_flag_out = True
                 self._chat(
                     f"Checkered flag is out for Q{session_number}!", race_control=True
                 )
@@ -390,6 +407,7 @@ class F1QualifyingEvent(BaseEvent):
                                     > 30
                                 ):
                                     remaining_cars.remove(car["CarNumber"])
+                                    self.session_finishers.add(car["CarNumber"])
                                     if first_car_to_take_checkered is None:
                                         first_car_to_take_checkered = car["CarNumber"]
                                         self._chat(
@@ -408,6 +426,7 @@ class F1QualifyingEvent(BaseEvent):
                                     fastest_laps, session_number, send_msg=False
                                 )
                                 remaining_cars.remove(car["CarNumber"])
+                                self.session_finishers.add(car["CarNumber"])
                                 if first_car_to_take_checkered is None:
                                     first_car_to_take_checkered = car["CarNumber"]
                                     self._chat(
@@ -422,6 +441,7 @@ class F1QualifyingEvent(BaseEvent):
                         carIdx = driver_info_record[0]["CarIdx"]
                         if self.sdk["CarIdxOnPitRoad"][carIdx] == 1:
                             remaining_cars.remove(car["CarNumber"])
+                            self.session_finishers.add(car["CarNumber"])
                             self._chat(f"/{car['CarNumber']} Checkered Flag.")
 
             if lap_still_valid_reminder.__next__():
@@ -457,6 +477,7 @@ class F1QualifyingEvent(BaseEvent):
 
             # Notify eliminated drivers
             for car in eliminated_drivers:
+                self.knocked_out_drivers.add(car)
                 self._chat(f"/{car} you have been eliminated from Q{session_number}!")
 
             # Notify advancing drivers
