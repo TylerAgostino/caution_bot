@@ -59,7 +59,9 @@ class RestartOrderManager:
         }
         print(self.class_lap_times)
 
-    def add_car_to_order(self, carIdx, wave_around=0, slower_class_catchup=0):
+    def add_car_to_order(
+        self, carIdx, wave_around=0, slower_class_catchup=0, began_pacing_distance=None
+    ):
         """
         Add a car to the restart order.
 
@@ -67,8 +69,13 @@ class RestartOrderManager:
             carIdx (int): The index of the car to add.
             wave_around (int, optional): Whether this car gets a wave around. Defaults to 0.
             slower_class_catchup (int, optional): Whether this car gets a waved around to not be split from the rest of their class. Defaults to 0.
+            began_pacing_distance (float, optional): Override for the car's LapDistPct at the moment it joins the
+                pacing order.  When omitted the value is read live from the SDK.  Pass an explicit value when the
+                caller has already corrected for an iRacing telemetry quirk where LapCompleted increments before
+                LapDistPct resets to 0 after a car crosses the start/finish line.
         """
-        began_pacing_distance = self.sdk["CarIdxLapDistPct"][carIdx]
+        if began_pacing_distance is None:
+            began_pacing_distance = self.sdk["CarIdxLapDistPct"][carIdx]
         if carIdx not in [car["CarIdx"] for car in self.order]:
             driver = [
                 d for d in self.sdk["DriverInfo"]["Drivers"] if d["CarIdx"] == carIdx
@@ -521,10 +528,15 @@ class RandomTimedCode69Event(RandomTimedEvent):
                             c for c in last_step if c["CarIdx"] == car["CarIdx"]
                         ][0]
                         if (
-                            last_step_record["LapCompleted"] == car["LapCompleted"] + 1
-                            and last_step_record["LapDistPct"] <= car["LapDistPct"]
+                            car["LapCompleted"] == last_step_record["LapCompleted"] + 1
+                            and car["LapDistPct"] >= last_step_record["LapDistPct"]
                         ):
-                            # fix issue where lap completed increments before the lap distance percentage resets to 0
+                            # iRacing sometimes increments LapCompleted before resetting LapDistPct
+                            # to 0 in the same telemetry tick.  Without this correction the car's
+                            # BeganPacingDistance would be recorded as ~1.0 (end of the previous
+                            # lap) rather than ~0.0 (start of the new lap), causing it to sort
+                            # incorrectly ahead of cars that genuinely had a higher track position
+                            # when the caution was thrown.
                             car["LapDistPct"] = 0
                         # if the car has a slowdown, delay adding them to the order until they are clear
                         if car_flags & self.Flags.furled:
@@ -599,6 +611,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         car["CarIdx"],
                         wave_around=gets_wave_around,
                         slower_class_catchup=gets_catch_up,
+                        # Pass the (potentially corrected) LapDistPct so that
+                        # add_car_to_order doesn't re-read the raw SDK value,
+                        # which may still reflect the pre-reset position.
+                        began_pacing_distance=car["LapDistPct"],
                     )
                     if (
                         len(restart_order_generator.order) > 1
