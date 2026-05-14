@@ -556,6 +556,10 @@ def _run_simulation() -> None:
         )
         time.sleep(1.5)
 
+        # Trigger reload at the end of each simulation loop so connected clients
+        # pick up any code changes and start fresh with the new loop.
+        _broadcast_reload()
+
 
 # ---------------------------------------------------------------------------
 # File watcher — live reload on overlay.html changes

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # HAProxy - Intelligent load balancer with active health checks
+  # This sits between nginx and your backend servers
+  haproxy:
+    image: haproxy:2.8.24
+    container_name: overlay-failover-proxy
+    restart: unless-stopped
+    ports:
+      # Expose port 8080 for nginx to connect to
+      - '8769:8080'
+      # HAProxy stats dashboard
+      - '8404:8404'
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - overlay-network
+    healthcheck:
+      test: ['CMD', 'haproxy', '-f', '/usr/local/etc/haproxy/haproxy.cfg']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  overlay-network:
+    driver: bridge

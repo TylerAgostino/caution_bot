@@ -1149,11 +1149,34 @@
             /* ====================================================================== */
 
             const f1Src = new EventSource("/sse/f1");
+            let lastDataTimestamp = Date.now();
+
             f1Src.onmessage = (e) => {
                 try {
                     updateOverlay(JSON.parse(e.data));
+                    lastDataTimestamp = Date.now();
                 } catch (_) {}
             };
+
+            /* ====================================================================== */
+            /* PERIODIC REFRESH FOR FAILOVER CUTOVER                                    */
+            /* ====================================================================== */
+            // Only refresh if we haven't received data for a while, indicating
+            // the server may have gone down and we need to reconnect to the failover.
+            const DATA_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+            const CHECK_INTERVAL_MS = 10 * 1000; // Check every 10 seconds
+
+            setInterval(() => {
+                const timeSinceLastData = Date.now() - lastDataTimestamp;
+                if (timeSinceLastData > DATA_TIMEOUT_MS) {
+                    console.log(
+                        "[overlay] No data received for " +
+                            Math.round(timeSinceLastData / 1000) +
+                            "s, reloading...",
+                    );
+                    window.location.reload();
+                }
+            }, CHECK_INTERVAL_MS);
         </script>
     </body>
 </html>
