@@ -612,6 +612,8 @@ class PreviewHandler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
 
         match path:
+            case "/health":
+                self._handle_health()
             case "/sse/rc":
                 self._handle_sse(_rc_clients, initial_payload=None)
             case "/sse/f1":
@@ -626,6 +628,40 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 self._serve_file(_FONTS_DIR / font_name, "font/truetype")
             case _:
                 self._serve_html(_OVERLAY_HTML)
+
+    # ------------------------------------------------------------------ #
+    # Health Check                                                         #
+    # ------------------------------------------------------------------ #
+
+    def _handle_health(self) -> None:
+        """Health check endpoint for nginx upstream monitoring.
+
+        Returns 200 OK with JSON payload indicating:
+        - status: always "ok" when server is running
+        - active: false (preview server is never "active" in production sense)
+        - mode: "preview" to distinguish from live server
+        - port: the port this server is listening on
+
+        This allows nginx to:
+        1. Use this server as a backup when the live server is down
+        2. Keep serving overlay content even when no quali session is running
+        3. Automatically fail back to this server when live server stops
+        """
+        payload = json.dumps(
+            {
+                "status": "ok",
+                "active": False,
+                "mode": "preview",
+                "port": self.port,
+            }
+        )
+        body = payload.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.end_headers()
+        self.wfile.write(body)
 
     # ------------------------------------------------------------------ #
     # SSE                                                                  #

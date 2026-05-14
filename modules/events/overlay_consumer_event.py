@@ -384,7 +384,9 @@ class OverlayConsumerEvent(BaseEvent):
 
             def do_GET(self):
                 path = self.path.split("?")[0]
-                if path == "/sse/rc":
+                if path == "/health":
+                    self._handle_health()
+                elif path == "/sse/rc":
                     self._handle_sse(event._rc_clients)
                 elif path == "/sse/f1":
                     self._handle_sse(event._f1_clients)
@@ -394,6 +396,35 @@ class OverlayConsumerEvent(BaseEvent):
                 else:
                     # All paths (including "/") serve the consolidated overlay.
                     self._serve_html(_OVERLAY_HTML)
+
+            # ---------------------------------------------------------------- #
+            # Health Check
+            # ---------------------------------------------------------------- #
+
+            def _handle_health(self):
+                """Health check endpoint for nginx upstream monitoring.
+
+                Returns 200 OK with JSON payload indicating:
+                - status: always "ok" when server is running
+                - active: true if F1 event is currently attached and serving live data
+                - port: the port this server is listening on
+
+                This allows nginx to:
+                1. Detect when the live server is available (200 response)
+                2. Route traffic to backup preview server when this returns 5xx/timeout
+                3. Automatically switch back when this server comes back online
+                """
+                is_active = event.f1_event is not None
+                payload = json.dumps(
+                    {"status": "ok", "active": is_active, "port": event.port}
+                )
+                body = payload.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                self.wfile.write(body)
 
             # ---------------------------------------------------------------- #
             # SSE
