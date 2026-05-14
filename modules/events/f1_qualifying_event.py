@@ -117,7 +117,20 @@ class F1QualifyingEvent(BaseEvent):
             # Create a copy to work with
             results_df = self.leaderboard_df.copy()
 
-            # Add position column
+            # Apply proper F1 qualifying sort order:
+            # 1. Best Q3 time (positions 1-10)
+            # 2. Best Q2 time (positions 11-15, eliminated in Q2)
+            # 3. Best Q1 time (positions 16+, eliminated in Q1)
+            # This is done by sorting in reverse order: Q1, then Q2, then Q3
+            # (stable sort keeps Q1 order when Q2 is NaN, and Q2 order when Q3 is NaN)
+            sessions = [f"Q{n + 1}" for n in range(len(self.session_minutes))]
+            for session in sessions:
+                if session in results_df.columns:
+                    results_df = results_df.sort_values(
+                        by=session, ascending=True, na_position="last"
+                    )
+
+            # Add position column after sorting
             results_df.insert(0, "Pos", range(1, len(results_df) + 1))
 
             # Format the DataFrame as a string table
