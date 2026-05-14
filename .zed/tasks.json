@@ -4,7 +4,7 @@
 [
   {
     "label": "Build Executable",
-    "command": "$ZED_WORKTREE_ROOT/.venv/Scripts/activate.bat & flet pack ./BetterCautionBot.py --hidden-import win32api --add-data .venv/Lib/site-packages/discord/bin;. --add-data audio;audio -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot & mkdir dist\\audio & xcopy /s /y audio dist\\audio & cd dist & tar -a -c -f BetterCautionBot.zip BetterCautionBot.exe audio",
+    "command": "$ZED_WORKTREE_ROOT/.venv/Scripts/activate.bat & flet pack ./BetterCautionBot.py --hidden-import win32api --add-data .venv/Lib/site-packages/discord/bin;. --add-data audio;audio --add-data modules/flet_pages;modules/flet_pages --icon thonk.png -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot & mkdir dist\\audio & xcopy /s /y audio dist\\audio & cd dist & tar -a -c -f BetterCautionBot.zip BetterCautionBot.exe audio",
     // "args": [
     //   "pack",
     //   "./run_flet.py",
@@ -54,13 +54,13 @@
     //         }
     //     }
     "shell": {
-      "program": "cmd.exe"
+      "program": "cmd.exe",
     },
     // Whether to show the task line in the output of the spawned task, defaults to `true`.
     "show_summary": true,
     // Whether to show the command line in the output of the spawned task, defaults to `true`.
-    "show_command": true
+    "show_command": true,
     // Represents the tags for inline runnable indicators, or spawning multiple tasks at once.
     // "tags": []
-  }
+  },
 ]

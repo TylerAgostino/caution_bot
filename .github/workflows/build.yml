@@ -17,8 +17,8 @@ jobs:
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version: '3.13'
+          cache: 'pip'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
 
       - name: Build executable
-        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data "${{ steps.discord.outputs.bin_path }};." --add-data "audio;audio" -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
+        run: flet pack ./BetterCautionBot.py --hidden-import win32api --add-data "${{ steps.discord.outputs.bin_path }};." --add-data "audio;audio" --add-data "modules/flet_pages;modules/flet_pages" --icon thonk.png -y -n BetterCautionBot --company-name Thonk --product-name BetterCautionBot
 
       - name: Copy audio to dist
         run: |
