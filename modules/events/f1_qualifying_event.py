@@ -254,12 +254,22 @@ class F1QualifyingEvent(BaseEvent):
             self.leaderboard_df = self.leaderboard_df[
                 ["Driver"] + [f"Q{n + 1}" for n in range(len(self.session_minutes))]
             ]
-            # Sort the dataframe by lap times, prioritising higher qualifying sessions
-            sessions = [f"Q{n + 1}" for n in range(len(self.session_minutes))]
-            sessions.reverse()
-            self.leaderboard_df = self.leaderboard_df.sort_values(
-                by=sessions, ascending=True
-            )
+            # Sort the dataframe by lap times.
+            # During active sessions, sort ONLY by the current session.
+            # This matches F1 behavior where only the current session time matters for position.
+            current_session_col = f"Q{session_number}"
+            if current_session_col in self.leaderboard_df.columns:
+                # Sort by current session only, putting NaN values last
+                self.leaderboard_df = self.leaderboard_df.sort_values(
+                    by=[current_session_col], ascending=True, na_position="last"
+                )
+            else:
+                # Fallback to multi-session sort if current session column doesn't exist
+                sessions = [f"Q{n + 1}" for n in range(len(self.session_minutes))]
+                sessions.reverse()
+                self.leaderboard_df = self.leaderboard_df.sort_values(
+                    by=sessions, ascending=True, na_position="last"
+                )
 
     def subsession(
         self, length, num_drivers_remain, session_number, subset_of_drivers=None
