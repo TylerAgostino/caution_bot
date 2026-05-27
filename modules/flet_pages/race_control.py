@@ -2354,6 +2354,8 @@ class RaceControlApp:
                     padding=10,
                 ),
             ],
+            height=800,
+            scroll=ft.ScrollMode.AUTO,
         )
 
     def build_text_consumer(self):
