@@ -2354,6 +2354,8 @@ class RaceControlApp:
                     padding=10,
                 ),
             ],
+            height=800,
+            scroll=ft.ScrollMode.AUTO,
         )
 
     def build_text_consumer(self):
@@ -2626,6 +2628,24 @@ class RaceControlApp:
         )
 
         try:
+            # Immediately disable the start button to prevent concurrent/duplicate starts
+            # before any slow SDK initialization happens.
+            self.start_button.disabled = True
+            self.stop_button.disabled = True
+            self.page.update()
+
+            # If a previous SubprocessManager is still alive (e.g. user clicked Start
+            # before the previous stop fully completed), stop it now so its threads
+            # don't become zombies when we overwrite the reference below.
+            if self.subprocess_manager is not None:
+                if logger:
+                    logger.warning(
+                        "start_race_control called while a SubprocessManager is still "
+                        "active. Stopping previous manager before starting a new one."
+                    )
+                self.subprocess_manager.stop()
+                self.subprocess_manager = None
+
             self.is_running = True
             # Rebuild tabs to update disabled states
             self.rebuild_all_tabs()
@@ -3110,8 +3130,10 @@ class RaceControlApp:
         if e.data == "close":
             # Stop race control if running
             if self.is_running and self.subprocess_manager:
+                # Capture the manager reference *before* stop_race_control clears it
+                manager = self.subprocess_manager
                 self.stop_race_control(e)
-                for thread in self.subprocess_manager.threads:
+                for thread in manager.threads:
                     thread.join()
             e.page.window.destroy()
 

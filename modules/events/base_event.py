@@ -102,14 +102,18 @@ class BaseEvent:
         """
         Sleeps for a specified number of seconds and checks for cancellation.
 
+        Uses cancel_event.wait() so the sleep is interrupted immediately when
+        the cancel event is set, rather than blocking for the full duration.
+
         Args:
             seconds (float): Number of seconds to sleep.
 
         Raises:
             KeyboardInterrupt: If the cancel_event is set.
         """
-        time.sleep(seconds)
-        if self.cancel_event.is_set():
+        # wait() returns True if the event was set (i.e. cancelled), False on timeout
+        cancelled = self.cancel_event.wait(timeout=seconds)
+        if cancelled:
             self.logger.info("Event cancelled.")
             raise KeyboardInterrupt
 
