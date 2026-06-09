@@ -349,6 +349,131 @@ def _build_synthetic_frames() -> list[dict]:
     return frames
 
 
+def _build_slowdown_leader_frames() -> list[dict]:
+    """
+    Build telemetry frames for the "leader has a slowdown at S/F" scenario.
+
+    Scenario
+    --------
+    Car slots are the same as in ``_build_synthetic_frames``
+    (idx 0 = pace car, 1 = car "11" leader, 2 = car "22" P2, 3 = car "33" P3).
+    All racers are in the same class.
+
+    Frame 40 : Car "11" crosses the S/F line and receives a furled (slowdown)
+               flag.  It is held as *pending* and NOT added to the pacing order.
+    Frame 50 : Car "22" crosses the S/F line while car "11" is still penalised.
+    Frame 60 : Car "33" crosses the S/F line while car "11" is still penalised.
+    Frame 75 : Car "11" clears its slowdown and is finally added to the order.
+
+    Expected restart order
+    ----------------------
+    ["22", "33", "11"]
+
+    Car "22" crossed while the leader was pending → becomes the new pacing
+    leader.  Car "33" likewise crossed before the leader cleared → second.
+    Car "11" joined last because of the slowdown → third.
+
+    Without the ``pending_slowdown_cars`` fix, cars "22" and "33" would receive
+    ``SlowerClassCatchup=1`` (because the class leader was absent from the
+    pacing order) and end up sorted *behind* car "11" once it joined, causing
+    the wave-around logic to fire incorrectly.
+    """
+    import irsdk as _irsdk
+
+    FURLED = int(_irsdk.Flags.furled)
+
+    frames: list[dict] = []
+    tick = 1000
+    session_time = 120.0
+    session_time_remain = 3480.0
+    FPS = 60.0
+    dt = 1.0 / FPS
+
+    # Per-slot state: [pace, car11, car22, car33]
+    laps = [0, 1, 1, 1]
+    dist = [-1.0, 0.10, 0.08, 0.06]  # initial LapDistPct (well below S/F)
+
+    for frame_idx in range(400):
+        flags = [0, 0, 0, 0]
+
+        if frame_idx < 40:
+            # Phase A: normal racing approach to the S/F line.
+            for slot in [1, 2, 3]:
+                dist[slot] = round(dist[slot] + 0.005, 6)
+
+        elif frame_idx == 40:
+            # Car 11 crosses the S/F line but receives a slowdown (furled) flag.
+            laps[1] = 2
+            dist[1] = 0.01
+            flags[1] = FURLED
+            # Cars 22 and 33 are still on lap 1.
+            for slot in [2, 3]:
+                dist[slot] = round(dist[slot] + 0.005, 6)
+
+        elif 40 < frame_idx < 50:
+            # Car 11 is still penalised; cars 22/33 are still approaching.
+            flags[1] = FURLED
+            dist[1] = round(dist[1] + 0.005, 6)
+            for slot in [2, 3]:
+                dist[slot] = round(dist[slot] + 0.005, 6)
+
+        elif frame_idx == 50:
+            # Car 22 crosses the S/F line; car 11 still has the furled flag.
+            laps[2] = 2
+            dist[2] = 0.01
+            flags[1] = FURLED
+            dist[1] = round(dist[1] + 0.005, 6)
+            dist[3] = round(dist[3] + 0.005, 6)
+
+        elif 50 < frame_idx < 60:
+            # Car 22 pacing; car 11 still furled; car 33 still approaching.
+            flags[1] = FURLED
+            for slot in [1, 2, 3]:
+                dist[slot] = round(dist[slot] + 0.005, 6)
+
+        elif frame_idx == 60:
+            # Car 33 crosses the S/F line; car 11 still has the furled flag.
+            laps[3] = 2
+            dist[3] = 0.01
+            flags[1] = FURLED
+            dist[1] = round(dist[1] + 0.005, 6)
+            dist[2] = round(dist[2] + 0.005, 6)
+
+        elif 60 < frame_idx < 75:
+            # All cars now on lap 2; car 11 is still penalised.
+            flags[1] = FURLED
+            for slot in [1, 2, 3]:
+                dist[slot] = round(dist[slot] + 0.005, 6)
+
+        else:
+            # frame_idx >= 75: car 11 clears its slowdown; all cars pacing.
+            # Switch to a fast advance after frame 200 to trigger the restart
+            # speed threshold (same pattern as _build_synthetic_frames).
+            speed = 0.005 if frame_idx < 200 else 0.05
+            for slot in [1, 2, 3]:
+                new_d = round(dist[slot] + speed, 6)
+                if new_d >= 1.0:
+                    laps[slot] += 1
+                    new_d = round(new_d - 1.0, 6)
+                dist[slot] = new_d
+
+        frame = _base_frame(
+            tick=tick,
+            session_time=session_time,
+            session_time_remain=session_time_remain,
+            lap_completed=list(laps),
+            lap_dist_pct=list(dist),
+            session_flags_per_car=list(flags),
+        )
+        frames.append(frame)
+
+        tick += 1
+        session_time = round(session_time + dt, 6)
+        session_time_remain = round(session_time_remain - dt, 6)
+
+    return frames
+
+
 def _build_telemetry_json(frames: list[dict]) -> dict:
     """Wrap a frame list in the standard telemetry JSON envelope.
 
@@ -398,7 +523,7 @@ def sample_telemetry_path(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _make_event(sdk: ReplaySDK) -> RandomTimedCode69Event:
+def _make_event(sdk: ReplaySDK, wave_arounds: bool = False) -> RandomTimedCode69Event:
     """Construct a ``RandomTimedCode69Event`` wired to *sdk* for replay testing.
 
     We use settings designed to make the event complete quickly on the
@@ -421,7 +546,8 @@ def _make_event(sdk: ReplaySDK) -> RandomTimedCode69Event:
     * ``likelihood=100``         → always fires (though we call event_sequence()
                                    directly, bypassing the likelihood roll).
     * ``end_of_lap_safety_margin=0`` → simpler safety margin logic.
-    * ``wave_arounds=False``     → no wave-around sub-logic to worry about.
+    * ``wave_arounds``           → defaults to False; set to True to exercise
+                                   wave-around / catch-up logic.
     """
     cancel_event = threading.Event()
     busy_event = threading.Event()
@@ -440,7 +566,7 @@ def _make_event(sdk: ReplaySDK) -> RandomTimedCode69Event:
         min=0,
         max=1,
         likelihood=100,
-        wave_arounds=False,
+        wave_arounds=wave_arounds,
         notify_on_skipped_caution=False,
         max_speed_km=69,
         restart_speed_pct=125,
@@ -743,3 +869,64 @@ class TestCode69RestartOrder:
         result = runner.run(timeout=30)
 
         assert result.frames_consumed > 0, "Expected at least one frame to be consumed."
+
+    def test_code69_leader_slowdown_at_sf_line(self, tmp_path: Path) -> None:
+        """
+        Regression test: a car that crosses the S/F line while the race leader
+        has an active slowdown (furled flag) should become the new pacing leader,
+        NOT receive a catch-up / wave-around designation.
+
+        Scenario (car "11" = leader, "22" = P2, "33" = P3):
+        - Frame 40: Car "11" crosses with a furled flag → held as pending.
+        - Frame 50: Car "22" crosses while "11" is still penalised.
+        - Frame 60: Car "33" crosses while "11" is still penalised.
+        - Frame 75: Car "11" clears its slowdown and joins the order.
+
+        Before the fix, "22" and "33" received SlowerClassCatchup=1 because
+        the class leader (car "11") was absent from the pacing order.  This
+        caused them to be sorted *behind* "11" once "11" finally joined, and
+        the wave-around logic subsequently fired for them.
+
+        After the fix, the expected restart order is ["22", "33", "11"]:
+        the cars that crossed during the leader's slowdown restart ahead.
+        """
+        frames = _build_slowdown_leader_frames()
+        path = tmp_path / "slowdown_leader.json"
+        path.write_text(json.dumps(_build_telemetry_json(frames)), encoding="utf-8")
+
+        sdk = ReplaySDK(path)
+        # Use wave_arounds=True so that erroneous wave-around messages would
+        # be produced and caught if the bug were still present.
+        event = _make_event(sdk, wave_arounds=True)
+
+        runner = ReplayRunner(sdk, event)
+        result = runner.run(timeout=30)
+
+        if result.exception is not None:
+            raise AssertionError(
+                f"event_sequence() raised an exception: {result.exception!r}"
+            ) from result.exception
+
+        assert not result.timed_out, (
+            f"Event timed out after 30s. "
+            f"Frames consumed: {result.frames_consumed}. "
+            f"Last chat messages: {result.chat_messages[-10:]}"
+        )
+        assert result.completed
+
+        # Primary regression assertion: cars that crossed while the leader
+        # was pending must restart ahead of the leader.
+        expected_order = [["22", "33", "11"]]
+        assert result.final_restart_order == expected_order, (
+            f"Expected restart order {expected_order} but got "
+            f"{result.final_restart_order}.\n"
+            f"Chat messages:\n" + "\n".join(f"  {m}" for m in result.chat_messages)
+        )
+
+        # Secondary assertion: neither "22" nor "33" should have been told to
+        # overtake the leader (which is the wave-around instruction).
+        overtake_msgs = [m for m in result.chat_messages if "Safely overtake" in m]
+        assert not overtake_msgs, (
+            f"Unexpected wave-around message(s): {overtake_msgs}\n"
+            f"Full chat:\n" + "\n".join(f"  {m}" for m in result.chat_messages)
+        )
