@@ -430,6 +430,12 @@ class RandomTimedCode69Event(RandomTimedEvent):
         leader_speed_generator = None
         restart_order_generator = RestartOrderManager(self.sdk)
         leader = -1
+        # Maps carIdx -> LapCompleted for cars that have crossed the S/F line but
+        # are being held out of the pacing order due to an active slowdown (furled)
+        # flag.  Without this, a car that crosses immediately after the leader (while
+        # the leader's slowdown is still active) would see the leader absent from the
+        # pacing order and incorrectly receive a catch-up or wave-around designation.
+        pending_slowdown_cars: dict[int, int] = {}
 
         while not self.restart_ready.is_set():
             this_step = self.get_current_running_order()
@@ -544,6 +550,7 @@ class RandomTimedCode69Event(RandomTimedEvent):
                             self.logger.debug(
                                 f"Car {car['CarNumber']} has a furled flag, delaying adding to order until clear"
                             )
+                            pending_slowdown_cars[car["CarIdx"]] = car["LapCompleted"]
                             this_step = [
                                 last_step_record if c["CarIdx"] == car["CarIdx"] else c
                                 for c in this_step
@@ -573,6 +580,10 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         1
                         if class_leader["CarIdx"]
                         not in [c["CarIdx"] for c in restart_order_generator.order]
+                        # If the class leader has crossed but is pending due to a
+                        # slowdown, do NOT award a catch-up.  The car behind crossed
+                        # after the leader and should become the new pacing leader.
+                        and class_leader["CarIdx"] not in pending_slowdown_cars
                         and class_leader["CarIdx"] != car["CarIdx"]
                         and not class_leader_in_pits
                         else 0
@@ -591,6 +602,23 @@ class RandomTimedCode69Event(RandomTimedEvent):
                             if pacing_leader_laps_complete > car["LapCompleted"]
                             else 0
                         )
+                    elif pending_slowdown_cars:
+                        # The pacing order is empty but the class leader has already
+                        # crossed under a slowdown.  A car on a lower lap than the
+                        # pending leader should still receive a wave-around.
+                        pending_leader_laps_in_class = max(
+                            (
+                                lap
+                                for idx, lap in pending_slowdown_cars.items()
+                                if self.get_car_class(carIdx=idx) == car_class
+                            ),
+                            default=None,
+                        )
+                        if (
+                            pending_leader_laps_in_class is not None
+                            and pending_leader_laps_in_class > car["LapCompleted"]
+                        ):
+                            gets_wave_around = 1
 
                     gets_wave_around = (
                         gets_wave_around
@@ -616,6 +644,9 @@ class RandomTimedCode69Event(RandomTimedEvent):
                         # which may still reflect the pre-reset position.
                         began_pacing_distance=car["LapDistPct"],
                     )
+                    # Car has been accepted into the pacing order; it is no
+                    # longer pending regardless of any prior slowdown.
+                    pending_slowdown_cars.pop(car["CarIdx"], None)
                     if (
                         len(restart_order_generator.order) > 1
                         and not self.sdk["CarIdxOnPitRoad"][car["CarIdx"]]
