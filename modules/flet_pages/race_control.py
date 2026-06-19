@@ -9,7 +9,8 @@ import flet as ft
 import pandas as pd
 
 from modules import SubprocessManager, events, subprocess_manager
-from modules.events import BaseEvent, F1QualifyingEvent
+from modules.events import BaseEvent, F1QualifyingEvent, AussiePursuitMonitorEvent, AussiePursuitEvent
+from modules.aussie_pursuit_calculator import calculate_hold_times
 from modules.logging_context import get_logger
 
 
@@ -134,6 +135,18 @@ class RaceControlApp:
         self.f1_final_session = {"duration": "8", "advancing_cars": "0"}
         self.f1_wait_between = 120
         self.f1_refresh_timer = None
+
+        # Aussie Pursuit state
+        self.aussie_pursuit_race_laps: int = 23
+        self.aussie_pursuit_position_mod_step: float = 0.0003
+        self.aussie_pursuit_passing_modifier: float = 1.0025
+        self.aussie_pursuit_drivers: list[dict] = []
+        self.aussie_pursuit_monitor_event: Optional[AussiePursuitMonitorEvent] = None
+        self.aussie_pursuit_monitor_manager: Optional[SubprocessManager] = None
+        self.aussie_pursuit_monitor_status: Optional[ft.Text] = None
+        self.aussie_pursuit_estimates_table: Optional[ft.Column] = None
+        self.aussie_pursuit_dialog: Optional[ft.AlertDialog] = None
+        self.aussie_pursuit_refresh_running: bool = False
 
         # Beer Goggles mode state
         self.goggle_event: Optional[BaseEvent] = None
@@ -3094,6 +3107,12 @@ class RaceControlApp:
         if self.f1_subprocess_manager:
             self.f1_subprocess_manager.stop()
             self.f1_subprocess_manager = None
+
+        # Stop Aussie Pursuit monitor if running
+        if self.aussie_pursuit_monitor_manager:
+            self.aussie_pursuit_monitor_manager.stop()
+            self.aussie_pursuit_monitor_manager = None
+        self.aussie_pursuit_monitor_event = None
         self.f1_event = None
 
         self.overlay_event = None
@@ -3323,6 +3342,12 @@ class RaceControlApp:
                 "enabled": self.overlay_consumer_enabled,
                 "config": self.overlay_consumer_config,
             },
+            "aussie_pursuit": {
+                "race_laps": self.aussie_pursuit_race_laps,
+                "position_mod_step": self.aussie_pursuit_position_mod_step,
+                "passing_modifier": self.aussie_pursuit_passing_modifier,
+                "drivers": self.aussie_pursuit_drivers,
+            },
         }
 
         with open(os.path.join(preset_dir, f"{name}.json"), "w") as f:
@@ -3489,6 +3514,13 @@ class RaceControlApp:
             {"port": "8765"},
         )
 
+        # Load Aussie Pursuit
+        aussie = config.get("aussie_pursuit", {})
+        self.aussie_pursuit_race_laps = aussie.get("race_laps", 23)
+        self.aussie_pursuit_position_mod_step = aussie.get("position_mod_step", 0.0003)
+        self.aussie_pursuit_passing_modifier = aussie.get("passing_modifier", 1.0025)
+        self.aussie_pursuit_drivers = aussie.get("drivers", [])
+
     def load_preset(self, name: str, silent: bool = False):
         """Load a saved preset
 
@@ -3556,6 +3588,15 @@ class RaceControlApp:
                         on_click=self.open_beer_goggles,
                         style=ft.ButtonStyle(
                             bgcolor=ft.Colors.AMBER_900,
+                            color=ft.Colors.WHITE,
+                        ),
+                    ),
+                    ft.ElevatedButton(
+                        "Aussie Pursuit",
+                        icon=ft.Icons.SPORTS_MOTORSPORTS,
+                        on_click=self.open_aussie_pursuit,
+                        style=ft.ButtonStyle(
+                            bgcolor=ft.Colors.GREEN_800,
                             color=ft.Colors.WHITE,
                         ),
                     ),
@@ -4023,6 +4064,535 @@ class RaceControlApp:
         while self.f1_event and self.f1_subprocess_manager:
             self.update_f1_leaderboard()
             await asyncio.sleep(0.5)  # Update twice per second
+
+    # ------------------------------------------------------------------
+    # Aussie Pursuit tab
+    # ------------------------------------------------------------------
+
+    def build_aussie_pursuit_content(self):
+        """Build the Aussie Pursuit dialog content"""
+
+        # ---- global config ----
+        def on_laps_change(e):
+            try:
+                self.aussie_pursuit_race_laps = int(e.control.value)
+            except (ValueError, TypeError):
+                pass
+            recalculate_all_holds()
+
+        def on_pos_mod_change(e):
+            try:
+                self.aussie_pursuit_position_mod_step = float(e.control.value)
+            except (ValueError, TypeError):
+                pass
+            recalculate_all_holds()
+
+        def on_pass_mod_change(e):
+            try:
+                self.aussie_pursuit_passing_modifier = float(e.control.value)
+            except (ValueError, TypeError):
+                pass
+            recalculate_all_holds()
+
+        global_config_row = ft.Row(
+            [
+                ft.TextField(
+                    label="Race Laps",
+                    value=str(self.aussie_pursuit_race_laps),
+                    width=100,
+                    keyboard_type=ft.KeyboardType.NUMBER,
+                    on_change=on_laps_change,
+                ),
+                ft.TextField(
+                    label="Position Mod Step",
+                    value=str(self.aussie_pursuit_position_mod_step),
+                    width=160,
+                    keyboard_type=ft.KeyboardType.NUMBER,
+                    on_change=on_pos_mod_change,
+                ),
+                ft.TextField(
+                    label="Passing Modifier",
+                    value=str(self.aussie_pursuit_passing_modifier),
+                    width=150,
+                    keyboard_type=ft.KeyboardType.NUMBER,
+                    on_change=on_pass_mod_change,
+                ),
+            ],
+            spacing=10,
+        )
+
+        # ---- hold time preview helpers ----
+        hold_preview_texts: list[ft.Text] = []
+
+        def recalculate_all_holds():
+            try:
+                results = calculate_hold_times(
+                    self.aussie_pursuit_drivers,
+                    int(self.aussie_pursuit_race_laps),
+                    float(self.aussie_pursuit_position_mod_step),
+                    float(self.aussie_pursuit_passing_modifier),
+                )
+                hold_map = {str(r["car_number"]): r["hold_seconds"] for r in results}
+                for i, driver in enumerate(self.aussie_pursuit_drivers):
+                    if i < len(hold_preview_texts):
+                        hold = hold_map.get(str(driver.get("car_number", "")), "?")
+                        hold_preview_texts[i].value = str(hold)
+                        hold_preview_texts[i].color = (
+                            ft.Colors.AMBER if hold == "D" else ft.Colors.GREEN_400
+                        )
+            except Exception:
+                for hp in hold_preview_texts:
+                    hp.value = "?"
+            if self.page:
+                self.page.update()
+
+        # ---- driver table ----
+        driver_table = ft.Column(spacing=4)
+
+        TABLE_COL_WIDTHS = {
+            "driver": 150,
+            "car": 65,
+            "class": 100,
+            "laptime": 90,
+            "lower": 80,
+            "extra": 80,
+            "hold": 70,
+        }
+
+        def build_table_header():
+            labels = [
+                ("Driver", "driver"),
+                ("Car #", "car"),
+                ("Class", "class"),
+                ("Lap Time (s)", "laptime"),
+                ("Lower Adj", "lower"),
+                ("Extra Hold", "extra"),
+                ("Hold", "hold"),
+            ]
+            cells = [
+                ft.Container(
+                    ft.Text(lbl, weight=ft.FontWeight.BOLD, size=12),
+                    width=TABLE_COL_WIDTHS[key],
+                )
+                for lbl, key in labels
+            ]
+            cells.append(ft.Container(width=36))
+            return ft.Row(cells, spacing=4)
+
+        def make_driver_row(idx: int, driver: dict, hold_preview: ft.Text):
+            def field_change(key, converter):
+                def on_change(e):
+                    try:
+                        val = converter(e.control.value) if e.control.value.strip() else 0
+                    except (ValueError, TypeError):
+                        val = 0
+                    self.aussie_pursuit_drivers[idx][key] = val
+                    recalculate_all_holds()
+                return on_change
+
+            def str_field_change(key):
+                def on_change(e):
+                    self.aussie_pursuit_drivers[idx][key] = e.control.value
+                return on_change
+
+            def delete_row(_):
+                self.aussie_pursuit_drivers.pop(idx)
+                rebuild_driver_table()
+
+            return ft.Row(
+                [
+                    ft.TextField(
+                        value=str(driver.get("driver_name", "")),
+                        width=TABLE_COL_WIDTHS["driver"],
+                        hint_text="Name",
+                        on_change=str_field_change("driver_name"),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.TextField(
+                        value=str(driver.get("car_number", "")),
+                        width=TABLE_COL_WIDTHS["car"],
+                        hint_text="#",
+                        on_change=str_field_change("car_number"),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.TextField(
+                        value=str(driver.get("car_class", "")),
+                        width=TABLE_COL_WIDTHS["class"],
+                        hint_text="Class",
+                        on_change=str_field_change("car_class"),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.TextField(
+                        value=str(driver.get("lap_time_seconds", "")),
+                        width=TABLE_COL_WIDTHS["laptime"],
+                        hint_text="0.000",
+                        keyboard_type=ft.KeyboardType.NUMBER,
+                        on_change=field_change("lap_time_seconds", float),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.TextField(
+                        value=str(driver.get("comp_adj_lower", 0)),
+                        width=TABLE_COL_WIDTHS["lower"],
+                        hint_text="0",
+                        keyboard_type=ft.KeyboardType.NUMBER,
+                        on_change=field_change("comp_adj_lower", float),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.TextField(
+                        value=str(driver.get("comp_adj_extra_hold", 0)),
+                        width=TABLE_COL_WIDTHS["extra"],
+                        hint_text="0",
+                        keyboard_type=ft.KeyboardType.NUMBER,
+                        on_change=field_change("comp_adj_extra_hold", float),
+                        content_padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    ),
+                    ft.Container(hold_preview, width=TABLE_COL_WIDTHS["hold"], alignment=ft.alignment.center),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        icon_color=ft.Colors.RED_400,
+                        icon_size=18,
+                        tooltip="Remove driver",
+                        on_click=delete_row,
+                    ),
+                ],
+                spacing=4,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+
+        def rebuild_driver_table():
+            nonlocal hold_preview_texts
+            driver_table.controls.clear()
+            hold_preview_texts = []
+
+            if self.aussie_pursuit_drivers:
+                driver_table.controls.append(build_table_header())
+                driver_table.controls.append(ft.Divider(height=4))
+
+            for i, driver in enumerate(self.aussie_pursuit_drivers):
+                hp = ft.Text(
+                    "?",
+                    size=13,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.GREEN_400,
+                    width=TABLE_COL_WIDTHS["hold"],
+                    text_align=ft.TextAlign.CENTER,
+                )
+                hold_preview_texts.append(hp)
+                driver_table.controls.append(make_driver_row(i, driver, hp))
+
+            recalculate_all_holds()
+            if self.page:
+                self.page.update()
+
+        rebuild_driver_table()
+
+        def add_driver(_):
+            self.aussie_pursuit_drivers.append({
+                "driver_name": "",
+                "car_number": "",
+                "car_class": "",
+                "lap_time_seconds": 0.0,
+                "comp_adj_lower": 0.0,
+                "comp_adj_extra_hold": 0.0,
+            })
+            rebuild_driver_table()
+
+        def sort_drivers(_):
+            self.aussie_pursuit_drivers.sort(
+                key=lambda d: d.get("lap_time_seconds", 0), reverse=True
+            )
+            rebuild_driver_table()
+
+        # ---- monitoring section ----
+        self.aussie_pursuit_monitor_status = ft.Text(
+            "Not monitoring", size=13, color=ft.Colors.GREY_400
+        )
+
+        self.aussie_pursuit_estimates_table = ft.Column(spacing=3)
+
+        monitor_btn_ref: list[ft.ElevatedButton] = []
+
+        def start_monitoring(_):
+            if self.aussie_pursuit_monitor_manager:
+                return
+            try:
+                self.aussie_pursuit_monitor_event = AussiePursuitMonitorEvent()
+                self.aussie_pursuit_monitor_manager = SubprocessManager(
+                    [self.aussie_pursuit_monitor_event.run]
+                )
+                self.aussie_pursuit_monitor_manager.start()
+                if not self.aussie_pursuit_refresh_running:
+                    self.page.run_task(self.aussie_pursuit_monitor_refresh_task)
+                if monitor_btn_ref:
+                    monitor_btn_ref[0].text = "Stop Monitoring"
+                    monitor_btn_ref[0].icon = ft.Icons.STOP
+                    monitor_btn_ref[0].on_click = stop_monitoring
+                self.page.update()
+            except Exception as ex:
+                self.aussie_pursuit_monitor_status.value = f"Error: {ex}"
+                self.page.update()
+
+        def stop_monitoring(_):
+            if self.aussie_pursuit_monitor_manager:
+                self.aussie_pursuit_monitor_manager.stop()
+                self.aussie_pursuit_monitor_manager = None
+            self.aussie_pursuit_monitor_event = None
+            self.aussie_pursuit_monitor_status.value = "Monitoring stopped"
+            if monitor_btn_ref:
+                monitor_btn_ref[0].text = "Start Monitoring"
+                monitor_btn_ref[0].icon = ft.Icons.PLAY_ARROW
+                monitor_btn_ref[0].on_click = start_monitoring
+            self.page.update()
+
+        def apply_all_estimates(_):
+            if not self.aussie_pursuit_monitor_event:
+                return
+            estimates = self.aussie_pursuit_monitor_event.get_pace_estimates()
+            existing = {
+                str(d.get("car_number", "")).strip(): d
+                for d in self.aussie_pursuit_drivers
+            }
+            for car_num, est in estimates.items():
+                if est["pace"] is None:
+                    continue
+                if car_num in existing:
+                    existing[car_num]["lap_time_seconds"] = round(est["pace"], 3)
+                else:
+                    self.aussie_pursuit_drivers.append({
+                        "car_number": car_num,
+                        "driver_name": est["driver_name"],
+                        "car_class": est["car_class"],
+                        "lap_time_seconds": round(est["pace"], 3),
+                        "comp_adj_lower": 0.0,
+                        "comp_adj_extra_hold": 0.0,
+                    })
+            rebuild_driver_table()
+
+        monitor_btn = ft.ElevatedButton(
+            "Start Monitoring",
+            icon=ft.Icons.PLAY_ARROW,
+            on_click=start_monitoring,
+        )
+        monitor_btn_ref.append(monitor_btn)
+
+        estimates_header = ft.Row(
+            [
+                ft.Container(ft.Text("Car #", weight=ft.FontWeight.BOLD, size=11), width=60),
+                ft.Container(ft.Text("Driver", weight=ft.FontWeight.BOLD, size=11), width=160),
+                ft.Container(ft.Text("Class", weight=ft.FontWeight.BOLD, size=11), width=100),
+                ft.Container(ft.Text("Laps", weight=ft.FontWeight.BOLD, size=11), width=50),
+                ft.Container(ft.Text("Pace (s)", weight=ft.FontWeight.BOLD, size=11), width=80),
+            ],
+            spacing=4,
+        )
+
+        monitoring_section = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [monitor_btn, self.aussie_pursuit_monitor_status],
+                        spacing=12,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Container(height=4),
+                    estimates_header,
+                    ft.Divider(height=3),
+                    self.aussie_pursuit_estimates_table,
+                    ft.Container(height=4),
+                    ft.ElevatedButton(
+                        "Apply All Estimates to Table",
+                        icon=ft.Icons.DOWNLOAD,
+                        on_click=apply_all_estimates,
+                    ),
+                ],
+                spacing=4,
+            ),
+            padding=ft.padding.all(8),
+            border=ft.border.all(1, ft.Colors.with_opacity(0.2, ft.Colors.WHITE)),
+            border_radius=6,
+        )
+
+        # ---- action buttons ----
+        def apply_penalties(_):
+            if not self.aussie_pursuit_drivers:
+                return
+            try:
+                results = calculate_hold_times(
+                    self.aussie_pursuit_drivers,
+                    int(self.aussie_pursuit_race_laps),
+                    float(self.aussie_pursuit_position_mod_step),
+                    float(self.aussie_pursuit_passing_modifier),
+                )
+                commands = [(r["car_number"], r["hold_seconds"]) for r in results]
+                event = AussiePursuitEvent(commands)
+                mgr = SubprocessManager([event.run])
+                mgr.start()
+            except Exception as ex:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Error applying penalties: {ex}"),
+                    bgcolor=ft.Colors.RED,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+
+        def copy_commands(_):
+            if not self.aussie_pursuit_drivers:
+                return
+            try:
+                results = calculate_hold_times(
+                    self.aussie_pursuit_drivers,
+                    int(self.aussie_pursuit_race_laps),
+                    float(self.aussie_pursuit_position_mod_step),
+                    float(self.aussie_pursuit_passing_modifier),
+                )
+                lines = [f"!bl {r['car_number']} {r['hold_seconds']}" for r in results]
+                self.page.set_clipboard("\n".join(lines))
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Copied {len(lines)} commands to clipboard"),
+                    bgcolor=ft.Colors.GREEN,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+            except Exception as ex:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Error: {ex}"),
+                    bgcolor=ft.Colors.RED,
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+
+        action_row = ft.Row(
+            [
+                ft.ElevatedButton(
+                    "Apply Penalties",
+                    icon=ft.Icons.SPORTS_SCORE,
+                    on_click=apply_penalties,
+                    style=ft.ButtonStyle(
+                        bgcolor=ft.Colors.ORANGE_800, color=ft.Colors.WHITE
+                    ),
+                ),
+                ft.ElevatedButton(
+                    "Copy Commands",
+                    icon=ft.Icons.COPY,
+                    on_click=copy_commands,
+                ),
+                ft.ElevatedButton(
+                    "Add Driver",
+                    icon=ft.Icons.ADD,
+                    on_click=add_driver,
+                ),
+                ft.ElevatedButton(
+                    "Sort by Lap Time",
+                    icon=ft.Icons.SORT,
+                    on_click=sort_drivers,
+                ),
+            ],
+            spacing=8,
+        )
+
+        return ft.Container(
+            content=ft.Column(
+                [
+                    global_config_row,
+                    ft.Container(height=6),
+                    ft.Text("Pace Monitor", size=14, weight=ft.FontWeight.W_600),
+                    monitoring_section,
+                    ft.Container(height=6),
+                    ft.Text("Driver Lineup", size=14, weight=ft.FontWeight.W_600),
+                    ft.Container(
+                        content=driver_table,
+                        padding=ft.padding.symmetric(vertical=4),
+                    ),
+                    ft.Container(height=4),
+                    action_row,
+                ],
+                scroll=ft.ScrollMode.AUTO,
+                spacing=4,
+                height=560,
+                width=920,
+            ),
+            padding=8,
+        )
+
+    async def aussie_pursuit_monitor_refresh_task(self):
+        """Refresh the Aussie Pursuit monitor status and estimates display every 2 seconds.
+
+        Keeps running as long as the monitor manager is active, even when the dialog is closed.
+        """
+        self.aussie_pursuit_refresh_running = True
+        try:
+            while self.aussie_pursuit_monitor_manager and self.aussie_pursuit_monitor_event:
+                try:
+                    event = self.aussie_pursuit_monitor_event
+                    car_count = event.car_count()
+                    lap_count = event.total_lap_count()
+
+                    if self.aussie_pursuit_monitor_status:
+                        self.aussie_pursuit_monitor_status.value = (
+                            f"Monitoring active — {car_count} cars, {lap_count} laps"
+                        )
+
+                    estimates = event.get_pace_estimates()
+                    if self.aussie_pursuit_estimates_table is not None:
+                        self.aussie_pursuit_estimates_table.controls.clear()
+                        for car_num, est in sorted(estimates.items()):
+                            pace_str = (
+                                f"{est['pace']:.3f}"
+                                if est["pace"] is not None
+                                else "—"
+                            )
+                            self.aussie_pursuit_estimates_table.controls.append(
+                                ft.Row(
+                                    [
+                                        ft.Container(ft.Text(car_num, size=12), width=60),
+                                        ft.Container(
+                                            ft.Text(est["driver_name"], size=12), width=160
+                                        ),
+                                        ft.Container(
+                                            ft.Text(est["car_class"], size=12), width=100
+                                        ),
+                                        ft.Container(
+                                            ft.Text(str(est["lap_count"]), size=12), width=50
+                                        ),
+                                        ft.Container(
+                                            ft.Text(pace_str, size=12, weight=ft.FontWeight.BOLD),
+                                            width=80,
+                                        ),
+                                    ],
+                                    spacing=4,
+                                )
+                            )
+
+                    if self.page:
+                        self.page.update()
+                except Exception:
+                    pass
+
+                await asyncio.sleep(2)
+        finally:
+            self.aussie_pursuit_refresh_running = False
+
+    def open_aussie_pursuit(self, e):
+        """Open the Aussie Pursuit dialog, creating it once and reusing on subsequent opens."""
+        if self.aussie_pursuit_dialog is None:
+            self.aussie_pursuit_dialog = ft.AlertDialog(
+                modal=False,
+                title=ft.Text("Aussie Pursuit Format", weight=ft.FontWeight.BOLD),
+                content=self.build_aussie_pursuit_content(),
+                actions=[
+                    ft.TextButton("Close", on_click=self.close_aussie_pursuit_dialog),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            self.page.overlay.append(self.aussie_pursuit_dialog)
+        self.aussie_pursuit_dialog.open = True
+        self.page.update()
+
+    def close_aussie_pursuit_dialog(self, e):
+        """Hide the Aussie Pursuit dialog without stopping the pace monitor."""
+        if self.aussie_pursuit_dialog:
+            self.aussie_pursuit_dialog.open = False
+            self.page.update()
 
     def open_beer_goggles(self, e):
         """Open Beer Goggles SDK viewer dialog"""
