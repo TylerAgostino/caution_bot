@@ -36,3 +36,6 @@ from modules.events.multi_driver_incident_event import (
     MultiDriverTimedIncidentEvent,
     MultiDriverLapIncidentEvent,
 )
+
+from modules.events.aussie_pursuit_monitor_event import AussiePursuitMonitorEvent
+from modules.events.aussie_pursuit_event import AussiePursuitEvent
