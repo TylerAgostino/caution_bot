@@ -2,7 +2,7 @@
 mock_irsdk.py -- Drop-in iRacing SDK replacement for replay-based testing
 ==========================================================================
 
-This module provides two classes:
+This module provides three classes:
 
   ReplaySDK
   ---------
@@ -55,6 +55,13 @@ This module provides two classes:
   call made by ``BaseEvent.__init__`` and ``BaseEvent._chat``.  Pass an
   instance as the ``pwa=`` kwarg when constructing an event under test so that
   the pywinauto code path does not raise.
+
+  FakeFlagsSDK
+  ------------
+  An even lighter-weight stand-in than ``ReplaySDK``, for tests that only
+  need to control ``SessionFlags`` (or a couple of other keys) and don't want
+  the overhead of building/loading a telemetry JSON file. See its docstring
+  for an example.
 
 IMPORTANT
 ---------
@@ -126,6 +133,53 @@ class MockPWA:
             return None
 
         return _noop
+
+
+# ---------------------------------------------------------------------------
+# FakeFlagsSDK
+# ---------------------------------------------------------------------------
+
+
+class FakeFlagsSDK:
+    """Minimal ``irsdk.IRSDK`` stand-in for tests that only care about flags.
+
+    Unlike ``ReplaySDK``, this class doesn't need a telemetry file at all --
+    it just returns whatever value is assigned to ``session_flags`` (or any
+    other key set via ``values``) every time it is read.  This is useful for
+    unit-testing small pieces of event logic (e.g. flag-checking helper
+    methods) in isolation, without capturing or replaying a real telemetry
+    session, and without ever touching a running iRacing sim.
+
+    Example
+    -------
+    ::
+
+        sdk = FakeFlagsSDK(session_flags=irsdk.Flags.start_ready)
+        event = SomeEvent(sdk=sdk, pwa=MockPWA(), ...)
+        assert event._start_lights_active() is True
+    """
+
+    def __init__(self, session_flags: int = 0, **values: Any) -> None:
+        self.session_flags = session_flags
+        self._values: dict[str, Any] = values
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "SessionFlags":
+            return self.session_flags
+        if key in self._values:
+            return self._values[key]
+        raise KeyError(f"FakeFlagsSDK: key '{key}' has no configured value.")
+
+    def __bool__(self) -> bool:
+        return True
+
+    def startup(self) -> bool:
+        """No-op.  In production this connects to iRacing; here it just returns True."""
+        return True
+
+    def shutdown(self) -> None:
+        """No-op.  In production this disconnects from iRacing."""
+        return
 
 
 # ---------------------------------------------------------------------------

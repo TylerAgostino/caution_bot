@@ -21,6 +21,18 @@
   },
   {
     "adapter": "Debugpy",
+    "label": "Test: Mutes",
+    "request": "launch",
+    "python": "$ZED_CUSTOM_PYTHON_ACTIVE_ZED_TOOLCHAIN",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "module": "pytest",
+    "args": ["tests/test_audio_consumer_permissions_live.py", "-v"],
+    "env": {
+      "DISCORD_TEST_VC_ID": "1341563631686520873",
+    }
+  },
+  {
+    "adapter": "Debugpy",
     "label": "Capture Telemetry",
     "request": "launch",
     "python": "$ZED_CUSTOM_PYTHON_ACTIVE_ZED_TOOLCHAIN",

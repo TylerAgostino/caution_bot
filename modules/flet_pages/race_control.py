@@ -2441,8 +2441,11 @@ class RaceControlApp:
                 "volume": 1.0,
                 "token": "",
                 "hello": True,
+                "lock_mic_on_start_lights": True,
             }
         config = self.audio_consumer_config
+        # Backfill defaults for configs/presets saved before this option existed
+        config.setdefault("lock_mic_on_start_lights", True)
 
         def update_config(key, value):
             self.audio_consumer_config[key] = value
@@ -2453,6 +2456,7 @@ class RaceControlApp:
             volume_slider.disabled = not e.control.value or self.is_running
             token_field.disabled = not e.control.value or self.is_running
             hello_check.disabled = not e.control.value or self.is_running
+            lock_mic_check.disabled = not e.control.value or self.is_running
             self.page.update()
 
         enable_check = ft.Checkbox(
@@ -2499,6 +2503,21 @@ class RaceControlApp:
             on_change=lambda e: update_config("hello", e.control.value),
         )
 
+        lock_mic_check = ft.Checkbox(
+            label="Mute Mics During Start Lights",
+            tooltip=(
+                "While the starting lights are showing (Ready/Set/Go), deny "
+                "the Speak permission for everyone in the voice channel so "
+                "nobody can transmit audio (open mic or PTT), then restore "
+                "the original permissions once the start is over."
+            ),
+            value=config["lock_mic_on_start_lights"],
+            disabled=not self.audio_consumer_enabled or self.is_running,
+            on_change=lambda e: update_config(
+                "lock_mic_on_start_lights", e.control.value
+            ),
+        )
+
         return ft.Column(
             [
                 ft.Text(
@@ -2511,6 +2530,7 @@ class RaceControlApp:
                 volume_slider,
                 token_field,
                 hello_check,
+                lock_mic_check,
             ],
             spacing=5,
         )
@@ -3501,6 +3521,8 @@ class RaceControlApp:
         audio_consumer = config.get("audio_consumer", {})
         self.audio_consumer_enabled = audio_consumer.get("enabled", False)
         self.audio_consumer_config = audio_consumer.get("config", {})
+        # Backfill defaults for configs/presets saved before this option existed
+        self.audio_consumer_config.setdefault("lock_mic_on_start_lights", True)
 
         # Load Chat Consumer
         self.chat_consumer_enabled = True
