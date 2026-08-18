@@ -863,13 +863,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     self._chat(
                         f"/{leader['CarNumber']} Slow down to {self.pacing_speed_km()} kph / {int(self.pacing_speed_km() * 0.621371)} mph."
                     )
-                else:
-                    try:
-                        distance_to_restart =  start_zone - lane_order_generators[0].leader()["ActualPosition"]
-                        distance_to_restart_meters = int(distance_to_restart * self.sdk["TrackLength"])
+                try:
+                    km_per_lap = float(
+                        str(self.sdk["WeekendInfo"]["TrackLength"]).replace(" km", "")
+                    )
+                    distance_to_restart =  start_zone - lane_order_generators[0].leader()["ActualPosition"]
+                    distance_to_restart_meters = int(distance_to_restart * km_per_lap * 1000)
+                    if distance_to_restart_meters > 0:
                         self._chat(f"/{leader['CarNumber']} WAIT FOR RESTART ZONE - {distance_to_restart_meters} Meters")
-                    except Exception as e:
-                        self.logger.error(f"Error calculating distance to restart: {e}")
+                except Exception as e:
+                    self.logger.error(f"Error calculating distance to restart: {e}")
             if less_frequent_messages.__next__():
                 for i in range(number_of_lanes):
                     for car in lane_order_generators[i].order:
