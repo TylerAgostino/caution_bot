@@ -796,9 +796,16 @@ class RandomTimedCode69Event(RandomTimedEvent):
                     pass
                 i += 1
             for lane_cars in lanes_raw:
-                lane_order_generators.append(
-                    RestartOrderManager(self.sdk, preset_order=lane_cars)
+                lane_order_generator = RestartOrderManager(
+                    self.sdk, preset_order=lane_cars
                 )
+                # Fresh managers default to class_separation=False; without
+                # inheriting the parent's flag, each lane's first update_order()
+                # re-sorts by raw pacing-join order and re-interleaves classes.
+                lane_order_generator.class_separation = (
+                    restart_order_generator.class_separation
+                )
+                lane_order_generators.append(lane_order_generator)
                 self.logger.debug(f"Lane {lanes_raw.index(lane_cars)}: {lane_cars}")
             self.can_separate_lanes = False
 
