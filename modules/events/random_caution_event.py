@@ -79,14 +79,15 @@ class RandomCautionEvent(RandomTimedEvent):
                 self.sleep(1)
             self.logger.debug("Pace car has completed a lap.")
 
+        for _ in range(self.pre_extend_laps):
+            await_pace_car_lap()
+        laps_completed = self.pre_extend_laps
+
         if self.extend_laps > 0:
-            for _ in range(self.pre_extend_laps):
-                await_pace_car_lap()
             self._chat(f"!p +{self.extend_laps}")
 
         if self.wave_arounds:
             self.audio_queue.put("wavesoon")
-            laps_completed = self.pre_extend_laps
             while laps_completed < self.wave_around_lap:
                 await_pace_car_lap()
                 laps_completed += 1
