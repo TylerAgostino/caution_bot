@@ -58,8 +58,8 @@ class RandomCautionEvent(RandomTimedEvent):
             return
 
         self.busy_event.set()
+        self.close_pits(self.pit_close_advance_warning)
         if self.full_sequence:
-            self.close_pits(self.pit_close_advance_warning)
             self.wait_for_cars_to_clear_pit_lane(self.pit_close_max_duration)
         self.throw_caution()
         self.audio_queue.put("caution")
