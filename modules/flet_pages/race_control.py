@@ -546,7 +546,7 @@ class RaceControlApp:
             value=str(global_config["pit_close_advance_warning"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
-            disabled=not global_config["full_sequence"] or self.is_running,
+            disabled=self.is_running,
             on_change=lambda e: update_global_config(
                 "pit_close_advance_warning",
                 int(e.control.value) if e.control.value else 0,
@@ -720,7 +720,6 @@ class RaceControlApp:
         def update_config(key, value):
             config[key] = value
             if key == "full_sequence":
-                pit_warning.disabled = not value or self.is_running
                 pit_duration.disabled = not value or self.is_running
                 self.page.update()
 
@@ -1305,7 +1304,6 @@ class RaceControlApp:
                 increase_by.disabled = not value or self.is_running
                 self.page.update()
             elif key == "full_sequence":
-                pit_warning.disabled = not value or self.is_running
                 pit_duration.disabled = not value or self.is_running
                 self.page.update()
 
@@ -1433,7 +1431,7 @@ class RaceControlApp:
             value=str(config["pit_close_advance_warning"]),
             keyboard_type=ft.KeyboardType.NUMBER,
             width=150,
-            disabled=not config["full_sequence"] or self.is_running,
+            disabled=self.is_running,
             on_change=lambda e: update_config(
                 "pit_close_advance_warning",
                 int(e.control.value) if e.control.value else 0,
