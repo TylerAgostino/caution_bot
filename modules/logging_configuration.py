@@ -25,6 +25,10 @@ def init_logging(level="INFO"):
     dictConfig(
         {
             "version": 1,
+            # discord.py is imported before this runs; without this the default
+            # True disables every existing discord.* logger and voice failures
+            # (DAVE handshake, player thread) leave no trace in these files.
+            "disable_existing_loggers": False,
             "formatters": {
                 "default": {
                     "format": "%(asctime)s - %(event)s - %(levelname)s - %(message)s",
