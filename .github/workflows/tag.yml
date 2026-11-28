@@ -1,0 +1,50 @@
+name: Tag Patch
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-tag-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump patch and tag commit
+        shell: bash
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git tag --points-at "$SHA" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' >/dev/null; then
+            echo "Commit $SHA already has a stable tag; skipping."
+            exit 0
+          fi
+
+          latest=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          if [ -z "$latest" ]; then
+            echo "No stable release tag found; refusing to invent a baseline." >&2
+            exit 1
+          fi
+
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          next="v$major.$minor.$((patch + 1))"
+
+          git tag -a "$next" -m "$next" "$SHA"
+          git push origin "$next"
+          echo "Tagged $SHA as $next (previous latest: $latest)" | tee -a "$GITHUB_STEP_SUMMARY"

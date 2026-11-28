@@ -1,20 +1,63 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Promote the latest patch tag to a new minor or major version
+        type: choice
+        options:
+          - minor
+          - major
+        default: minor
+
+permissions:
+  contents: write
 
 jobs:
   release:
     runs-on: windows-latest
 
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve promotion version
+        id: version
+        shell: bash
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          latest=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          if [ -z "$latest" ]; then
+            echo "No stable release tag found; refusing to invent a baseline." >&2
+            exit 1
+          fi
+          target=$(git rev-list -n1 "$latest")
+
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          case "$BUMP" in
+            minor) next="v$major.$((minor + 1)).0" ;;
+            major) next="v$((major + 1)).0.0" ;;
+          esac
+
+          if git rev-parse -q --verify "refs/tags/$next" >/dev/null; then
+            echo "Tag $next already exists; refusing to clobber it." >&2
+            exit 1
+          fi
+
+          echo "Promoting $latest ($target) to $next" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "commit=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout promoted commit
+        shell: bash
+        env:
+          TARGET: ${{ steps.version.outputs.commit }}
+        run: git checkout "$TARGET"
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
@@ -47,5 +90,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.version }}
+          commit: ${{ steps.version.outputs.commit }}
           files: dist/BetterCautionBot.zip
+          fail_on_unmatched_files: true
           generate_release_notes: true

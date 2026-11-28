@@ -16,5 +16,10 @@ flet==0.28.3
 pytest
 pandas
 PyInstaller
-davey
+# discord.py 2.7.1 (latest release) targets the davey 0.1.x API. davey 0.2.0
+# (2026-11-02) stopped applying DAVE keys in process_commit/process_welcome and
+# requires prepare_transition/execute_transition, which discord.py only added on
+# master (PR #10548). With 0.2.x the bot joins and transmits, but listeners hear
+# nothing. Raise this floor once discord.py releases davey-0.2 support.
+davey>=0.1.4,<0.2
 Pillow
